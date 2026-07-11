@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LifeSyncAI.API/LifeSyncAI.API.csproj" />
+  <Project Path="LifeSyncAI.Core/LifeSyncAI.Core.csproj" />
+</Solution>

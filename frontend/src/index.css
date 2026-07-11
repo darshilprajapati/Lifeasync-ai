@@ -1,0 +1,182 @@
+/* LifeSync AI Design System - Light, Warm, Elegant */
+:root {
+  /* Color Palette */
+  --bg-primary: #EAE7DC;
+  --bg-secondary: #F5F3EE;
+  --card-bg: #FFFFFF;
+  
+  --accent-primary: #E85A4F;
+  --accent-secondary: #E98074;
+  
+  --neutral-primary: #D8C3A5;
+  --neutral-secondary: #8E8D8A;
+  
+  --text-primary: #2D2D2D;
+  --text-secondary: #6D6D6D;
+  
+  /* Semantic Status Colors */
+  --success: #3FA76D;
+  --warning: #F5B041;
+  --danger: #E74C3C;
+  --info: #4A90E2;
+
+  /* Typography spacing */
+  --font-family: 'Josefin Sans', sans-serif;
+  --line-height-relaxed: 1.6;
+  --letter-spacing-wide: 0.05em;
+
+  /* Shadow Design */
+  --shadow-soft: 0 4px 20px -2px rgba(142, 141, 138, 0.15);
+  --shadow-hover: 0 12px 30px -4px rgba(232, 90, 79, 0.15);
+  
+  /* Border Radius */
+  --radius-card: 18px;
+  --radius-button: 12px;
+  --radius-input: 12px;
+
+  /* Transitions */
+  --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-fast: all 0.15s ease;
+}
+
+/* Reset and Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  /* Hide system cursor to support the high-fidelity custom cursor */
+  cursor: none !important;
+}
+
+html, body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: var(--line-height-relaxed);
+  letter-spacing: var(--letter-spacing-wide);
+  overflow-x: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Typography styles */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+input, button, select, textarea {
+  font-family: var(--font-family);
+  outline: none;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-secondary);
+}
+
+/* Utility Animations */
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(232, 90, 79, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(232, 90, 79, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(232, 90, 79, 0.2);
+  }
+}
+
+/* Custom Cursor markup styling */
+.custom-cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent-primary);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: width 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+}
+
+.custom-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(232, 90, 79, 0.4);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99998;
+  transform: translate(-50%, -50%);
+  /* Smooth lag transition for magnetic feel */
+  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1),
+              width 0.2s ease,
+              height 0.2s ease,
+              border-color 0.2s ease,
+              background-color 0.2s ease;
+}
+
+/* Custom Cursor States */
+body.cursor-hovering .custom-cursor-ring {
+  width: 44px;
+  height: 44px;
+  border-color: var(--accent-primary);
+  background-color: rgba(232, 90, 79, 0.04);
+}
+
+body.cursor-hovering .custom-cursor-dot {
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+body.cursor-clicking .custom-cursor-ring {
+  width: 24px;
+  height: 24px;
+  border-color: var(--accent-primary);
+  background-color: rgba(232, 90, 79, 0.10);
+}
+
+/* Accessibility: Show default cursor on touch screens or fallback */
+@media (hover: none) {
+  * {
+    cursor: auto !important;
+  }
+  .custom-cursor-dot, .custom-cursor-ring {
+    display: none !important;
+  }
+}
+
+/* Hide native password reveal and clear buttons in Edge/IE/Chrome */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0;
+  height: 0;
+}

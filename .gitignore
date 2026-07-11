@@ -1,0 +1,76 @@
+# ==========================================
+# LifeSync AI Root Gitignore Configuration
+# ==========================================
+
+# ------------------------------------------
+# Local Secrets & Settings (CRITICAL)
+# ------------------------------------------
+backend/LifeSyncAI.API/appsettings.Development.json
+backend/LifeSyncAI.API/appsettings.local.json
+secrets.json
+.env
+.env.local
+.env.*.local
+*.user
+
+# ------------------------------------------
+# Logs and Reports
+# ------------------------------------------
+[Ll]ogs/
+**/[Ll]ogs/
+**/*-log-*.txt
+*.log
+[Rr]eports/
+**/[Rr]eports/
+**/*.pdf
+
+# ------------------------------------------
+# .NET / C# Build Outputs
+# ------------------------------------------
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+backend/*/bin/
+backend/*/obj/
+backend/**/bin/
+backend/**/obj/
+backend/LifeSyncAI.API/Logs/
+backend/LifeSyncAI.API/LifeSyncAI.API.user
+
+# ------------------------------------------
+# Node / Frontend Build Outputs
+# ------------------------------------------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+.eslintcache
+
+# ------------------------------------------
+# Python / ML Service Virtual Env & Caches
+# ------------------------------------------
+backend/LifeSyncAI.ML/.venv/
+backend/LifeSyncAI.ML/__pycache__/
+backend/LifeSyncAI.ML/**/*.pyc
+backend/LifeSyncAI.ML/**/__pycache__/
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ------------------------------------------
+# IDE / Editor Files
+# ------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.suo
+*.userosscache
+*.sln.docstates
+*.VisualState.xml
+ActiveDevelopments/
