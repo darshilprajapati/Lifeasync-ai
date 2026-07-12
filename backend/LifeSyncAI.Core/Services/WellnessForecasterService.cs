@@ -199,8 +199,8 @@ namespace LifeSyncAI.Core.Services
                 double[] w = new double[numFeatures]; // Initialize weights to 0
                 double b = 0.0;                       // Initialize bias to 0
                 
-                double alpha = 0.01;                  // Safe learning rate to prevent divergence
-                int epochs = 1000;                    // Iterations
+                double alpha = 0.02;                  // Safe learning rate to prevent divergence
+                int epochs = 8000;                    // Iterations
 
                 for (int epoch = 0; epoch < epochs; epoch++)
                 {
