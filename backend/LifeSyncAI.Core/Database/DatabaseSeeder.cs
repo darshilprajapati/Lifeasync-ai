@@ -69,19 +69,37 @@ namespace LifeSyncAI.Core.Database
             {
                 var baseDir = Environment.GetEnvironmentVariable("ASPNETCORE_CONTENTROOT") ?? AppDomain.CurrentDomain.BaseDirectory;
                 string sqlFilePath = "";
-                var currentDir = new System.IO.DirectoryInfo(baseDir);
 
-                while (currentDir != null)
+                // 1. Check publish output recursively for the file
+                try
                 {
-                    var testPath1 = System.IO.Path.Combine(currentDir.FullName, "backend", "LifeSyncAI.Core", "Database", "init_modules.sql");
-                    var testPath2 = System.IO.Path.Combine(currentDir.FullName, "LifeSyncAI.Core", "Database", "init_modules.sql");
-                    var testPath3 = System.IO.Path.Combine(currentDir.FullName, "Database", "init_modules.sql");
+                    var files = System.IO.Directory.GetFiles(baseDir, "init_modules.sql", System.IO.SearchOption.AllDirectories);
+                    if (files.Length > 0)
+                    {
+                        sqlFilePath = files[0];
+                    }
+                }
+                catch
+                {
+                    // Ignore search errors and fallback
+                }
 
-                    if (System.IO.File.Exists(testPath1)) { sqlFilePath = testPath1; break; }
-                    if (System.IO.File.Exists(testPath2)) { sqlFilePath = testPath2; break; }
-                    if (System.IO.File.Exists(testPath3)) { sqlFilePath = testPath3; break; }
+                // 2. Fallback to walking up the directory tree
+                if (string.IsNullOrEmpty(sqlFilePath))
+                {
+                    var currentDir = new System.IO.DirectoryInfo(baseDir);
+                    while (currentDir != null)
+                    {
+                        var testPath1 = System.IO.Path.Combine(currentDir.FullName, "backend", "LifeSyncAI.Core", "Database", "init_modules.sql");
+                        var testPath2 = System.IO.Path.Combine(currentDir.FullName, "LifeSyncAI.Core", "Database", "init_modules.sql");
+                        var testPath3 = System.IO.Path.Combine(currentDir.FullName, "Database", "init_modules.sql");
 
-                    currentDir = currentDir.Parent;
+                        if (System.IO.File.Exists(testPath1)) { sqlFilePath = testPath1; break; }
+                        if (System.IO.File.Exists(testPath2)) { sqlFilePath = testPath2; break; }
+                        if (System.IO.File.Exists(testPath3)) { sqlFilePath = testPath3; break; }
+
+                        currentDir = currentDir.Parent;
+                    }
                 }
 
                 if (string.IsNullOrEmpty(sqlFilePath) || !System.IO.File.Exists(sqlFilePath))
