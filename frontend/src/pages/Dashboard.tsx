@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardContent, Button, CircularProgress, Stack } from '@mui/material';
+import { Box, Typography, Grid, Card, CardContent, Button, Stack } from '@mui/material';
 import PageWrapper from '../components/PageWrapper';
+import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import { motion } from 'framer-motion';
@@ -367,9 +368,7 @@ const Dashboard: React.FC = () => {
         </Stack>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress sx={{ color: 'var(--accent-primary)' }} />
-          </Box>
+          <LogoLoader />
         ) : (
           <motion.div variants={containerVariants} initial="initial" animate="animate">
             <Grid container spacing={3}>

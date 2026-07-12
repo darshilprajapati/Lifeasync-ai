@@ -110,8 +110,15 @@ function AppContent() {
               {/* Pulsing inner logo emblem */}
               <Box
                 component={motion.div}
-                animate={{ scale: [0.93, 1.05, 0.93] }}
-                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                animate={{ 
+                  scale: [0.93, 1.05, 0.93],
+                  rotate: [0, 3, -3, 0]
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 3, 
+                  ease: 'easeInOut' 
+                }}
                 sx={{
                   position: 'absolute',
                   top: 15,
@@ -120,8 +127,8 @@ function AppContent() {
                   height: 64,
                   borderRadius: '50%',
                   backgroundImage: 'url(/logo.jpg)',
-                  backgroundSize: '180%',
-                  backgroundPosition: 'center 33%',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
                   border: '2px solid rgba(232, 90, 79, 0.3)',
                   boxShadow: '0 8px 24px rgba(232, 90, 79, 0.25)',
@@ -131,33 +138,40 @@ function AppContent() {
             </Box>
 
             {/* Brand Text */}
-            <Typography
-              variant="h4"
-              sx={{
-                fontSize: '24px',
-                fontWeight: 600,
-                letterSpacing: '0.15em',
-                color: '#2D2D2D',
-                mb: 1,
-                textTransform: 'uppercase',
-                fontFamily: '"Josefin Sans", sans-serif',
-              }}
+            <Box
+              component={motion.div}
+              initial={{ y: 15, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
             >
-              LifeSync AI
-            </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontSize: '24px',
+                  fontWeight: 600,
+                  letterSpacing: '0.15em',
+                  color: '#2D2D2D',
+                  mb: 1,
+                  textTransform: 'uppercase',
+                  fontFamily: '"Josefin Sans", sans-serif',
+                }}
+              >
+                LifeSync AI
+              </Typography>
 
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: '11px',
-                color: '#6D6D6D',
-                letterSpacing: '0.08em',
-                fontFamily: '"Josefin Sans", sans-serif',
-                opacity: 0.7,
-              }}
-            >
-              Personal Intelligence Platform
-            </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: '11px',
+                  color: '#6D6D6D',
+                  letterSpacing: '0.08em',
+                  fontFamily: '"Josefin Sans", sans-serif',
+                  opacity: 0.7,
+                }}
+              >
+                Personal Intelligence Platform
+              </Typography>
+            </Box>
           </Box>
         </Box>
       ) : (
