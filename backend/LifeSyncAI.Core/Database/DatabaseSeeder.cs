@@ -30,13 +30,60 @@ namespace LifeSyncAI.Core.Database
                     await context.Database.EnsureDeletedAsync();
                     await context.Database.EnsureCreatedAsync();
                 }
+
+                // Self-healing database column upgrade: Add Otp and OtpExpiryTime if missing in existing database
+                try
+                {
+                    if (context.Database.IsSqlServer())
+                    {
+                        await context.Database.ExecuteSqlRawAsync(@"
+                            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'Otp')
+                            BEGIN
+                                ALTER TABLE Users ADD Otp NVARCHAR(MAX) NULL;
+                            END
+                            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'OtpExpiryTime')
+                            BEGIN
+                                ALTER TABLE Users ADD OtpExpiryTime DATETIME2 NULL;
+                            END
+                        ");
+                    }
+                    else if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+                    {
+                        try
+                        {
+                            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN Otp TEXT NULL;");
+                        }
+                        catch { }
+
+                        try
+                        {
+                            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN OtpExpiryTime TEXT NULL;");
+                        }
+                        catch { }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Schema Upgrade Warning] Failed to check/apply Otp column upgrades: {ex.Message}");
+                }
             }
             else
             {
                 await context.Database.EnsureCreatedAsync();
             }
 
-
+            // Self-healing modules setup: Run stored procedures script on SQL Server
+            if (context.Database.IsSqlServer())
+            {
+                try
+                {
+                    await InitializeModulesSqlAsync(context);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Stored Procedures Warning] Failed to initialize modules SQL: {ex.Message}");
+                }
+            }
 
             // Check if default Admin already exists
             const string adminEmail = "gdarshil1203@gmail.com";
