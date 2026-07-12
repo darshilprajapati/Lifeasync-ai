@@ -490,9 +490,9 @@ const Finance: React.FC = () => {
           </Grid>
         ) : (
           /* TAB 1: COMMITTED BILLS & LOANS */
-          <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
             {/* Add Commitment Form */}
-            <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+            <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
               <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flex: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
@@ -570,10 +570,10 @@ const Finance: React.FC = () => {
                   </form>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
 
             {/* Commitments List sorted by expiry date first */}
-            <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+            <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
               <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
@@ -680,8 +680,8 @@ const Finance: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         )}
       </Box>
     </PageWrapper>

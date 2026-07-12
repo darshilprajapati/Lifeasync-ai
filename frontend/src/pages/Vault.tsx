@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, TextField, Button, IconButton, Grid, Alert, Stack, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import { Box, Typography, Card, CardContent, TextField, Button, IconButton, Alert, Stack, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LockIcon from '@mui/icons-material/Lock';
 import Visibility from '@mui/icons-material/Visibility';
@@ -171,9 +171,9 @@ const Vault: React.FC = () => {
           </Alert>
         )}
 
-        <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
           {/* Add Secure Item Form */}
-          <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
             <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flex: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'var(--accent-primary)' }}>
@@ -270,10 +270,10 @@ const Vault: React.FC = () => {
                 </form>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
           {/* Secure Items List */}
-          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
             <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
               <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
@@ -410,8 +410,8 @@ const Vault: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Box>
     </PageWrapper>
   );
