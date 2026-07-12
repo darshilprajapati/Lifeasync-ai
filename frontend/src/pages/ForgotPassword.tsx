@@ -21,7 +21,6 @@ const ForgotPassword: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [demoOtp, setDemoOtp] = useState<string | null>(null);
   
   // Resend cooldown timer state
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -38,7 +37,6 @@ const ForgotPassword: React.FC = () => {
     if (e) e.preventDefault();
     setSubmitting(true);
     setError(null);
-    setDemoOtp(null);
     if (!isResend) {
       setSuccessMsg(null);
     }
@@ -46,10 +44,6 @@ const ForgotPassword: React.FC = () => {
     try {
       const response = await apiClient.post('/api/auth/forgot-password', { email });
       if (response.data.isSuccess) {
-        const serverOtp = response.headers['x-demo-otp'];
-        if (serverOtp) {
-          setDemoOtp(serverOtp);
-        }
         setSuccessMsg(response.data.message || 'OTP sent successfully.');
         setResendCooldown(30); // start 30s cooldown
         if (!isResend) {
@@ -184,12 +178,6 @@ const ForgotPassword: React.FC = () => {
           {successMsg && (
             <Alert severity="success" sx={{ mb: 3, borderRadius: '12px' }}>
               {successMsg}
-            </Alert>
-          )}
-
-          {demoOtp && (
-            <Alert severity="info" sx={{ mb: 3, borderRadius: '12px', bgcolor: 'rgba(232, 90, 79, 0.05)', color: '#E85A4F', border: '1px solid rgba(232, 90, 79, 0.15)' }}>
-              🔑 **Dev Assist**: Generated OTP code is **{demoOtp}** (also printed in backend logs).
             </Alert>
           )}
 

@@ -171,13 +171,6 @@ namespace LifeSyncAI.API.Controllers
                 return BadRequest(result);
             }
 
-            var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
-                .FirstOrDefaultAsync(_context.Users, u => u.Email == dto.Email.ToLower().Trim());
-            if (user != null && !string.IsNullOrEmpty(user.Otp))
-            {
-                Response.Headers.Append("X-Demo-OTP", user.Otp);
-            }
-
             return Ok(result);
         }
 
