@@ -91,6 +91,7 @@ const Health: React.FC = () => {
     modelAccuracy: string;
     healthRecommendation: string;
   } | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   const showTemporaryError = (msg: string) => {
     setError(msg);
@@ -150,6 +151,7 @@ const Health: React.FC = () => {
 
     const delayDebounce = setTimeout(async () => {
       try {
+        setForecastError(null);
         const res = await apiClient.post('/api/health/forecast', {
           waterIntake: fcWater,
           sleepHours: fcSleep,
@@ -159,14 +161,12 @@ const Health: React.FC = () => {
         });
         if (res.data.isSuccess) {
           setForecastResult(res.data.data);
+        } else {
+          setForecastError(res.data.message || 'Failed to generate forecast.');
         }
       } catch (err: any) {
-        // Safe resilient fallback so user doesn't get stuck on loader
-        setForecastResult({
-          forecastedLifeScore: 75.0,
-          modelAccuracy: "Resilient Fallback Engine",
-          healthRecommendation: "Prioritize maintaining 7-9 hours of sleep, carrying a water bottle, and completing scheduled planner tasks to boost your score."
-        });
+        const errorMsg = err.response?.data?.message || err.message || 'Failed to generate forecast.';
+        setForecastError(errorMsg);
       }
     }, 200); // 200ms debounce
 
@@ -757,8 +757,13 @@ const Health: React.FC = () => {
                             ✨ Forecast derived from historical health logs
                           </MuiTypography>
                         </MuiBox>
+                      ) : forecastError ? (
+                        <MuiBox sx={{ p: 2.5, border: '1.5px solid rgba(232, 90, 79, 0.3)', borderRadius: '12px', bgcolor: 'rgba(232, 90, 79, 0.04)' }}>
+                          <MuiTypography variant="subtitle2" sx={{ color: '#E85A4F', fontWeight: 700, display: 'block', mb: 0.5, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Forecast Failure</MuiTypography>
+                          <MuiTypography variant="body2" sx={{ color: 'var(--text-primary)', fontSize: '11.5px', lineHeight: 1.4 }}>{forecastError}</MuiTypography>
+                        </MuiBox>
                       ) : (
-                        <MuiBox sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px dashed rgba(0,0,0,0.1)', borderRadius: '12px', height: '100px' }}>
+                        <MuiBox sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, border: '1px dashed rgba(0,0,0,0.1)', borderRadius: '12px', minHeight: '120px' }}>
                           <MuiTypography variant="caption" sx={{ color: '#8D8D8D' }}>Loading Wellness Outlook...</MuiTypography>
                         </MuiBox>
                       )}
