@@ -222,7 +222,15 @@ namespace LifeSyncAI.Core.Services
                     <p style='font-size: 12px; color: #9ca3af;'>This is an automated system notification. Please do not reply directly to this email.</p>
                 </div>";
 
-            await _emailService.SendEmailAsync(user.Email, subject, body);
+            try
+            {
+                await _emailService.SendEmailAsync(user.Email, subject, body);
+            }
+            catch (Exception ex)
+            {
+                // Gracefully handle SMTP delivery failure
+                return ApiResponse<bool>.Fail($"Failed to send verification email. Details: {ex.Message}");
+            }
 
             return ApiResponse<bool>.Success(true, "A one-time password has been sent to your email address.");
         }
