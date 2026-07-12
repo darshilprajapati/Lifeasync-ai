@@ -25,7 +25,7 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 var list = await _context.AiRecommendations
-                    .FromSqlRaw("EXEC dbo.sp_GetAiRecommendations @UserId = {0}", userId)
+                    .Where(r => r.UserId == userId)
                     .ToListAsync();
 
                 var dtos = list.Select(r => new AiRecommendationDto
@@ -57,8 +57,14 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 // Delete previous insights to avoid clogging up with duplicates
-                await _context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM dbo.AiRecommendations WHERE UserId = {0}", userId);
+                var existing = await _context.AiRecommendations
+                    .Where(r => r.UserId == userId)
+                    .ToListAsync();
+                if (existing.Any())
+                {
+                    _context.AiRecommendations.RemoveRange(existing);
+                    await _context.SaveChangesAsync();
+                }
 
                 var generatedInsights = new List<(string Text, string Category)>();
 
@@ -225,23 +231,27 @@ namespace LifeSyncAI.Core.Services
                     ));
                 }
 
-                // Persist new recommendations using Stored Procedure
+                // Persist new recommendations using EF Core
                 var results = new List<AiRecommendationDto>();
                 foreach (var insight in generatedInsights)
                 {
-                    var idList = await _context.Database.SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateAiRecommendation @InsightText = {0}, @Category = {1}, @CreatedAt = {2}, @UserId = {3}",
-                        insight.Text, insight.Category, DateTime.UtcNow, userId)
-                        .ToListAsync();
-
-                    var newId = (int)idList.FirstOrDefault();
-
-                    results.Add(new AiRecommendationDto
+                    var rec = new AiRecommendation
                     {
-                        Id = newId,
                         InsightText = insight.Text,
                         Category = insight.Category,
                         CreatedAt = DateTime.UtcNow,
+                        UserId = userId
+                    };
+
+                    await _context.AiRecommendations.AddAsync(rec);
+                    await _context.SaveChangesAsync();
+
+                    results.Add(new AiRecommendationDto
+                    {
+                        Id = rec.Id,
+                        InsightText = rec.InsightText,
+                        Category = rec.Category,
+                        CreatedAt = rec.CreatedAt,
                         UserId = userId
                     });
                 }

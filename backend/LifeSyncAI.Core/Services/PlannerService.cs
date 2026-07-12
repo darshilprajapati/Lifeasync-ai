@@ -49,7 +49,7 @@ namespace LifeSyncAI.Core.Services
                 await ResetOldEventsAsync(userId, clientDate);
 
                 var events = await _context.PlannerEvents
-                    .FromSqlRaw("EXEC dbo.sp_GetPlannerEvents @UserId = {0}", userId)
+                    .Where(e => e.UserId == userId)
                     .ToListAsync();
 
                 var dtos = events.Select(e => new PlannerEventDto
@@ -77,18 +77,22 @@ namespace LifeSyncAI.Core.Services
             {
                 await ResetOldEventsAsync(userId, clientDate);
 
-                // Execute stored procedure and read the returned NewId
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreatePlannerEvent @Title = {0}, @Description = {1}, @StartTime = {2}, @EndTime = {3}, @IsCompleted = {4}, @UserId = {5}",
-                        dto.Title, dto.Description, dto.StartTime, dto.EndTime, dto.IsCompleted, userId)
-                    .ToListAsync();
+                var plannerEvent = new PlannerEvent
+                {
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    StartTime = dto.StartTime,
+                    EndTime = dto.EndTime,
+                    IsCompleted = dto.IsCompleted,
+                    UserId = userId
+                };
 
-                var newId = (int)idList.FirstOrDefault();
+                await _context.PlannerEvents.AddAsync(plannerEvent);
+                await _context.SaveChangesAsync();
 
                 var createdDto = new PlannerEventDto
                 {
-                    Id = newId,
+                    Id = plannerEvent.Id,
                     Title = dto.Title,
                     Description = dto.Description,
                     StartTime = dto.StartTime,
@@ -109,9 +113,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_TogglePlannerEvent @Id = {0}, @IsCompleted = {1}",
-                    id, isCompleted);
+                var plannerEvent = await _context.PlannerEvents.FindAsync(id);
+                if (plannerEvent != null)
+                {
+                    plannerEvent.IsCompleted = isCompleted;
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Event status toggled successfully.");
             }
@@ -125,9 +132,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_DeletePlannerEvent @Id = {0}",
-                    id);
+                var plannerEvent = await _context.PlannerEvents.FindAsync(id);
+                if (plannerEvent != null)
+                {
+                    _context.PlannerEvents.Remove(plannerEvent);
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Event deleted successfully.");
             }

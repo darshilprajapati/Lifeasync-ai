@@ -33,7 +33,7 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 var items = await _context.VaultItems
-                    .FromSqlRaw("EXEC dbo.sp_GetVaultItems @UserId = {0}", userId)
+                    .Where(x => x.UserId == userId)
                     .ToListAsync();
 
                 var dtos = new List<VaultItemDto>();
@@ -72,17 +72,19 @@ namespace LifeSyncAI.Core.Services
             {
                 var encryptedContent = EncryptString(dto.Content);
 
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateVaultItem @Title = {0}, @EncryptedContent = {1}, @UserId = {2}",
-                        dto.Title, encryptedContent, userId)
-                    .ToListAsync();
+                var item = new VaultItem
+                {
+                    Title = dto.Title,
+                    EncryptedContent = encryptedContent,
+                    UserId = userId
+                };
 
-                var newId = (int)idList.FirstOrDefault();
+                await _context.VaultItems.AddAsync(item);
+                await _context.SaveChangesAsync();
 
                 var createdDto = new VaultItemDto
                 {
-                    Id = newId,
+                    Id = item.Id,
                     Title = dto.Title,
                     Content = dto.Content, // return decrypted to the user on success
                     UserId = userId
@@ -100,9 +102,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_DeleteVaultItem @Id = {0}",
-                    id);
+                var item = await _context.VaultItems.FindAsync(id);
+                if (item != null)
+                {
+                    _context.VaultItems.Remove(item);
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Vault item deleted successfully.");
             }

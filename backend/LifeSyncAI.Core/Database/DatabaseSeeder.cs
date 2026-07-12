@@ -36,8 +36,7 @@ namespace LifeSyncAI.Core.Database
                 await context.Database.EnsureCreatedAsync();
             }
 
-            // Bootstrap custom SQL tables and Stored Procedures
-            await InitializeModulesSqlAsync(context);
+
 
             // Check if default Admin already exists
             const string adminEmail = "gdarshil1203@gmail.com";

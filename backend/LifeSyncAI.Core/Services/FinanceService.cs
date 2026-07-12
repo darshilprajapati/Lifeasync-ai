@@ -26,7 +26,7 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 var transactions = await _context.Transactions
-                    .FromSqlRaw("EXEC dbo.sp_GetTransactions @UserId = {0}", userId)
+                    .Where(t => t.UserId == userId)
                     .ToListAsync();
 
                 var dtos = transactions.Select(t => new TransactionDto
@@ -52,17 +52,22 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateTransaction @Description = {0}, @Amount = {1}, @Type = {2}, @Date = {3}, @Category = {4}, @UserId = {5}",
-                        dto.Description, dto.Amount, dto.Type, dto.Date, dto.Category, userId)
-                    .ToListAsync();
+                var transaction = new Transaction
+                {
+                    Description = dto.Description,
+                    Amount = dto.Amount,
+                    Type = dto.Type,
+                    Date = dto.Date,
+                    Category = dto.Category,
+                    UserId = userId
+                };
 
-                var newId = (int)idList.FirstOrDefault();
+                await _context.Transactions.AddAsync(transaction);
+                await _context.SaveChangesAsync();
 
                 var createdDto = new TransactionDto
                 {
-                    Id = newId,
+                    Id = transaction.Id,
                     Description = dto.Description,
                     Amount = dto.Amount,
                     Type = dto.Type,
@@ -83,9 +88,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_DeleteTransaction @Id = {0}",
-                    id);
+                var transaction = await _context.Transactions.FindAsync(id);
+                if (transaction != null)
+                {
+                    _context.Transactions.Remove(transaction);
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Transaction deleted successfully.");
             }
@@ -99,22 +107,25 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                var summaryList = await _context.Database
-                    .SqlQueryRaw<FinanceDbSummary>("EXEC dbo.sp_GetFinanceSummary @UserId = {0}", userId)
+                var userTransactions = await _context.Transactions
+                    .Where(t => t.UserId == userId)
                     .ToListAsync();
 
-                var dbSummary = summaryList.FirstOrDefault() ?? new FinanceDbSummary
-                {
-                    TotalIncome = 0,
-                    TotalExpense = 0,
-                    Balance = 0
-                };
+                decimal totalIncome = userTransactions
+                    .Where(t => t.Type.Equals("Income", StringComparison.OrdinalIgnoreCase))
+                    .Sum(t => t.Amount);
+
+                decimal totalExpense = userTransactions
+                    .Where(t => t.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase))
+                    .Sum(t => t.Amount);
+
+                decimal balance = totalIncome - totalExpense;
 
                 var summary = new FinanceSummaryDto
                 {
-                    TotalIncome = dbSummary.TotalIncome,
-                    TotalExpense = dbSummary.TotalExpense,
-                    Balance = dbSummary.Balance
+                    TotalIncome = totalIncome,
+                    TotalExpense = totalExpense,
+                    Balance = balance
                 };
 
                 // Add recurring commitments calculations
@@ -225,13 +236,17 @@ namespace LifeSyncAI.Core.Services
                 var transactionCategory = item.Type; // Loan, EMI, or Bill
                 var transactionDate = DateTime.UtcNow;
 
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateTransaction @Description = {0}, @Amount = {1}, @Type = {2}, @Date = {3}, @Category = {4}, @UserId = {5}",
-                        transactionDesc, item.Amount, transactionType, transactionDate, transactionCategory, userId)
-                    .ToListAsync();
+                var transaction = new Transaction
+                {
+                    Description = transactionDesc,
+                    Amount = item.Amount,
+                    Type = transactionType,
+                    Date = transactionDate,
+                    Category = transactionCategory,
+                    UserId = userId
+                };
 
-                var newTransactionId = (int)idList.FirstOrDefault();
+                await _context.Transactions.AddAsync(transaction);
 
                 // 2. Advance the expiry/due date automatically based on frequency
                 if (item.Frequency.Equals("Monthly", StringComparison.OrdinalIgnoreCase))
@@ -247,7 +262,7 @@ namespace LifeSyncAI.Core.Services
 
                 var transactionDto = new TransactionDto
                 {
-                    Id = newTransactionId,
+                    Id = transaction.Id,
                     Description = transactionDesc,
                     Amount = item.Amount,
                     Type = transactionType,

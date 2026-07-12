@@ -49,7 +49,7 @@ namespace LifeSyncAI.Core.Services
                 await ResetOldLogsAsync(userId, clientDate);
 
                 var logs = await _context.HealthLogs
-                    .FromSqlRaw("EXEC dbo.sp_GetHealthLogs @UserId = {0}", userId)
+                    .Where(l => l.UserId == userId)
                     .ToListAsync();
 
                 var dtos = logs.Select(l => new HealthLogDto
@@ -98,17 +98,21 @@ namespace LifeSyncAI.Core.Services
                     return ApiResponse<HealthLogDto>.Fail($"Daily calories limit exceeded. You cannot log more than 10,000 kcal per day (currently at {currentSum} kcal).");
                 }
 
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateHealthLog @LogType = {0}, @LogValue = {1}, @Details = {2}, @LogDate = {3}, @UserId = {4}",
-                        dto.LogType, dto.LogValue, dto.Details, dto.LogDate, userId)
-                    .ToListAsync();
+                var log = new HealthLog
+                {
+                    LogType = dto.LogType,
+                    LogValue = dto.LogValue,
+                    Details = dto.Details,
+                    LogDate = dto.LogDate,
+                    UserId = userId
+                };
 
-                var newId = (int)idList.FirstOrDefault();
+                await _context.HealthLogs.AddAsync(log);
+                await _context.SaveChangesAsync();
 
                 var createdDto = new HealthLogDto
                 {
-                    Id = newId,
+                    Id = log.Id,
                     LogType = dto.LogType,
                     LogValue = dto.LogValue,
                     Details = dto.Details,
@@ -128,9 +132,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_DeleteHealthLog @Id = {0}",
-                    id);
+                var log = await _context.HealthLogs.FindAsync(id);
+                if (log != null)
+                {
+                    _context.HealthLogs.Remove(log);
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Health log deleted successfully.");
             }

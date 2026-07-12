@@ -26,7 +26,7 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 var apps = await _context.JobApplications
-                    .FromSqlRaw("EXEC dbo.sp_GetJobApplications @UserId = {0}", userId)
+                    .Where(a => a.UserId == userId)
                     .ToListAsync();
 
                 var dtos = apps.Select(a => new JobApplicationDto
@@ -52,17 +52,22 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                var idList = await _context.Database
-                    .SqlQueryRaw<decimal>(
-                        "EXEC dbo.sp_CreateJobApplication @Company = {0}, @Position = {1}, @Status = {2}, @AppliedDate = {3}, @Notes = {4}, @UserId = {5}",
-                        dto.Company, dto.Position, dto.Status, dto.AppliedDate, dto.Notes, userId)
-                    .ToListAsync();
+                var app = new JobApplication
+                {
+                    Company = dto.Company,
+                    Position = dto.Position,
+                    Status = dto.Status,
+                    AppliedDate = dto.AppliedDate,
+                    Notes = dto.Notes,
+                    UserId = userId
+                };
 
-                var newId = (int)idList.FirstOrDefault();
+                await _context.JobApplications.AddAsync(app);
+                await _context.SaveChangesAsync();
 
                 var createdDto = new JobApplicationDto
                 {
-                    Id = newId,
+                    Id = app.Id,
                     Company = dto.Company,
                     Position = dto.Position,
                     Status = dto.Status,
@@ -83,9 +88,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_UpdateJobApplicationStatus @Id = {0}, @Status = {1}",
-                    id, status);
+                var app = await _context.JobApplications.FindAsync(id);
+                if (app != null)
+                {
+                    app.Status = status;
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Job application status updated successfully.");
             }
@@ -99,9 +107,12 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC dbo.sp_DeleteJobApplication @Id = {0}",
-                    id);
+                var app = await _context.JobApplications.FindAsync(id);
+                if (app != null)
+                {
+                    _context.JobApplications.Remove(app);
+                    await _context.SaveChangesAsync();
+                }
 
                 return ApiResponse<bool>.Success(true, "Job application deleted successfully.");
             }
