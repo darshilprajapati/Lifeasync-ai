@@ -75,7 +75,7 @@ namespace LifeSyncAI.Core.Services
                             (sleep >= 7.0 && sleep <= 9.0) ? 1.0 : 0.0,
                             workout > 0.0 ? 1.0 : 0.0,
                             pending == 0.0 ? 1.0 : 0.0,
-                            pending
+                            Math.Min(1.0, pending / 5.0)
                         });
                         labels.Add(score);
                     }
@@ -109,7 +109,7 @@ namespace LifeSyncAI.Core.Services
                             (sleep >= 7.0 && sleep <= 9.0) ? 1.0 : 0.0,
                             workout > 0.0 ? 1.0 : 0.0,
                             pending == 0.0 ? 1.0 : 0.0,
-                            pending
+                            Math.Min(1.0, pending / 5.0)
                         });
                     }
                 }
@@ -198,8 +198,8 @@ namespace LifeSyncAI.Core.Services
                 double[] w = new double[numFeatures]; // Initialize weights to 0
                 double b = 0.0;                       // Initialize bias to 0
                 
-                double alpha = 0.05;                  // Learning rate
-                int epochs = 8000;                    // Iterations
+                double alpha = 0.01;                  // Safe learning rate to prevent divergence
+                int epochs = 1000;                    // Iterations
 
                 for (int epoch = 0; epoch < epochs; epoch++)
                 {
@@ -259,19 +259,23 @@ namespace LifeSyncAI.Core.Services
                     totalSumSquares += diff * diff;
                 }
 
-                double rSquared = 1.0 - (sumSquaredErrors / totalSumSquares);
+                // Safe calculations to avoid divide-by-zero or NaN
+                double rSquared = totalSumSquares > 0.0 ? (1.0 - (sumSquaredErrors / totalSumSquares)) : 0.0;
                 double mae = sumAbsoluteErrors / m;
+
+                if (double.IsNaN(rSquared) || double.IsInfinity(rSquared)) rSquared = 0.0;
+                if (double.IsNaN(mae) || double.IsInfinity(mae)) mae = 0.0;
 
                 string accuracyText = $"Gradient Descent Regression Model (R-Squared: {rSquared:F2}, Mean Error: {mae:F2})";
 
-                // Predict prospective targets
+                // Predict prospective targets (normalized features)
                 double[] targetFeatures = new double[]
                 {
                     Math.Min(1.0, input.WaterIntake / 2000.0),
                     (input.SleepHours >= 7.0 && input.SleepHours <= 9.0) ? 1.0 : 0.0,
                     input.WorkoutMinutes > 0.0 ? 1.0 : 0.0,
                     input.PendingTasks == 0.0 ? 1.0 : 0.0,
-                    input.PendingTasks
+                    Math.Min(1.0, input.PendingTasks / 5.0)
                 };
 
                 double predictedDot = 0.0;
@@ -279,7 +283,13 @@ namespace LifeSyncAI.Core.Services
                 {
                     predictedDot += targetFeatures[j] * w[j];
                 }
-                double finalScore = Math.Clamp(predictedDot + b, 0.0, 100.0);
+                
+                double finalScore = predictedDot + b;
+                if (double.IsNaN(finalScore) || double.IsInfinity(finalScore))
+                {
+                    finalScore = 70.0; // safe baseline fallback if model diverged
+                }
+                finalScore = Math.Clamp(finalScore, 0.0, 100.0);
 
                 // Compile recommendations based on targets
                 string recommendation = "Your predicted score looks strong! Keep up your routines.";
