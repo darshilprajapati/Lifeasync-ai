@@ -24,6 +24,7 @@ RUN dotnet publish "LifeSyncAI.API.csproj" -c Release -o /app/publish /p:UseAppH
 
 # Final runtime image
 FROM base AS final
+USER root
 WORKDIR /app
 COPY --from=publish /app/publish .
 
