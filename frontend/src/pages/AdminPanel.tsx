@@ -244,6 +244,7 @@ const AdminPanel: React.FC = () => {
       if (res.data.isSuccess) {
         setSuccessMsg(`User account for ${userToDelete.fullName} and all their data were permanently deleted.`);
         handleCloseDeleteDialog();
+        fetchPendingUsers();
         if (allUsers.length === 1 && page > 1) {
           setPage(page - 1);
         } else {
@@ -343,6 +344,17 @@ const AdminPanel: React.FC = () => {
                                   sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
                                 >
                                   Approve
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  color="error"
+                                  disabled={actioningId === user.id}
+                                  startIcon={<DeleteIcon />}
+                                  onClick={() => handleOpenDeleteDialog(user)}
+                                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                                >
+                                  Delete
                                 </Button>
                               </Stack>
                             </TableCell>

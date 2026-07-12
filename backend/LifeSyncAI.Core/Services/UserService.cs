@@ -17,10 +17,12 @@ namespace LifeSyncAI.Core.Services
     public class UserService : IUserService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IReportRepository _reportRepository;
 
-        public UserService(ApplicationDbContext context)
+        public UserService(ApplicationDbContext context, IReportRepository reportRepository)
         {
             _context = context;
+            _reportRepository = reportRepository;
         }
 
         public async Task<ApiResponse<UserDto>> GetUserByIdAsync(int id)
@@ -155,6 +157,9 @@ namespace LifeSyncAI.Core.Services
 
                     // Delete the user record permanently
                     _context.Users.Remove(user);
+
+                    // Clean up cached and physical PDF reports from server
+                    _reportRepository.DeleteByUserId(userId);
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
