@@ -191,7 +191,8 @@ namespace LifeSyncAI.API
                         policy.SetIsOriginAllowed(origin => true)
                               .AllowAnyMethod()
                               .AllowAnyHeader()
-                              .AllowCredentials(); // Required for SignalR cookies/tokens
+                              .AllowCredentials() // Required for SignalR cookies/tokens
+                              .WithExposedHeaders("X-Demo-OTP");
                     });
                 });
 

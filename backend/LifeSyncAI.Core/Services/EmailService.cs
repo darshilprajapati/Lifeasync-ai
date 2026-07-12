@@ -30,10 +30,11 @@ namespace LifeSyncAI.Core.Services
             var senderEmail = section["SenderEmail"] ?? "no-reply@lifesync.ai";
             var senderName = section["SenderName"] ?? "LifeSync AI";
 
-            // If SMTP configuration is missing, run in Mock Mode for easy testing
-            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            // If SMTP configuration is missing or holds placeholder values, run in Mock Mode for easy testing
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) ||
+                username.Contains("YOUR_SMTP") || password.Contains("YOUR_SMTP"))
             {
-                _logger.LogInformation("SMTP settings not fully configured in appsettings.json. Running in MOCK Mode.");
+                _logger.LogInformation("SMTP settings not fully configured in appsettings.json (using default placeholders). Running in MOCK Mode.");
                 _logger.LogInformation("=========================================================================");
                 _logger.LogInformation("SIMULATED EMAIL DISPATCH:");
                 _logger.LogInformation("TO: {ToEmail}", toEmail);
