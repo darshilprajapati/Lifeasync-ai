@@ -132,11 +132,11 @@ const Planner: React.FC = () => {
           </Alert>
         )}
 
-        <Grid container spacing={4}>
+        <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
           {/* Add Event Form */}
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2 }}>
-              <CardContent>
+          <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+            <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flex: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
                   Add Task / Event
                 </Typography>
@@ -198,8 +198,8 @@ const Planner: React.FC = () => {
           </Grid>
 
           {/* Events List */}
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+            <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
               <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                   Your Schedule
@@ -208,12 +208,12 @@ const Planner: React.FC = () => {
                 {loading ? (
                   <LogoLoader />
                 ) : events.length === 0 ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '350px' }}>
                     <CalendarTodayIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
                     <Typography variant="body1">No events scheduled. Plan your first task!</Typography>
                   </Box>
                 ) : (
-                  <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '500px', pr: 1 }}>
+                  <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '420px', pr: 1 }}>
                     {events.map((e) => (
                       <Card
                         key={e.id}

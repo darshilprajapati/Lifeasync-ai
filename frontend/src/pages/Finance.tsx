@@ -490,11 +490,11 @@ const Finance: React.FC = () => {
           </Grid>
         ) : (
           /* TAB 1: COMMITTED BILLS & LOANS */
-          <Grid container spacing={4}>
+          <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
             {/* Add Commitment Form */}
-            <Grid size={{ xs: 12, md: 5 }}>
-              <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2 }}>
-                <CardContent>
+            <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+              <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
+                <CardContent sx={{ flex: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
                     Add Commitment / Recurring Cost
                   </Typography>
@@ -573,8 +573,8 @@ const Finance: React.FC = () => {
             </Grid>
 
             {/* Commitments List sorted by expiry date first */}
-            <Grid size={{ xs: 12, md: 7 }}>
-              <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+            <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+              <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                     Active Bills, EMIs & Loans (Sorted by Expiry Date)
@@ -583,12 +583,12 @@ const Finance: React.FC = () => {
                   {loading ? (
                     <LogoLoader />
                   ) : recurringItems.length === 0 ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '350px' }}>
                       <ReceiptIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
                       <Typography variant="body1">No committed bills or loans logged.</Typography>
                     </Box>
                   ) : (
-                    <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '500px', pr: 1 }}>
+                    <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '420px', pr: 1 }}>
                       {recurringItems.map((item) => {
                         const dueSoon = isDueSoon(item.dueDate);
                         const isOverdue = new Date(item.dueDate) < new Date() && !isSameDay(new Date(item.dueDate), new Date());

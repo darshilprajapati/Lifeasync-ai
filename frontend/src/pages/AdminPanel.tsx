@@ -292,8 +292,8 @@ const AdminPanel: React.FC = () => {
           </Tabs>
         </Box>
 
-        <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 1 }}>
-          <CardContent>
+        <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '500px', display: 'flex', flexDirection: 'column', p: 2 }}>
+          <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {activeTab === 0 ? (
               // PENDING REGISTRATIONS QUEUE
               <>
@@ -304,7 +304,7 @@ const AdminPanel: React.FC = () => {
                 {loading ? (
                   <LogoLoader />
                 ) : pendingUsers.length === 0 ? (
-                  <Box sx={{ py: 6, textAlign: 'center', color: '#8D8D8D' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '300px' }}>
                     <CheckCircleIcon sx={{ fontSize: 48, color: '#4CAF50', opacity: 0.5, mb: 2 }} />
                     <Typography variant="body1">All user registrations are processed. No pending requests!</Typography>
                   </Box>
@@ -391,7 +391,7 @@ const AdminPanel: React.FC = () => {
                 {loading ? (
                   <LogoLoader />
                 ) : allUsers.length === 0 ? (
-                  <Box sx={{ py: 6, textAlign: 'center', color: '#8D8D8D' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '300px' }}>
                     <Typography variant="body1">No user accounts registered matching your search query.</Typography>
                   </Box>
                 ) : (

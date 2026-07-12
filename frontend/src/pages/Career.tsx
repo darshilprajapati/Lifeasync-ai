@@ -146,11 +146,11 @@ const Career: React.FC = () => {
           </Alert>
         )}
 
-        <Grid container spacing={4}>
+        <Grid container spacing={4} sx={{ alignItems: 'stretch' }}>
           {/* Add Job Application Form */}
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2 }}>
-              <CardContent>
+          <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex' }}>
+            <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flex: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
                   Track Job Position
                 </Typography>
@@ -227,8 +227,8 @@ const Career: React.FC = () => {
           </Grid>
 
           {/* Job Applications List */}
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, md: 7 }} sx={{ display: 'flex' }}>
+            <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
               <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                   Job Applications Pipeline
@@ -237,12 +237,12 @@ const Career: React.FC = () => {
                 {loading ? (
                   <LogoLoader />
                 ) : applications.length === 0 ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '350px' }}>
                     <WorkIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
                     <Typography variant="body1">No job applications logged yet. Begin your job search pipeline!</Typography>
                   </Box>
                 ) : (
-                  <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '500px', pr: 1 }}>
+                  <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '480px', pr: 1 }}>
                     {applications.map((app) => (
                       <Card
                         key={app.id}
