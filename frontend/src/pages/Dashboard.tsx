@@ -130,9 +130,8 @@ const Dashboard: React.FC = () => {
       let totalCount = 0;
       if (plannerRes && plannerRes.data.isSuccess) {
         const events = plannerRes.data.data as PlannerEvent[];
-        const todaysEvents = events.filter((e) => isSameDay(parseDateSafe(e.startTime), today));
-        completedCount = todaysEvents.filter((e) => e.isCompleted).length;
-        totalCount = todaysEvents.length;
+        completedCount = events.filter((e) => e.isCompleted).length;
+        totalCount = events.length;
 
         setCompletedTasks(completedCount);
         setTotalTasks(totalCount);
@@ -602,7 +601,7 @@ const Dashboard: React.FC = () => {
                   }} onClick={() => navigate('/planner')}>
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
                       <EventAvailableIcon sx={{ color: '#4A90E2', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Today's Tasks</Typography>
+                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Total Tasks</Typography>
                       <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         {completedTasks} / {totalTasks}
                       </Typography>
