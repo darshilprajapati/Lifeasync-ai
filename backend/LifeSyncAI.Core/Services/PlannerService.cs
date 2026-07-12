@@ -21,33 +21,12 @@ namespace LifeSyncAI.Core.Services
             _context = context;
         }
 
-        private async Task ResetOldEventsAsync(int userId, DateTime clientDate)
-        {
-            try
-            {
-                var clientToday = clientDate.Date;
-                var oldEvents = await _context.PlannerEvents
-                    .Where(e => e.UserId == userId && e.StartTime < clientToday)
-                    .ToListAsync();
-                
-                if (oldEvents.Any())
-                {
-                    _context.PlannerEvents.RemoveRange(oldEvents);
-                    await _context.SaveChangesAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error resetting old planner events: {ex.Message}");
-            }
-        }
+
 
         public async Task<ApiResponse<List<PlannerEventDto>>> GetEventsAsync(int userId, DateTime clientDate)
         {
             try
             {
-                await ResetOldEventsAsync(userId, clientDate);
-
                 var events = await _context.PlannerEvents
                     .Where(e => e.UserId == userId)
                     .ToListAsync();
@@ -75,8 +54,6 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await ResetOldEventsAsync(userId, clientDate);
-
                 var plannerEvent = new PlannerEvent
                 {
                     Title = dto.Title,
