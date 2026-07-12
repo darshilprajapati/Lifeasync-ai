@@ -205,19 +205,23 @@ namespace LifeSyncAI.API.Controllers
 
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
+            var isHttps = Request.IsHttps;
+            var sameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
+            var secure = isHttps;
+
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax,
+                Secure = secure,
+                SameSite = sameSite,
                 Expires = DateTime.UtcNow.AddDays(7) // Align with refresh token duration
             };
 
             var accessCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
+                Secure = secure,
+                SameSite = sameSite,
                 Expires = DateTime.UtcNow.AddMinutes(15) // Align with short-lived access token duration
             };
 
@@ -227,8 +231,19 @@ namespace LifeSyncAI.API.Controllers
 
         private void ClearTokenCookies()
         {
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            var isHttps = Request.IsHttps;
+            var sameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
+            var secure = isHttps;
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = secure,
+                SameSite = sameSite
+            };
+
+            Response.Cookies.Delete("accessToken", cookieOptions);
+            Response.Cookies.Delete("refreshToken", cookieOptions);
         }
     }
 }
