@@ -30,10 +30,35 @@ const typographyConfig = {
 
 function AppContent() {
   const { loading } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // Check if the current route is a public auth route
+    const publicPaths = ['/login', '/register', '/signup', '/forgot-password'];
+    const currentPath = window.location.pathname.toLowerCase();
+    
+    if (publicPaths.some(path => currentPath.startsWith(path))) {
+      setShowSplash(false);
+      return;
+    }
+
+    // Force splash screen to stay for 2 seconds (2000ms) on protected dashboard pages
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const publicPaths = ['/login', '/register', '/signup', '/forgot-password'];
+  const currentPath = window.location.pathname.toLowerCase();
+  const isPublicRoute = publicPaths.some(path => currentPath.startsWith(path));
+
+  const displaySplash = !isPublicRoute && (loading || showSplash);
 
   return (
     <AnimatePresence mode="wait">
-      {loading ? (
+      {displaySplash ? (
         <Box
           key="splash"
           component={motion.div}

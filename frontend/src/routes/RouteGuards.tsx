@@ -28,12 +28,13 @@ export const ProtectedRoute: React.FC = () => {
  */
 export const GuestRoute: React.FC = () => {
   const { user, loading } = useAuth();
-
-  if (loading) {
+  
+  const hasToken = !!localStorage.getItem('lifesync_token');
+  if (loading && hasToken) {
     return <PageLoader />;
   }
 
-  if (user) {
+  if (user && hasToken) {
     return <Navigate to="/" replace />;
   }
 
