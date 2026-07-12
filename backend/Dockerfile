@@ -31,4 +31,7 @@ COPY --from=publish /app/publish .
 ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/lifesync.db"
 RUN mkdir -p /app/data
 
+# Install fonts on Linux (Debian) for PDFsharp font resolution
+RUN apt-get update && apt-get install -y ttf-dejavu fontconfig && rm -rf /var/lib/apt/lists/*
+
 ENTRYPOINT ["dotnet", "LifeSyncAI.API.dll"]

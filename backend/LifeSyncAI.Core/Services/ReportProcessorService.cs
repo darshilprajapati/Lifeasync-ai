@@ -560,6 +560,23 @@ namespace LifeSyncAI.Core.Services
                 {
                     return File.ReadAllBytes(fontPath);
                 }
+
+                // Linux/Docker Font Fallbacks
+                var linuxPaths = new[]
+                {
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+                };
+                foreach (var path in linuxPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        return File.ReadAllBytes(path);
+                    }
+                }
+
                 return null;
             }
 
