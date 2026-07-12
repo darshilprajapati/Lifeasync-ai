@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_absolute_error
 
-SECRET_KEY = "SuperSecretKeyEnsureThisIsAtLeast32BytesLongForSecurityPurposes!!!"
+import os
+
+SECRET_KEY = os.getenv("SECRET_KEY", "SuperSecretKeyEnsureThisIsAtLeast32BytesLongForSecurityPurposes!!!")
 ALGORITHM = "HS256"
 ISSUER = "LifeSyncAI_API"
 AUDIENCE = "LifeSyncAI_Client"
