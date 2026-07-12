@@ -68,7 +68,7 @@ function AppContent() {
             }}
           >
             {/* Animated Brand Logo with Rotating Dots */}
-            <Box sx={{ position: 'relative', width: 120, height: 120, mb: 4.5 }}>
+            <Box sx={{ position: 'relative', width: 160, height: 160, mb: 5 }}>
               {/* Rotating outer ring of trailing orbital dots */}
               <motion.div
                 animate={{ rotate: 360 }}
@@ -121,16 +121,16 @@ function AppContent() {
                 }}
                 sx={{
                   position: 'absolute',
-                  top: 17,
-                  left: 17,
-                  width: 86,
-                  height: 86,
+                  top: 22,
+                  left: 22,
+                  width: 116,
+                  height: 116,
                   borderRadius: '50%',
                   backgroundImage: 'url(/logo.jpg)',
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
-                  border: '2px solid rgba(232, 90, 79, 0.3)',
+                  border: '2.5px solid rgba(232, 90, 79, 0.3)',
                   boxShadow: '0 8px 24px rgba(232, 90, 79, 0.25)',
                   zIndex: 2,
                 }}
