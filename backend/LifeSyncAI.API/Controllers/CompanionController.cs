@@ -426,31 +426,33 @@ namespace LifeSyncAI.API.Controllers
             // ----------------------------------------------------
             else
             {
-                var sb = new StringBuilder();
-                sb.AppendLine($"System instructions: You are the LifeSync AI Companion, a warm, supportive, and realistic companion. User name is {userName}. If the user asks how to increase their life score or improve metrics (e.g. 'how to earn more', 'how to increase score', 'what should I do next'), analyze today's statistics context below and provide specific, actionable suggestions based on their low metrics (e.g., suggesting drinking water if under 2000ml, logging exercise if workout is under 30m, completing pending tasks in the planner, or applying to jobs/managing budgets in career/finance modules to earn more). If the user is bored, suggest games ('guess' for Guess the Number, 'quiz' for Quiz, 'quest' for RPG Quest). If sad/depressed/breakup/failed, show deep empathy. Do NOT output role prefixes like 'Companion:' or 'Assistant:' in your responses.");
-                sb.AppendLine($"User statistics context today: Life Score: {lifeScore}/100, pending tasks: {pendingTasks}, balance: ${balance:N2}, expenses today: ${expensesToday:N2}, water: {waterToday}ml, sleep: {sleepToday}h, steps: {stepsToday}, active: {workoutToday}m, vault count: {vaultCount}, career apps: {recentAppsText}, AI recommendation: \"{latestInsight}\".");
+                var systemInstructions = $"You are the LifeSync AI Companion, a warm, supportive, and realistic companion. User name is {userName}. If the user asks how to increase their life score or improve metrics (e.g. 'how to earn more', 'how to increase score', 'what should I do next', 'how to increase it'), analyze today's statistics context below and provide specific, actionable suggestions based on their low metrics (e.g., suggesting drinking water if under 2000ml, logging exercise if workout is under 30m, completing pending tasks in the planner, or applying to jobs/managing budgets in career/finance modules to earn more). If the user is bored, suggest games ('guess' for Guess the Number, 'quiz' for Quiz, 'quest' for RPG Quest). If sad/depressed/breakup/failed, show deep empathy. Do NOT output role prefixes like 'Companion:' or 'Assistant:' in your responses.\n\n" +
+                                         $"User statistics context today: Life Score: {lifeScore}/100, pending tasks: {pendingTasks}, balance: ${balance:N2}, expenses today: ${expensesToday:N2}, water: {waterToday}ml, sleep: {sleepToday}h, steps: {stepsToday}, active: {workoutToday}m, vault count: {vaultCount}, career apps: {recentAppsText}, AI recommendation: \"{latestInsight}\".";
+
+                var messages = new List<object>
+                {
+                    new { role = "system", content = systemInstructions }
+                };
 
                 foreach (var h in session.History)
                 {
-                    var roleName = h.Role == "user" ? "User" : "Companion";
-                    sb.AppendLine($"{roleName}: {h.Content}");
+                    messages.Add(new { role = h.Role, content = h.Content });
                 }
 
-                sb.AppendLine($"User: {message}");
-                sb.AppendLine("Companion:");
-
-                var fullPrompt = sb.ToString();
+                messages.Add(new { role = "user", content = message });
 
                 try
                 {
-                    // Attempt to call the public keyless LLM API via GET
-                    reply = await CallLlmAsync(fullPrompt);
+                    // Attempt to call the public keyless LLM API via POST
+                    reply = await CallLlmAsync(messages);
 
                     // Clean up role prefixes if outputted
                     if (reply.StartsWith("Companion:", StringComparison.OrdinalIgnoreCase))
                         reply = reply.Substring("Companion:".Length).Trim();
                     if (reply.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase))
                         reply = reply.Substring("Assistant:".Length).Trim();
+                    if (reply.StartsWith("User:", StringComparison.OrdinalIgnoreCase))
+                        reply = reply.Substring("User:".Length).Trim();
 
                     // Infer simple mood from response contents
                     var lowerReply = reply.ToLower();
@@ -522,13 +524,20 @@ namespace LifeSyncAI.API.Controllers
             }, "Response generated."));
         }
 
-        private async Task<string> CallLlmAsync(string fullPrompt)
+        private async Task<string> CallLlmAsync(List<object> messages)
         {
             using (var client = new HttpClient())
             {
-                client.Timeout = TimeSpan.FromSeconds(15);
-                var url = $"https://text.pollinations.ai/{Uri.EscapeDataString(fullPrompt)}";
-                var response = await client.GetAsync(url);
+                client.Timeout = TimeSpan.FromSeconds(20);
+                var payload = new
+                {
+                    messages = messages
+                };
+                
+                var jsonPayload = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                
+                var response = await client.PostAsync("https://text.pollinations.ai/", content);
                 if (response.IsSuccessStatusCode)
                 {
                     return (await response.Content.ReadAsStringAsync()).Trim();
