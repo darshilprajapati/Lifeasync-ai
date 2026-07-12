@@ -46,9 +46,19 @@ namespace LifeSyncAI.API
                 builder.Host.UseSerilog();
 
                 // Add DbContext
-                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
                 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseSqlServer(connectionString));
+                {
+                    if (connectionString.Contains(".db") || connectionString.Contains("DataSource") || connectionString.Contains("Data Source"))
+                    {
+                        options.UseSqlite(connectionString);
+                    }
+                    else
+                    {
+                        options.UseSqlServer(connectionString);
+                    }
+                });
 
                 // Add Controllers and SignalR
                 builder.Services.AddControllers()
