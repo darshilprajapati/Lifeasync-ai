@@ -22,9 +22,14 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         Task<ApiResponse<List<UserDto>>> GetPendingUsersAsync();
 
         /// <summary>
-        /// Retrieves all users in the system. Used by Admins.
+        /// Retrieves users in the system with optional search and pagination. Used by Admins.
         /// </summary>
-        Task<ApiResponse<List<UserDto>>> GetAllUsersAsync();
+        Task<ApiResponse<PaginatedUsersDto>> GetPaginatedUsersAsync(string? search, int page, int pageSize);
+
+        /// <summary>
+        /// Permanently deletes a user and all associated records from the system.
+        /// </summary>
+        Task<ApiResponse<bool>> DeleteUserAsync(int userId, string deletedBy);
 
         /// <summary>
         /// Approves a pending user registration, changing their status to 'Active'.

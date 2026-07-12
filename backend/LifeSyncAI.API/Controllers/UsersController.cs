@@ -30,9 +30,24 @@ namespace LifeSyncAI.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<List<UserDto>>>> GetAllUsers()
+        public async Task<ActionResult<ApiResponse<PaginatedUsersDto>>> GetAllUsers(
+            [FromQuery] string? search = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var result = await _userService.GetAllUsersAsync();
+            var result = await _userService.GetPaginatedUsersAsync(search, page, pageSize);
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteUser(int id)
+        {
+            var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "SystemAdmin";
+            var result = await _userService.DeleteUserAsync(id, adminEmail);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
             return Ok(result);
         }
 

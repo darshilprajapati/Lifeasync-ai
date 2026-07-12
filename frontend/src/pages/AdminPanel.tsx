@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Stack, Alert, CircularProgress, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
+import { Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Stack, Alert, CircularProgress, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, ListItemText, ListItemIcon, Pagination, InputAdornment } from '@mui/material';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import KeyIcon from '@mui/icons-material/Key';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import PeopleIcon from '@mui/icons-material/People';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ThemeToggle from '../components/ThemeToggle';
@@ -28,6 +30,14 @@ const AdminPanel: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<number | null>(null);
 
+  // Search & Pagination states
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Password reset dialog state
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
@@ -38,6 +48,23 @@ const AdminPanel: React.FC = () => {
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
   const [userStats, setUserStats] = useState<Record<string, number> | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+
+  // Permanent delete dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Debouncing search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to page 1 on new search query
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
 
   const fetchPendingUsers = async () => {
     try {
@@ -58,9 +85,17 @@ const AdminPanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient.get('/api/users');
+      const res = await apiClient.get('/api/users', {
+        params: {
+          search: debouncedSearch || undefined,
+          page,
+          pageSize
+        }
+      });
       if (res.data.isSuccess) {
-        setAllUsers(res.data.data);
+        setAllUsers(res.data.data.users);
+        setTotalPages(res.data.data.totalPages);
+        setTotalCount(res.data.data.totalCount);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch user directory.');
@@ -75,7 +110,7 @@ const AdminPanel: React.FC = () => {
     } else {
       fetchAllUsers();
     }
-  }, [activeTab]);
+  }, [activeTab, debouncedSearch, page, pageSize]);
 
   const handleApprove = async (id: number) => {
     setActioningId(id);
@@ -189,6 +224,39 @@ const AdminPanel: React.FC = () => {
     setUserStats(null);
   };
 
+  const handleOpenDeleteDialog = (user: ManagedUser) => {
+    setUserToDelete(user);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteConfirmOpen(false);
+    setUserToDelete(null);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeleting(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await apiClient.delete(`/api/users/${userToDelete.id}`);
+      if (res.data.isSuccess) {
+        setSuccessMsg(`User account for ${userToDelete.fullName} and all their data were permanently deleted.`);
+        handleCloseDeleteDialog();
+        if (allUsers.length === 1 && page > 1) {
+          setPage(page - 1);
+        } else {
+          fetchAllUsers();
+        }
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to permanently delete user.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <PageWrapper>
       <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
@@ -292,92 +360,157 @@ const AdminPanel: React.FC = () => {
                   All System User Accounts
                 </Typography>
 
+                {/* SEARCH INPUT BAR */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, justifyContent: 'space-between', alignItems: 'center' }}>
+                  <TextField
+                    placeholder="Search user by name or email..."
+                    size="small"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: 'var(--text-secondary)' }} />
+                          </InputAdornment>
+                        ),
+                      }
+                    }}
+                    sx={{
+                      width: { xs: '100%', sm: '320px' },
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                      }
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Total Users: {totalCount}
+                  </Typography>
+                </Stack>
+
                 {loading ? (
                   <LogoLoader />
                 ) : allUsers.length === 0 ? (
                   <Box sx={{ py: 6, textAlign: 'center', color: '#8D8D8D' }}>
-                    <Typography variant="body1">No user accounts registered.</Typography>
+                    <Typography variant="body1">No user accounts registered matching your search query.</Typography>
                   </Box>
                 ) : (
-                  <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid var(--neutral-primary)', borderRadius: '12px', bgcolor: 'transparent' }}>
-                    <Table>
-                      <TableHead sx={{ bgcolor: 'var(--bg-primary)' }}>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Full Name</TableCell>
-                          <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Email Address</TableCell>
-                          <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Role</TableCell>
-                          <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Status</TableCell>
-                          <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>Actions</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {allUsers.map((user) => (
-                          <TableRow key={user.id} hover>
-                            <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.fullName}</TableCell>
-                            <TableCell sx={{ color: 'var(--text-secondary)' }}>{user.email}</TableCell>
-                            <TableCell>
-                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                                <Chip label={user.role} variant="outlined" size="small" sx={{ fontWeight: 600 }} />
-                                <Button
-                                  variant="text"
-                                  size="small"
-                                  color="secondary"
-                                  disabled={actioningId === user.id}
-                                  onClick={() => handleToggleRole(user)}
-                                  sx={{ textTransform: 'none', minWidth: 0, p: '2px 8px', fontSize: '11px', fontWeight: 600 }}
-                                >
-                                  {user.role === 'Admin' ? 'Make User' : 'Make Admin'}
-                                </Button>
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={user.status}
-                                color={user.status === 'Active' ? 'success' : user.status === 'Pending' ? 'warning' : 'default'}
-                                size="small"
-                                sx={{ fontWeight: 600 }}
-                              />
-                            </TableCell>
-                            <TableCell sx={{ textAlign: 'right' }}>
-                              <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  color={user.status === 'Active' ? 'error' : 'success'}
-                                  disabled={actioningId === user.id}
-                                  startIcon={user.status === 'Active' ? <BlockIcon /> : <CheckCircleIcon />}
-                                  onClick={() => handleToggleStatus(user)}
-                                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                                >
-                                  {user.status === 'Active' ? 'Deactivate' : 'Activate'}
-                                </Button>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  color="secondary"
-                                  startIcon={<KeyIcon />}
-                                  onClick={() => handleOpenResetDialog(user)}
-                                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                                >
-                                  Reset Pass
-                                </Button>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  color="info"
-                                  startIcon={<AssessmentIcon />}
-                                  onClick={() => handleOpenStatsDialog(user)}
-                                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                                >
-                                  Activity Logs
-                                </Button>
-                              </Stack>
-                            </TableCell>
+                  <>
+                    <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid var(--neutral-primary)', borderRadius: '12px', bgcolor: 'transparent' }}>
+                      <Table>
+                        <TableHead sx={{ bgcolor: 'var(--bg-primary)' }}>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Full Name</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Email Address</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Role</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>Actions</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {allUsers.map((user) => (
+                            <TableRow key={user.id} hover>
+                              <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.fullName}</TableCell>
+                              <TableCell sx={{ color: 'var(--text-secondary)' }}>{user.email}</TableCell>
+                              <TableCell>
+                                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                  <Chip label={user.role} variant="outlined" size="small" sx={{ fontWeight: 600 }} />
+                                  <Button
+                                    variant="text"
+                                    size="small"
+                                    color="secondary"
+                                    disabled={actioningId === user.id}
+                                    onClick={() => handleToggleRole(user)}
+                                    sx={{ textTransform: 'none', minWidth: 0, p: '2px 8px', fontSize: '11px', fontWeight: 600 }}
+                                  >
+                                    {user.role === 'Admin' ? 'Make User' : 'Make Admin'}
+                                  </Button>
+                                </Stack>
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={user.status}
+                                  color={user.status === 'Active' ? 'success' : user.status === 'Pending' ? 'warning' : 'default'}
+                                  size="small"
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              </TableCell>
+                              <TableCell sx={{ textAlign: 'right' }}>
+                                <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color={user.status === 'Active' ? 'error' : 'success'}
+                                    disabled={actioningId === user.id}
+                                    startIcon={user.status === 'Active' ? <BlockIcon /> : <CheckCircleIcon />}
+                                    onClick={() => handleToggleStatus(user)}
+                                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                                  >
+                                    {user.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="secondary"
+                                    startIcon={<KeyIcon />}
+                                    onClick={() => handleOpenResetDialog(user)}
+                                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                                  >
+                                    Reset Pass
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="info"
+                                    startIcon={<AssessmentIcon />}
+                                    onClick={() => handleOpenStatsDialog(user)}
+                                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                                  >
+                                    Activity Logs
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="error"
+                                    startIcon={<DeleteIcon />}
+                                    onClick={() => handleOpenDeleteDialog(user)}
+                                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </Stack>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    {/* PAGINATION CONTROLS */}
+                    {totalPages > 1 && (
+                      <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                        <Pagination
+                          count={totalPages}
+                          page={page}
+                          onChange={(_, val) => setPage(val)}
+                          sx={{
+                            '& .MuiPaginationItem-root': {
+                              color: 'var(--text-primary)',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              '&.Mui-selected': {
+                                bgcolor: 'var(--accent-primary)',
+                                color: '#fff',
+                                '&:hover': {
+                                  bgcolor: 'var(--accent-secondary)'
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -449,6 +582,27 @@ const AdminPanel: React.FC = () => {
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={handleCloseStatsDialog} variant="contained" sx={{ bgcolor: 'var(--accent-secondary)', fontWeight: 600, '&:hover': { bgcolor: '#78909C' } }}>
               Close Logs
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOG 3: DELETE CONFIRMATION */}
+        <Dialog open={deleteConfirmOpen} onClose={handleCloseDeleteDialog} slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}>
+          <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>
+            Permanently Delete {userToDelete?.fullName}?
+          </DialogTitle>
+          <DialogContent sx={{ minWidth: '350px' }}>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 2 }}>
+              Are you sure you want to permanently delete this user account?
+            </Typography>
+            <Alert severity="warning" sx={{ borderRadius: '8px' }}>
+              This action is irreversible. All transactions, health logs, planner events, job applications, secure vault items, and AI recommendations associated with this user will be permanently deleted.
+            </Alert>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={handleCloseDeleteDialog} color="inherit" sx={{ fontWeight: 600 }}>Cancel</Button>
+            <Button variant="contained" color="error" disabled={deleting} onClick={handleDeleteUser} sx={{ fontWeight: 600 }}>
+              {deleting ? 'Deleting...' : 'Permanently Delete'}
             </Button>
           </DialogActions>
         </Dialog>
