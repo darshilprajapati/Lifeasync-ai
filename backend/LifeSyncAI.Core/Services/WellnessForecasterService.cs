@@ -111,6 +111,7 @@ namespace LifeSyncAI.Core.Services
                             pending == 0.0 ? 1.0 : 0.0,
                             Math.Min(1.0, pending / 5.0)
                         });
+                        labels.Add(score);
                     }
                 }
 
