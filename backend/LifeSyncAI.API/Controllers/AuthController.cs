@@ -205,7 +205,7 @@ namespace LifeSyncAI.API.Controllers
 
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
-            var isHttps = Request.IsHttps;
+            var isHttps = !Request.Host.Host.Contains("localhost") && !Request.Host.Host.Contains("127.0.0.1");
             var sameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
             var secure = isHttps;
 
@@ -231,7 +231,7 @@ namespace LifeSyncAI.API.Controllers
 
         private void ClearTokenCookies()
         {
-            var isHttps = Request.IsHttps;
+            var isHttps = !Request.Host.Host.Contains("localhost") && !Request.Host.Host.Contains("127.0.0.1");
             var sameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
             var secure = isHttps;
 
