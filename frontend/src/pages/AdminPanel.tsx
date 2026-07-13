@@ -407,7 +407,7 @@ const AdminPanel: React.FC = () => {
                     <Typography variant="body1">No user accounts registered matching your search query.</Typography>
                   </Box>
                 ) : (
-                  <>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid var(--neutral-primary)', borderRadius: '12px', bgcolor: 'transparent' }}>
                       <Table>
                         <TableHead sx={{ bgcolor: 'var(--bg-primary)' }}>
@@ -500,7 +500,7 @@ const AdminPanel: React.FC = () => {
 
                     {/* PAGINATION CONTROLS */}
                     {totalCount > 0 && (
-                      <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                      <Box sx={{ mt: 'auto', pt: 3, display: 'flex', justifyContent: 'center' }}>
                         <Pagination
                           count={totalPages}
                           page={page}
@@ -522,7 +522,7 @@ const AdminPanel: React.FC = () => {
                         />
                       </Box>
                     )}
-                  </>
+                  </Box>
                 )}
               </>
             )}
