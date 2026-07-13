@@ -26,8 +26,7 @@ namespace LifeSyncAI.Core.Database
                 }
                 catch
                 {
-                    // Table doesn't exist (e.g. invalid object name 'Users'). Force drop and recreate database.
-                    await context.Database.EnsureDeletedAsync();
+                    // Table doesn't exist. Safely create tables without dropping any existing data.
                     await context.Database.EnsureCreatedAsync();
                 }
 
