@@ -499,7 +499,7 @@ const AdminPanel: React.FC = () => {
                     </TableContainer>
 
                     {/* PAGINATION CONTROLS */}
-                    {totalPages > 1 && (
+                    {totalCount > 0 && (
                       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
                         <Pagination
                           count={totalPages}

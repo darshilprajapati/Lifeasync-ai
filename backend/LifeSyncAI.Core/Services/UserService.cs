@@ -74,6 +74,9 @@ namespace LifeSyncAI.Core.Services
 
         public async Task<ApiResponse<PaginatedUsersDto>> GetPaginatedUsersAsync(string? search, int page, int pageSize)
         {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
             try
             {
                 var query = _context.Users
