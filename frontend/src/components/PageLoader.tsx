@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 interface PageLoaderProps {
@@ -14,29 +14,14 @@ interface PageLoaderProps {
  * - Backdrop blur transition
  */
 const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
-  const [progress, setProgress] = useState(0);
-
   useEffect(() => {
-    const duration = 1200; // 1.2 seconds loading
-    const intervalTime = 30;
-    const steps = duration / intervalTime;
-    const increment = 100 / steps;
+    if (!onComplete) return;
 
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + increment;
-        if (next >= 100) {
-          clearInterval(timer);
-          setTimeout(() => {
-            if (onComplete) onComplete();
-          }, 300); // small delay after 100% for transition
-          return 100;
-        }
-        return next;
-      });
-    }, intervalTime);
+    const timer = setTimeout(() => {
+      onComplete();
+    }, 1500);
 
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
@@ -112,21 +97,19 @@ const PageLoader: React.FC<PageLoaderProps> = ({ onComplete }) => {
           Personal Intelligence Platform
         </motion.p>
 
-        {/* Percentage Progress Bar */}
-        <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(0, 0, 0, 0.08)', borderRadius: '2px', overflow: 'hidden', marginBottom: '8px' }}>
+        {/* Premium Minimal Spinning Ring Loader */}
+        <div style={{ position: 'relative', width: '28px', height: '28px', marginTop: '8px' }}>
           <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
             style={{
+              width: '100%',
               height: '100%',
-              background: 'linear-gradient(90deg, #E85A4F 0%, #E98074 100%)',
-              width: `${progress}%`
+              borderRadius: '50%',
+              border: '2.5px solid rgba(232, 90, 79, 0.15)',
+              borderTopColor: '#E85A4F',
             }}
           />
-        </div>
-
-        {/* Loading details */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '12px', color: '#8E8D8A', fontWeight: 500 }}>
-          <span>Syncing modules...</span>
-          <span>{Math.round(progress)}%</span>
         </div>
       </div>
     </motion.div>
