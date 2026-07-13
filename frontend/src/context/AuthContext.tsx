@@ -28,15 +28,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Silent check: check if the user is already authenticated on app launch
   useEffect(() => {
     const checkAuthStatus = async () => {
+      const hasToken = localStorage.getItem('lifesync_token') === 'true';
+      if (!hasToken) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       const startTime = Date.now();
       try {
         const response = await apiClient.get('/api/auth/me');
         if (response.data.isSuccess) {
           setUser(response.data.data);
+          localStorage.setItem('lifesync_token', 'true');
+        } else {
+          setUser(null);
+          localStorage.removeItem('lifesync_token');
         }
       } catch (err) {
         // Ignored: User is just a guest or cookies are missing/expired
         setUser(null);
+        localStorage.removeItem('lifesync_token');
       } finally {
         const elapsedTime = Date.now() - startTime;
         const remainingDelay = Math.max(0, 2000 - elapsedTime);
@@ -52,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (error) => {
         if (error.response?.status === 401) {
           setUser(null);
+          localStorage.removeItem('lifesync_token');
         }
         return Promise.reject(error);
       }
@@ -69,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiClient.post('/api/auth/login', { email, password });
       if (response.data.isSuccess) {
         setUser(response.data.data);
+        localStorage.setItem('lifesync_token', 'true');
         return response.data.data;
       }
       throw new Error(response.data.message || 'Login failed.');
@@ -98,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Logout error on server:', err);
     } finally {
       setUser(null);
-      // Clean up local path redirect if needed, guards will capture state change
+      localStorage.removeItem('lifesync_token');
     }
   };
 
