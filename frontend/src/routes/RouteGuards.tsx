@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import PageLoader from '../components/PageLoader';
+import { Box, CircularProgress } from '@mui/material';
 
 /**
  * ProtectedRoute blocks guest users.
@@ -11,7 +11,11 @@ export const ProtectedRoute: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <PageLoader />;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'var(--bg-primary)' }}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
   }
 
   if (!user) {
@@ -31,7 +35,11 @@ export const GuestRoute: React.FC = () => {
   
   const hasToken = !!localStorage.getItem('lifesync_token');
   if (loading && hasToken) {
-    return <PageLoader />;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'var(--bg-primary)' }}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
   }
 
   if (user && hasToken) {
@@ -50,7 +58,11 @@ export const AdminRoute: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <PageLoader />;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'var(--bg-primary)' }}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
   }
 
   if (!user) {

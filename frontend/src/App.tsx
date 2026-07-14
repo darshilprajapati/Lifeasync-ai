@@ -29,7 +29,7 @@ const typographyConfig = {
 };
 
 function AppContent() {
-  useAuth();
+  const { loading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ function AppContent() {
   const currentPath = window.location.pathname.toLowerCase();
   const isPublicRoute = publicPaths.some(path => currentPath.startsWith(path));
 
-  const displaySplash = !isPublicRoute && showSplash;
+  const displaySplash = !isPublicRoute && (loading || showSplash);
 
   return (
     <AnimatePresence mode="wait">
