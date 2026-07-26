@@ -56,7 +56,7 @@ namespace LifeSyncAI.API
                     }
                     else
                     {
-                        options.UseSqlServer(connectionString);
+                        options.UseSqlServer(connectionString, sqlOptions => sqlOptions.CommandTimeout(60));
                     }
                 });
 
