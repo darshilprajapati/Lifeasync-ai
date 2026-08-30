@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Typography } from '@mui/material';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
 import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { trackPageView } from './utils/analytics';
 
 // Initialize TanStack query client
 const queryClient = new QueryClient();
@@ -31,6 +32,11 @@ const typographyConfig = {
 function AppContent() {
   const { loading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location]);
 
   useEffect(() => {
     // Check if the current route is a public auth route

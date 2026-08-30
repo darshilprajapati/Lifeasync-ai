@@ -10,6 +10,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackEvent } from '../utils/analytics';
 
 // Let's import core Material UI components directly to avoid namespace clashes
 import { 
@@ -161,6 +162,7 @@ const Health: React.FC = () => {
         });
         if (res.data.isSuccess) {
           setForecastResult(res.data.data);
+          trackEvent('Health', 'Generate Forecast', `Score: ${res.data.data.forecastedLifeScore}`);
         } else {
           setForecastError(res.data.message || 'Failed to generate forecast.');
         }
@@ -207,6 +209,7 @@ const Health: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackEvent('Health', 'Log Entry', type, value);
         await fetchHealthLogs();
       }
     } catch (err: any) {
