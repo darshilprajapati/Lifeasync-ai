@@ -95,20 +95,15 @@ namespace LifeSyncAI.Core.Services
                         return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
                     }
 
-                    // Source of truth: check if ANY user exists in the database
-                    bool isFirstUser = !await _context.Users
-                        .IgnoreQueryFilters()
-                        .AnyAsync();
-
                     var newUser = new User
                     {
                         FullName = dto.FullName.Trim(),
                         Email = targetEmail,
                         PasswordHash = PasswordHasher.HashPassword(dto.Password),
-                        Role = isFirstUser ? UserRole.Admin : UserRole.User,
-                        Status = isFirstUser ? UserStatus.Active : UserStatus.Pending,
+                        Role = UserRole.User,          // Normal user registration
+                        Status = UserStatus.Pending,   // Requires administrator approval
                         CreatedAt = DateTime.UtcNow,
-                        CreatedBy = isFirstUser ? "SystemBootstrap" : "SelfRegistration"
+                        CreatedBy = "SelfRegistration"
                     };
 
                     await _context.Users.AddAsync(newUser);
@@ -120,11 +115,7 @@ namespace LifeSyncAI.Core.Services
                     }
 
                     var userDto = MapToDto(newUser);
-                    string message = isFirstUser
-                        ? "Registration successful. As the first user, your account has been provisioned with System Administrator privileges."
-                        : "Registration request submitted. Account is pending administrator approval.";
-
-                    return ApiResponse<UserDto>.Success(userDto, message);
+                    return ApiResponse<UserDto>.Success(userDto, "Registration request submitted. Account is pending administrator approval.");
                 }
                 catch
                 {

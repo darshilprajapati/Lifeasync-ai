@@ -220,39 +220,12 @@ namespace LifeSyncAI.API
                     options.KnownProxies.Clear();
                 });
 
-                // CORS Policy setup - Explicitly allow production frontend origin and local dev origins with credentials
-                var allowedOrigins = new List<string>
-                {
-                    "https://lifesync-ai.vercel.app",
-                    "http://localhost:5173",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:5173",
-                    "http://localhost:5048"
-                };
-
-                // Also support dynamic configuration from environment variables if provided (e.g. Cors__AllowedOrigins, CORS_ALLOWED_ORIGINS, or FRONTEND_URL)
-                var envOrigins = builder.Configuration["Cors:AllowedOrigins"]
-                                 ?? builder.Configuration["CORS_ALLOWED_ORIGINS"]
-                                 ?? builder.Configuration["FRONTEND_URL"];
-
-                if (!string.IsNullOrEmpty(envOrigins))
-                {
-                    var customOrigins = envOrigins.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                    foreach (var origin in customOrigins)
-                    {
-                        var trimmed = origin.TrimEnd('/');
-                        if (!string.IsNullOrEmpty(trimmed) && !allowedOrigins.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
-                        {
-                            allowedOrigins.Add(trimmed);
-                        }
-                    }
-                }
-
+                // CORS Policy setup - Allow ANY frontend origin dynamically with credentialed cookie/token support
                 builder.Services.AddCors(options =>
                 {
                     options.AddPolicy("CorsPolicy", policy =>
                     {
-                        policy.WithOrigins(allowedOrigins.ToArray())
+                        policy.SetIsOriginAllowed(origin => true) // Evaluates to true for ANY frontend origin
                               .AllowAnyMethod()
                               .AllowAnyHeader()
                               .AllowCredentials()
