@@ -252,7 +252,7 @@
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": "^(login|sign_up|logout|planner_event_created|planner_event_updated|planner_event_deleted|transaction_created|transaction_deleted|recurring_item_created|recurring_item_deleted|recurring_item_paid|health_log_created|health_log_deleted|wellness_forecast_generated|job_application_created|job_application_updated|job_application_deleted|vault_item_created|vault_item_deleted|ai_insight_generated|ai_insight_viewed|report_generated)$"
+                "value": "^(login|sign_up|logout|planner_event_created|planner_event_updated|planner_event_deleted|transaction_created|transaction_deleted|recurring_item_created|recurring_item_deleted|recurring_item_paid|health_log_created|health_log_deleted|wellness_forecast_generated|job_application_created|job_application_updated|job_application_deleted|vault_item_created|vault_item_deleted|ai_insight_generated|ai_insight_viewed|report_generated|profile_updated|password_reset|companion_message_sent|admin_user_approved|admin_user_status_toggled|admin_user_role_toggled|admin_password_reset|admin_user_deleted)$"
               }
             ]
           }

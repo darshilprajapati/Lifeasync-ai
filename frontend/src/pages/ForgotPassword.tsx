@@ -6,6 +6,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import PinIcon from '@mui/icons-material/Pin';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 const steps = ['Enter Email', 'Verify OTP', 'New Password'];
 
@@ -94,6 +95,7 @@ const ForgotPassword: React.FC = () => {
     try {
       const response = await apiClient.post('/api/auth/reset-password', { email, otp, newPassword });
       if (response.data.isSuccess) {
+        trackAction('password_reset', { method: 'otp' });
         setSuccessMsg('Your password has been successfully reset. Redirecting to login page...');
         setTimeout(() => {
           navigate('/login');

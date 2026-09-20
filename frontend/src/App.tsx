@@ -37,7 +37,8 @@ function AppContent() {
 
   // Dedicated navigation events fired exactly once per genuine route transition (preventing re-render duplicates)
   useEffect(() => {
-    const currentPath = location.pathname.toLowerCase();
+    const rawPath = location.pathname.toLowerCase();
+    const currentPath = rawPath.endsWith('/') && rawPath.length > 1 ? rawPath.slice(0, -1) : rawPath;
     if (lastTrackedRouteRef.current === currentPath) {
       return;
     }

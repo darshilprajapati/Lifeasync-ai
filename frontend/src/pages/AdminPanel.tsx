@@ -12,6 +12,7 @@ import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface ManagedUser {
   id: number;
@@ -119,6 +120,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await apiClient.post(`/api/users/${id}/approve`);
       if (res.data.isSuccess) {
+        trackAction('admin_user_approved', { module: 'admin', action: 'approve' });
         setSuccessMsg('User account approved and activated successfully.');
         setPendingUsers((prev) => prev.filter((u) => u.id !== id));
       }
@@ -133,14 +135,15 @@ const AdminPanel: React.FC = () => {
     setActioningId(user.id);
     setError(null);
     setSuccessMsg(null);
-    // UserStatus Enum: Active = 1, Pending = 2, Inactive = 3
-    const nextStatus = user.status === 'Active' ? 3 : 1; 
+    // UserStatus Enum: Pending = 1, Active = 2, Inactive = 3
+    const nextStatus = user.status === 'Active' ? 3 : 2; 
     try {
       const res = await apiClient.post(`/api/users/${user.id}/status`, nextStatus);
       if (res.data.isSuccess) {
-        setSuccessMsg(`User account status updated successfully to ${nextStatus === 1 ? 'Active' : 'Inactive'}.`);
+        trackAction('admin_user_status_toggled', { module: 'admin', action: 'toggle_status' });
+        setSuccessMsg(`User account status updated successfully to ${nextStatus === 2 ? 'Active' : 'Inactive'}.`);
         setAllUsers((prev) =>
-          prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === 1 ? 'Active' : 'Inactive' } : u))
+          prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === 2 ? 'Active' : 'Inactive' } : u))
         );
       }
     } catch (err: any) {
@@ -159,6 +162,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await apiClient.post(`/api/users/${user.id}/role`, nextRole);
       if (res.data.isSuccess) {
+        trackAction('admin_user_role_toggled', { module: 'admin', action: 'toggle_role' });
         setSuccessMsg(`User role updated successfully to ${nextRole === 1 ? 'Admin' : 'User'}.`);
         setAllUsers((prev) =>
           prev.map((u) => (u.id === user.id ? { ...u, role: nextRole === 1 ? 'Admin' : 'User' } : u))
@@ -191,6 +195,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await apiClient.post(`/api/users/${selectedUser.id}/reset-password`, { newPassword });
       if (res.data.isSuccess) {
+        trackAction('admin_password_reset', { module: 'admin', action: 'reset_password' });
         setSuccessMsg(`Successfully reset password for ${selectedUser.fullName}.`);
         handleCloseResetDialog();
       }
@@ -242,6 +247,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/users/${userToDelete.id}`);
       if (res.data.isSuccess) {
+        trackAction('admin_user_deleted', { module: 'admin', action: 'delete' });
         setSuccessMsg(`User account for ${userToDelete.fullName} and all their data were permanently deleted.`);
         handleCloseDeleteDialog();
         fetchPendingUsers();

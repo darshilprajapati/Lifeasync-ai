@@ -14,6 +14,17 @@ secrets.json
 *.user
 
 # ------------------------------------------
+# Database Files & Backups (CRITICAL)
+# ------------------------------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.backup_*
+
+# ------------------------------------------
 # Logs and Reports
 # ------------------------------------------
 [Ll]ogs/

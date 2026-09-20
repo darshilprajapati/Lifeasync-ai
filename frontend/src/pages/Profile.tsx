@@ -10,6 +10,7 @@ import LogoLoader from '../components/LogoLoader';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { trackAction } from '../utils/analytics';
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -89,6 +90,7 @@ const Profile: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('profile_updated', { module: 'profile', action: 'update' });
         setSuccess('Profile updated successfully!');
         updateUser(res.data.data);
       }

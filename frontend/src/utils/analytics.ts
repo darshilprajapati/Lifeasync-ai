@@ -58,7 +58,37 @@ const SENSITIVE_KEYS = new Set([
   'title',
   'description',
   'insighttext',
-  'profilephoto'
+  'profilephoto',
+  'authorization',
+  'auth',
+  'bearer',
+  'salary',
+  'medical',
+  'diagnosis',
+  'prescription',
+  'health',
+  'connection',
+  'database',
+  'connectionstring',
+  'ssn',
+  'card',
+  'creditcard',
+  'message',
+  'reply'
+]);
+
+/**
+ * Whitelist of explicitly allowed analytics parameter keys.
+ */
+const ALLOWED_PARAM_KEYS = new Set([
+  'module',
+  'action',
+  'method',
+  'item_type',
+  'frequency',
+  'format',
+  'page_path',
+  'event'
 ]);
 
 /**
@@ -72,11 +102,20 @@ export function sanitizeParams(params?: Record<string, any>): Record<string, any
     if (value === null || value === undefined) continue;
 
     const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // 1. Check against sensitive blacklist
     if (SENSITIVE_KEYS.has(normalizedKey)) {
-      continue; // Block sensitive parameter key
+      continue;
     }
 
-    // Inspect string values for emails, JWT tokens, or bearer headers
+    // 2. Reject sensitive patterns unless explicitly whitelisted
+    if (!ALLOWED_PARAM_KEYS.has(normalizedKey)) {
+      if (/password|secret|token|auth|email|salary|medical|health|credit|card|ssn|phone|address|prompt|note|content|message|reply/i.test(normalizedKey)) {
+        continue;
+      }
+    }
+
+    // 3. Inspect string values for emails, JWT tokens, connection strings, or bearer headers
     if (typeof value === 'string') {
       // Filter email addresses
       if (value.includes('@') && value.includes('.')) {
@@ -84,6 +123,10 @@ export function sanitizeParams(params?: Record<string, any>): Record<string, any
       }
       // Filter potential JWT tokens
       if (value.startsWith('ey') && value.length > 30) {
+        continue;
+      }
+      // Filter connection strings
+      if (value.includes('Host=') || value.includes('postgres://') || value.includes('postgresql://') || value.includes('Data Source=')) {
         continue;
       }
     }

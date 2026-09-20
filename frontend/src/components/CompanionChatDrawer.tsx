@@ -4,6 +4,7 @@ import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatIcon from '@mui/icons-material/Chat';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -68,6 +69,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
     try {
       const res = await apiClient.post('/api/companion/message', { message: text });
       if (res.data.isSuccess) {
+        trackAction('companion_message_sent', { module: 'companion' });
         const reply = res.data.data.reply;
         const mood = res.data.data.mood;
 

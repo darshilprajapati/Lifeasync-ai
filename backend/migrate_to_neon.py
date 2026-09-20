@@ -160,6 +160,14 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
             if not tgt_cur.fetchone()[0]:
                 raise RuntimeError(f"Target table public.\"{table}\" does not exist in Neon. Run EF Core migrations first.")
 
+            # Inspect PostgreSQL target table column types for accurate data type coercion (e.g. SQLite 0/1 to PostgreSQL boolean)
+            tgt_cur.execute("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' AND table_name = %s
+            """, (table,))
+            col_types = {r[0]: r[1].lower() for r in tgt_cur.fetchall()}
+
             # Extract column names from source
             col_names = [d[0] for d in src_cur.description]
             cols_joined = ", ".join([f'"{c}"' for c in col_names])
@@ -173,7 +181,19 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
             for row in rows:
                 row_dict = dict(row)
                 if row_dict.get("Id") not in existing_ids:
-                    to_insert.append([row_dict[col] for col in col_names])
+                    row_values = []
+                    for col in col_names:
+                        val = row_dict[col]
+                        target_type = col_types.get(col, "")
+                        # Explicitly coerce SQLite boolean integers/strings to Python bool for PostgreSQL boolean columns
+                        if target_type == "boolean":
+                            if val is not None:
+                                if isinstance(val, (int, float)):
+                                    val = bool(val)
+                                elif isinstance(val, str):
+                                    val = val.strip().lower() in ("1", "true", "t", "yes")
+                        row_values.append(val)
+                    to_insert.append(row_values)
 
             if to_insert:
                 insert_query = f'INSERT INTO "{table}" ({cols_joined}) VALUES ({placeholders}) ON CONFLICT ("Id") DO NOTHING'
@@ -182,13 +202,23 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
             else:
                 print(f"[{table}] All {row_count} records already present in Neon.")
 
-            # Update PostgreSQL identity sequence to avoid collision on new inserts
-            tgt_cur.execute(f"""
-                SELECT setval(
-                    pg_get_serial_sequence('"{table}"', 'Id'),
-                    COALESCE((SELECT MAX("Id") FROM "{table}"), 1)
-                );
-            """)
+            # Update PostgreSQL identity sequence safely to avoid collision on subsequent application inserts
+            tgt_cur.execute("""
+                SELECT COALESCE(
+                    pg_get_serial_sequence(%s, 'Id'),
+                    pg_get_serial_sequence(%s, 'Id')
+                )
+            """, (f'"{table}"', f'public."{table}"'))
+            seq_row = tgt_cur.fetchone()
+            seq_name = seq_row[0] if seq_row else None
+            if seq_name:
+                tgt_cur.execute(f'SELECT MAX("Id") FROM "{table}"')
+                max_id = tgt_cur.fetchone()[0]
+                if max_id is not None:
+                    tgt_cur.execute("SELECT setval(%s, %s, true)", (seq_name, max_id))
+                else:
+                    tgt_cur.execute("SELECT setval(%s, 1, false)", (seq_name,))
+
             summary[table] = {"source_rows": row_count, "migrated_rows": len(to_insert)}
 
         # Run Post-Migration Validations before committing
