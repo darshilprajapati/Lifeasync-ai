@@ -138,7 +138,7 @@ const Vault: React.FC = () => {
           };
         }
       }
-    } catch (e) {}
+    } catch {}
 
     return {
       isLogin: false,

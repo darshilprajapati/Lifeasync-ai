@@ -80,7 +80,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
           { sender: 'bot', text: reply, timestamp: new Date() }
         ]);
       }
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { sender: 'bot', text: "Ouch! My brain circuits got crossed. Check your server connection and let's try again! ⚡", timestamp: new Date() }

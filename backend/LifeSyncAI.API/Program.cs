@@ -45,6 +45,13 @@ namespace LifeSyncAI.API
 
                 var builder = WebApplication.CreateBuilder(args);
 
+                // Ensure binding to dynamic PORT supplied by Render or container environments
+                var renderPort = Environment.GetEnvironmentVariable("PORT");
+                if (!string.IsNullOrEmpty(renderPort))
+                {
+                    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
+                }
+
                 // Use Serilog as the logging provider
                 builder.Host.UseSerilog();
 
@@ -265,6 +272,7 @@ namespace LifeSyncAI.API
                 app.UseAuthentication();
                 app.UseAuthorization();
 
+                app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
                 app.MapControllers();
                 
                 // Map hubs for SignalR (to be defined later)

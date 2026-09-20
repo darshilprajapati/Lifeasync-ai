@@ -92,7 +92,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({
             setStatus('failed');
           }
         }
-      } catch (err) {
+      } catch {
         clearInterval(interval);
         setError('Connection lost while polling report generation status.');
         setStatus('failed');

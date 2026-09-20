@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           localStorage.removeItem('lifesync_token');
         }
-      } catch (err) {
+      } catch {
         // Ignored: User is just a guest or cookies are missing/expired
         setUser(null);
         localStorage.removeItem('lifesync_token');
