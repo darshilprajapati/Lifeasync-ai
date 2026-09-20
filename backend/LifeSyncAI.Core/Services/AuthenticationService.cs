@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using LifeSyncAI.Core.Contracts.Interfaces.Services;
 using LifeSyncAI.Core.Database;
@@ -21,6 +23,7 @@ namespace LifeSyncAI.Core.Services
     /// </summary>
     public class AuthenticationService : IAuthenticationService
     {
+        private static readonly SemaphoreSlim _registrationLock = new(1, 1);
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
@@ -36,17 +39,7 @@ namespace LifeSyncAI.Core.Services
         {
             var targetEmail = dto.Email.ToLower().Trim();
 
-            // 1. Enforce strict single-registration constraints
-            var emailExists = await _context.Users
-                .IgnoreQueryFilters() // check soft-deleted too to prevent SQL unique index collisions
-                .AnyAsync(u => u.Email == targetEmail);
-
-            if (emailExists)
-            {
-                return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
-            }
-
-            // 2. Internet Domain Active Check via DNS lookup
+            // 1. Internet Domain Active Check via DNS lookup (executed before locking)
             var emailParts = targetEmail.Split('@');
             if (emailParts.Length != 2)
             {
@@ -67,22 +60,92 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<UserDto>.Fail($"The email domain '{domain}' is invalid or does not exist on the internet.");
             }
 
-            var newUser = new User
+            // 2. Concurrency-Safe First-User Determination and Registration
+            await _registrationLock.WaitAsync();
+            try
             {
-                FullName = dto.FullName.Trim(),
-                Email = targetEmail,
-                PasswordHash = PasswordHasher.HashPassword(dto.Password),
-                Role = UserRole.User,          // Default user signup role
-                Status = UserStatus.Pending,   // Must be approved by Admin
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = "SelfRegistration"
-            };
+                string provider = _context.Database.ProviderName ?? string.Empty;
+                bool isPostgreSql = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
+                                    provider.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase);
 
-            await _context.Users.AddAsync(newUser);
-            await _context.SaveChangesAsync();
+                IDbContextTransaction? transaction = null;
+                if (_context.Database.IsRelational())
+                {
+                    transaction = await _context.Database.BeginTransactionAsync();
+                }
 
-            var userDto = MapToDto(newUser);
-            return ApiResponse<UserDto>.Success(userDto, "Registration request submitted. Account is pending administrator approval.");
+                try
+                {
+                    if (isPostgreSql)
+                    {
+                        // Acquire transaction-scoped PostgreSQL advisory lock (key: 746392015).
+                        // Guarantees cross-instance serialization on Neon PostgreSQL across multiple Render containers.
+                        // Automatically released upon transaction commit or rollback.
+                        await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(746392015);");
+                    }
+
+                    // Enforce strict single-registration constraints (including soft-deleted users)
+                    var emailExists = await _context.Users
+                        .IgnoreQueryFilters()
+                        .AnyAsync(u => u.Email == targetEmail);
+
+                    if (emailExists)
+                    {
+                        if (transaction != null) await transaction.RollbackAsync();
+                        return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
+                    }
+
+                    // Source of truth: check if ANY user exists in the database
+                    bool isFirstUser = !await _context.Users
+                        .IgnoreQueryFilters()
+                        .AnyAsync();
+
+                    var newUser = new User
+                    {
+                        FullName = dto.FullName.Trim(),
+                        Email = targetEmail,
+                        PasswordHash = PasswordHasher.HashPassword(dto.Password),
+                        Role = isFirstUser ? UserRole.Admin : UserRole.User,
+                        Status = isFirstUser ? UserStatus.Active : UserStatus.Pending,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = isFirstUser ? "SystemBootstrap" : "SelfRegistration"
+                    };
+
+                    await _context.Users.AddAsync(newUser);
+                    await _context.SaveChangesAsync();
+
+                    if (transaction != null)
+                    {
+                        await transaction.CommitAsync();
+                    }
+
+                    var userDto = MapToDto(newUser);
+                    string message = isFirstUser
+                        ? "Registration successful. As the first user, your account has been provisioned with System Administrator privileges."
+                        : "Registration request submitted. Account is pending administrator approval.";
+
+                    return ApiResponse<UserDto>.Success(userDto, message);
+                }
+                catch
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.RollbackAsync();
+                    }
+                    throw;
+                }
+                finally
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.DisposeAsync();
+                    }
+                }
+            }
+            finally
+            {
+                _registrationLock.Release();
+            }
         }
 
         public async Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> LoginAsync(LoginDto dto)
