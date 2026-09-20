@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -210,20 +212,63 @@ namespace LifeSyncAI.API
                     };
                 });
 
-                // CORS Policy setup - Allow any origin securely with credentialed cookie/token support
+                // Configure reverse proxy forwarded headers for Render / Cloud container hosting
+                builder.Services.Configure<ForwardedHeadersOptions>(options =>
+                {
+                    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                    options.KnownIPNetworks.Clear();
+                    options.KnownProxies.Clear();
+                });
+
+                // CORS Policy setup - Explicitly allow production frontend origin and local dev origins with credentials
+                var allowedOrigins = new List<string>
+                {
+                    "https://lifesync-ai.vercel.app",
+                    "http://localhost:5173",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:5173",
+                    "http://localhost:5048"
+                };
+
+                // Also support dynamic configuration from environment variables if provided (e.g. Cors__AllowedOrigins, CORS_ALLOWED_ORIGINS, or FRONTEND_URL)
+                var envOrigins = builder.Configuration["Cors:AllowedOrigins"]
+                                 ?? builder.Configuration["CORS_ALLOWED_ORIGINS"]
+                                 ?? builder.Configuration["FRONTEND_URL"];
+
+                if (!string.IsNullOrEmpty(envOrigins))
+                {
+                    var customOrigins = envOrigins.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    foreach (var origin in customOrigins)
+                    {
+                        var trimmed = origin.TrimEnd('/');
+                        if (!string.IsNullOrEmpty(trimmed) && !allowedOrigins.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                        {
+                            allowedOrigins.Add(trimmed);
+                        }
+                    }
+                }
+
                 builder.Services.AddCors(options =>
                 {
                     options.AddPolicy("CorsPolicy", policy =>
                     {
-                        policy.SetIsOriginAllowed(origin => true)
+                        policy.WithOrigins(allowedOrigins.ToArray())
                               .AllowAnyMethod()
                               .AllowAnyHeader()
-                              .AllowCredentials() // Required for SignalR cookies/tokens
-                              .WithExposedHeaders("X-Demo-OTP");
+                              .AllowCredentials()
+                              .WithExposedHeaders("X-Demo-OTP", "Content-Disposition")
+                              .SetPreflightMaxAge(TimeSpan.FromMinutes(30));
                     });
                 });
 
                 var app = builder.Build();
+
+                // 1. Process reverse proxy forwarded headers FIRST so Kestrel correctly reads HTTPS scheme from Render proxy
+                app.UseForwardedHeaders();
+
+                // 2. CORS must execute BEFORE HttpsRedirection, Routing, and Authentication
+                // so that preflight OPTIONS requests are handled immediately with 204 No Content and appropriate CORS headers
+                app.UseCors("CorsPolicy");
 
                 // Auto-Migrate and Seed Database at Startup
                 using (var scope = app.Services.CreateScope())
@@ -266,8 +311,6 @@ namespace LifeSyncAI.API
                 {
                     app.UseHttpsRedirection();
                 }
-
-                app.UseCors("CorsPolicy");
 
                 app.UseAuthentication();
                 app.UseAuthorization();
