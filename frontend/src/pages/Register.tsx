@@ -9,10 +9,9 @@ import LockIcon from '@mui/icons-material/Lock';
 import PersonIcon from '@mui/icons-material/Person';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { trackAction } from '../utils/analytics';
 
 import { LifeSyncConstellation } from '../components/LifeSyncConstellation';
-
-
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +31,7 @@ const Register: React.FC = () => {
     setSubmitting(true);
     try {
       const msg = await register(name, email, password);
+      trackAction('sign_up', { method: 'email_password' });
       setSuccess(msg);
       setName('');
       setEmail('');

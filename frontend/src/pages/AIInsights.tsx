@@ -8,6 +8,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface AiRecommendation {
   id: number;
@@ -28,6 +29,7 @@ const AIInsights: React.FC = () => {
       const res = await apiClient.get('/api/insights');
       if (res.data.isSuccess) {
         setInsights(res.data.data);
+        trackAction('ai_insight_viewed', { module: 'ai_insights' });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load AI insights.');
@@ -46,6 +48,7 @@ const AIInsights: React.FC = () => {
     try {
       const res = await apiClient.post('/api/insights/generate');
       if (res.data.isSuccess) {
+        trackAction('ai_insight_generated', { module: 'ai_insights', action: 'regenerate' });
         setInsights(res.data.data);
       }
     } catch (err: any) {

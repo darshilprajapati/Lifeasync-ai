@@ -8,6 +8,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface JobApplication {
   id: number;
@@ -64,6 +65,7 @@ const Career: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('job_application_created', { module: 'career', action: 'create' });
         setApplications((prev) => [res.data.data, ...prev]);
         setCompany('');
         setPosition('');
@@ -82,6 +84,7 @@ const Career: React.FC = () => {
     try {
       const res = await apiClient.put(`/api/career/${id}/status`, { status: newStatus });
       if (res.data.isSuccess) {
+        trackAction('job_application_updated', { module: 'career', action: 'update_status' });
         setApplications((prev) =>
           prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app))
         );
@@ -95,6 +98,7 @@ const Career: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/career/${id}`);
       if (res.data.isSuccess) {
+        trackAction('job_application_deleted', { module: 'career', action: 'delete' });
         setApplications((prev) => prev.filter((app) => app.id !== id));
       }
     } catch (err: any) {

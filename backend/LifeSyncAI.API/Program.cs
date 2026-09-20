@@ -20,6 +20,9 @@ namespace LifeSyncAI.API
     {
         public static async Task Main(string[] args)
         {
+            // Enable legacy timestamp behavior for Npgsql to seamlessly handle DateTime without UTC cast issues
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
             // Configure Serilog from appsettings
             var basePath = Environment.GetEnvironmentVariable("ASPNETCORE_CONTENTROOT") ?? AppContext.BaseDirectory;
             var configuration = new ConfigurationBuilder()
@@ -46,17 +49,34 @@ namespace LifeSyncAI.API
                 builder.Host.UseSerilog();
 
                 // Add DbContext
-                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
                 builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 {
-                    if (connectionString.Contains(".db") || connectionString.Contains("DataSource") || connectionString.Contains("Data Source"))
+                    bool isPostgreSql = rawConnectionString.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) ||
+                                       (rawConnectionString.StartsWith("Server=", StringComparison.OrdinalIgnoreCase) && rawConnectionString.Contains(".neon.tech", StringComparison.OrdinalIgnoreCase)) ||
+                                       rawConnectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+                                       rawConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+                                       (rawConnectionString.Contains("Port=", StringComparison.OrdinalIgnoreCase) && rawConnectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase));
+
+                    if (isPostgreSql)
                     {
-                        options.UseSqlite(connectionString);
+                        string npgsqlConnectionString = NormalizePostgreSqlConnectionString(rawConnectionString);
+                        options.UseNpgsql(npgsqlConnectionString, npgsqlOptions =>
+                        {
+                            npgsqlOptions.MigrationsAssembly("LifeSyncAI.Core");
+                            npgsqlOptions.CommandTimeout(60);
+                            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
+                        });
+                    }
+                    else if (rawConnectionString.Contains(".db") || rawConnectionString.Contains("DataSource") || rawConnectionString.Contains("Data Source"))
+                    {
+                        options.UseSqlite(rawConnectionString);
                     }
                     else
                     {
-                        options.UseSqlServer(connectionString, sqlOptions => sqlOptions.CommandTimeout(60));
+                        options.UseSqlServer(rawConnectionString, sqlOptions => sqlOptions.CommandTimeout(60));
                     }
                 });
 
@@ -260,6 +280,45 @@ namespace LifeSyncAI.API
             {
                 Log.CloseAndFlush();
             }
+        }
+
+        /// <summary>
+        /// Normalizes PostgreSQL connection string formats (URI and ADO.NET) for reliable Npgsql connectivity.
+        /// </summary>
+        private static string NormalizePostgreSqlConnectionString(string raw)
+        {
+            if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+                raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var uri = new Uri(raw);
+                    var userInfo = uri.UserInfo.Split(':');
+                    var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+                    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+                    var host = uri.Host;
+                    var port = uri.Port > 0 ? uri.Port : 5432;
+                    var database = uri.AbsolutePath.TrimStart('/');
+
+                    var builder = new StringBuilder();
+                    builder.Append($"Host={host};Port={port};Database={database};Username={username};Password={password};");
+                    builder.Append("SSL Mode=Require;Trust Server Certificate=true;");
+                    return builder.ToString();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"Failed to parse PostgreSQL URI, using raw connection string: {ex.Message}");
+                }
+            }
+
+            // If it's a Neon host and does not explicitly specify SSL Mode, ensure SSL Mode=Require
+            if (raw.Contains(".neon.tech", StringComparison.OrdinalIgnoreCase) && !raw.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!raw.EndsWith(";")) raw += ";";
+                raw += "SSL Mode=Require;Trust Server Certificate=true;";
+            }
+
+            return raw;
         }
     }
 }

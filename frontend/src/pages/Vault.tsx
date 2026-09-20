@@ -13,6 +13,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface VaultItem {
   id: number;
@@ -81,6 +82,7 @@ const Vault: React.FC = () => {
     try {
       const res = await apiClient.post('/api/vault', { title, content: finalContent });
       if (res.data.isSuccess) {
+        trackAction('vault_item_created', { module: 'vault', action: 'create', item_type: itemType });
         setItems((prev) => [...prev, res.data.data]);
         setTitle('');
         setWebsite('');
@@ -99,6 +101,7 @@ const Vault: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/vault/${id}`);
       if (res.data.isSuccess) {
+        trackAction('vault_item_deleted', { module: 'vault', action: 'delete' });
         setItems((prev) => prev.filter((item) => item.id !== id));
       }
     } catch (err: any) {

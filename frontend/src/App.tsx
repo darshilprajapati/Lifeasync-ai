@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
 import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { trackPageView } from './utils/analytics';
+import { trackNavigation } from './utils/analytics';
 
 // Initialize TanStack query client
 const queryClient = new QueryClient();
@@ -33,10 +33,36 @@ function AppContent() {
   const { loading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const location = useLocation();
+  const lastTrackedRouteRef = useRef<string | null>(null);
 
+  // Dedicated navigation events fired exactly once per genuine route transition (preventing re-render duplicates)
   useEffect(() => {
-    trackPageView(location.pathname + location.search);
-  }, [location]);
+    const currentPath = location.pathname.toLowerCase();
+    if (lastTrackedRouteRef.current === currentPath) {
+      return;
+    }
+    lastTrackedRouteRef.current = currentPath;
+
+    const routeEvents: Record<string, string> = {
+      '/': 'dashboard_view',
+      '/planner': 'planner_view',
+      '/finance': 'finance_view',
+      '/health': 'health_view',
+      '/career': 'career_view',
+      '/vault': 'vault_view',
+      '/insights': 'ai_insights_view',
+      '/profile': 'profile_view',
+      '/admin': 'admin_panel_view',
+      '/login': 'login_view',
+      '/register': 'register_view',
+      '/forgot-password': 'forgot_password_view',
+    };
+
+    const eventName = routeEvents[currentPath];
+    if (eventName) {
+      trackNavigation(eventName);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     // Check if the current route is a public auth route

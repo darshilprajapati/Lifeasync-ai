@@ -14,6 +14,7 @@ import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { trackAction } from '../utils/analytics';
 
 interface Transaction {
   id: number;
@@ -112,6 +113,7 @@ const Finance: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('transaction_created', { module: 'finance', action: 'create' });
         await fetchFinanceData();
         setDescription('');
         setAmount('');
@@ -129,6 +131,7 @@ const Finance: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/finance/${id}`);
       if (res.data.isSuccess) {
+        trackAction('transaction_deleted', { module: 'finance', action: 'delete' });
         await fetchFinanceData();
       }
     } catch (err: any) {
@@ -151,6 +154,7 @@ const Finance: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('recurring_item_created', { module: 'finance', action: 'create_recurring', item_type: recType, frequency: recFrequency });
         await fetchFinanceData();
         setRecDescription('');
         setRecAmount('');
@@ -167,6 +171,7 @@ const Finance: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/finance/recurring/${id}`);
       if (res.data.isSuccess) {
+        trackAction('recurring_item_deleted', { module: 'finance', action: 'delete_recurring' });
         await fetchFinanceData();
       }
     } catch (err: any) {
@@ -179,6 +184,7 @@ const Finance: React.FC = () => {
       setError(null);
       const res = await apiClient.post(`/api/finance/recurring/${id}/pay`);
       if (res.data.isSuccess) {
+        trackAction('recurring_item_paid', { module: 'finance', action: 'pay_recurring' });
         await fetchFinanceData();
       }
     } catch (err: any) {

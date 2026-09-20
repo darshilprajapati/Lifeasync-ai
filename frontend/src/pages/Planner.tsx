@@ -10,6 +10,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface PlannerEvent {
   id: number;
@@ -65,6 +66,7 @@ const Planner: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('planner_event_created', { module: 'planner', action: 'create' });
         setEvents((prev) => [...prev, res.data.data].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
         setTitle('');
         setDescription('');
@@ -82,6 +84,7 @@ const Planner: React.FC = () => {
     try {
       const res = await apiClient.put(`/api/planner/${id}/toggle`, !currentCompleted);
       if (res.data.isSuccess) {
+        trackAction('planner_event_updated', { module: 'planner', action: 'toggle_status' });
         setEvents((prev) =>
           prev.map((e) => (e.id === id ? { ...e, isCompleted: !currentCompleted } : e))
         );
@@ -95,6 +98,7 @@ const Planner: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/planner/${id}`);
       if (res.data.isSuccess) {
+        trackAction('planner_event_deleted', { module: 'planner', action: 'delete' });
         setEvents((prev) => prev.filter((e) => e.id !== id));
       }
     } catch (err: any) {

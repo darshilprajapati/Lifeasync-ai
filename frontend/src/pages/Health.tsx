@@ -10,7 +10,7 @@ import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
-import { trackEvent } from '../utils/analytics';
+import { trackAction } from '../utils/analytics';
 
 // Let's import core Material UI components directly to avoid namespace clashes
 import { 
@@ -162,7 +162,7 @@ const Health: React.FC = () => {
         });
         if (res.data.isSuccess) {
           setForecastResult(res.data.data);
-          trackEvent('Health', 'Generate Forecast', `Score: ${res.data.data.forecastedLifeScore}`);
+          trackAction('wellness_forecast_generated', { module: 'health', action: 'generate_forecast' });
         } else {
           setForecastError(res.data.message || 'Failed to generate forecast.');
         }
@@ -209,7 +209,7 @@ const Health: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
-        trackEvent('Health', 'Log Entry', type, value);
+        trackAction('health_log_created', { module: 'health', action: 'create_log', item_type: type.toLowerCase() });
         await fetchHealthLogs();
       }
     } catch (err: any) {
@@ -258,6 +258,7 @@ const Health: React.FC = () => {
       });
 
       if (res.data.isSuccess) {
+        trackAction('health_log_created', { module: 'health', action: 'create_log', item_type: logType.toLowerCase() });
         await fetchHealthLogs();
         setLogValue('');
         setLogDetails('');
@@ -273,6 +274,7 @@ const Health: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/health/${id}`);
       if (res.data.isSuccess) {
+        trackAction('health_log_deleted', { module: 'health', action: 'delete_log' });
         await fetchHealthLogs();
       }
     } catch (err: any) {

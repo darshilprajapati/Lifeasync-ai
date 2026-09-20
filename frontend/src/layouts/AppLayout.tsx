@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import CompanionChatDrawer from '../components/CompanionChatDrawer';
 import LogoLoader from '../components/LogoLoader';
+import { trackAction } from '../utils/analytics';
 
 // Sidebar Item Structure
 interface SidebarItem {
@@ -120,6 +121,7 @@ const AppLayout: React.FC = () => {
 
   const handleLogout = async () => {
     setProfileAnchor(null);
+    trackAction('logout');
     await logout();
     navigate('/login');
   };

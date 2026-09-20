@@ -28,8 +28,7 @@ USER root
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# SQLite database storage directory configuration
-ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/lifesync.db"
+# Data directory initialization
 RUN mkdir -p /app/data
 
 # Install fonts on Linux (Debian) for PDFsharp font resolution

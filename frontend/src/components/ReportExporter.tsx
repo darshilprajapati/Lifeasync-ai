@@ -3,6 +3,7 @@ import { Button, Dialog, DialogTitle, DialogContent, DialogActions, FormControl,
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import apiClient from '../api/apiClient';
+import { trackAction } from '../utils/analytics';
 
 interface ReportExporterProps {
   module: 'Planner' | 'Finance' | 'Health' | 'Career' | 'Vault' | 'AiInsights' | 'All';
@@ -68,6 +69,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({
           if (requestInfo.status === 'Completed') {
             clearInterval(interval);
             setStatus('completed');
+            trackAction('report_generated', { module: module.toLowerCase(), frequency: frequency.toLowerCase() });
             
             // Trigger download of the completed report text file
             const baseURL = apiClient.defaults.baseURL || window.location.origin;

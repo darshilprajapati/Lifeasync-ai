@@ -9,7 +9,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { LifeSyncConstellation } from '../components/LifeSyncConstellation';
-import { trackEvent } from '../utils/analytics';
+import { trackAction } from '../utils/analytics';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -26,10 +26,9 @@ const Login: React.FC = () => {
     setSubmitting(true);
     try {
       await login(email, password);
-      trackEvent('Auth', 'Login Success', email);
+      trackAction('login', { method: 'email_password' });
       navigate('/');
     } catch (err: any) {
-      trackEvent('Auth', 'Login Failure', email);
       setError(err.message || 'Login failed.');
     } finally {
       setSubmitting(false);

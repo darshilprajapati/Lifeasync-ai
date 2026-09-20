@@ -48,14 +48,48 @@ namespace LifeSyncAI.Core.Database
                 .Property(r => r.Amount)
                 .HasPrecision(18, 2);
 
-            // Configure decimal precision for FinanceDbSummary (used in SQL queries)
-            modelBuilder.Entity<LifeSyncAI.Core.DTO.Output.Finance.FinanceDbSummary>(entity =>
-            {
-                entity.HasNoKey();
-                entity.Property(e => e.Balance).HasPrecision(18, 2);
-                entity.Property(e => e.TotalExpense).HasPrecision(18, 2);
-                entity.Property(e => e.TotalIncome).HasPrecision(18, 2);
-            });
+            // Configure Foreign Key relationships with cascade delete
+            modelBuilder.Entity<PlannerEvent>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Transaction>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<HealthLog>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JobApplication>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(j => j.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VaultItem>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AiRecommendation>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RecurringItem>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override int SaveChanges()
