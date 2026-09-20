@@ -64,7 +64,24 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<bool>.Fail("User not found.");
             }
 
+            var adminEnvEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+            bool isSystemAdmin = string.Equals(user.Email, "gdarshil1203@gmail.com", StringComparison.OrdinalIgnoreCase) ||
+                                 (!string.IsNullOrWhiteSpace(adminEnvEmail) && string.Equals(user.Email, adminEnvEmail, StringComparison.OrdinalIgnoreCase)) ||
+                                 user.Role == UserRole.Admin;
+
+            if (isSystemAdmin && status == UserStatus.Inactive)
+            {
+                return ApiResponse<bool>.Fail("Cannot disable an Administrator account.");
+            }
+
             user.Status = status;
+            if (status == UserStatus.Inactive)
+            {
+                // Invalidate active session / refresh token immediately
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+            }
+
             user.UpdatedAt = DateTime.UtcNow;
             user.UpdatedBy = updatedBy;
 
@@ -79,8 +96,9 @@ namespace LifeSyncAI.Core.Services
 
             try
             {
+                var adminEnvEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
                 var query = _context.Users
-                    .Where(u => u.Email != "gdarshil1203@gmail.com");
+                    .Where(u => u.Email != "gdarshil1203@gmail.com" && (string.IsNullOrEmpty(adminEnvEmail) || u.Email != adminEnvEmail));
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
@@ -127,7 +145,11 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<bool>.Fail("User not found.");
             }
 
-            if (user.Email == "gdarshil1203@gmail.com")
+            var adminEnvEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+            bool isSystemAdmin = string.Equals(user.Email, "gdarshil1203@gmail.com", StringComparison.OrdinalIgnoreCase) ||
+                                 (!string.IsNullOrWhiteSpace(adminEnvEmail) && string.Equals(user.Email, adminEnvEmail, StringComparison.OrdinalIgnoreCase));
+
+            if (isSystemAdmin)
             {
                 return ApiResponse<bool>.Fail("Cannot delete the System Admin.");
             }
@@ -201,7 +223,11 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<bool>.Fail("User not found.");
             }
 
-            if (user.Email == "gdarshil1203@gmail.com")
+            var adminEnvEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+            bool isSystemAdmin = string.Equals(user.Email, "gdarshil1203@gmail.com", StringComparison.OrdinalIgnoreCase) ||
+                                 (!string.IsNullOrWhiteSpace(adminEnvEmail) && string.Equals(user.Email, adminEnvEmail, StringComparison.OrdinalIgnoreCase));
+
+            if (isSystemAdmin)
             {
                 return ApiResponse<bool>.Fail("Cannot modify the role of the System Admin.");
             }

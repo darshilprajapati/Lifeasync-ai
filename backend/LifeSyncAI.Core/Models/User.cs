@@ -14,7 +14,7 @@ namespace LifeSyncAI.Core.Models
         public string? ProfilePhoto { get; set; }
         
         public UserRole Role { get; set; } = UserRole.User;
-        public UserStatus Status { get; set; } = UserStatus.Pending;
+        public UserStatus Status { get; set; } = UserStatus.Active;
 
         // JWT Refresh Token fields
         public string? RefreshToken { get; set; }

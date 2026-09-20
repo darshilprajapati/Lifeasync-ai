@@ -1,0 +1,502 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-09-20 17:28:14",
+  "containerVersion": {
+    "path": "accounts/6000000000/containers/264022022/versions/0",
+    "accountId": "6000000000",
+    "containerId": "264022022",
+    "containerVersionId": "0",
+    "container": {
+      "path": "accounts/6000000000/containers/264022022",
+      "accountId": "6000000000",
+      "containerId": "264022022",
+      "name": "LifeSync AI",
+      "publicId": "GTM-WC9DPPQM",
+      "usageContext": [
+        "WEB"
+      ],
+      "fingerprint": "1789925294398",
+      "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6000000000/containers/264022022/workspaces?apiLink=container",
+      "features": {
+        "supportUserPermissions": true,
+        "supportEnvironments": true,
+        "supportWorkspaces": true,
+        "supportGtagConfigs": false,
+        "supportBuiltInVariables": true,
+        "supportClients": false,
+        "supportFolders": true,
+        "supportTags": true,
+        "supportTemplates": true,
+        "supportTriggers": true,
+        "supportVariables": true,
+        "supportVersions": true,
+        "supportZones": true,
+        "supportTransformations": false
+      },
+      "tagIds": [
+        "GTM-WC9DPPQM"
+      ]
+    },
+    "tag": [
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "tagId": "1",
+        "name": "Google Tag - GA4 Measurement",
+        "type": "googtag",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "tagId",
+            "value": "G-ZD2BJPZRWN"
+          }
+        ],
+        "fingerprint": "1789925294400",
+        "firingTriggerId": [
+          "2147479573"
+        ],
+        "parentFolderId": "1",
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "tagId": "2",
+        "name": "GA4 Event - Navigation Views",
+        "type": "gaawe",
+        "parameter": [
+          {
+            "type": "BOOLEAN",
+            "key": "sendEcommerceData",
+            "value": "false"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enhancedUserId",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "{{_event}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "measurementIdOverride",
+            "value": "G-ZD2BJPZRWN"
+          },
+          {
+            "type": "LIST",
+            "key": "eventSettingsTable",
+            "list": [
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "page_path"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - page_path}}"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1789925294401",
+        "firingTriggerId": [
+          "100"
+        ],
+        "parentFolderId": "1",
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "tagId": "3",
+        "name": "GA4 Event - Actions",
+        "type": "gaawe",
+        "parameter": [
+          {
+            "type": "BOOLEAN",
+            "key": "sendEcommerceData",
+            "value": "false"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enhancedUserId",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "{{_event}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "measurementIdOverride",
+            "value": "G-ZD2BJPZRWN"
+          },
+          {
+            "type": "LIST",
+            "key": "eventSettingsTable",
+            "list": [
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "module"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - module}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "action"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - action}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "method"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - method}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "item_type"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - item_type}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "frequency"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dlv - frequency}}"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1789925294402",
+        "firingTriggerId": [
+          "101"
+        ],
+        "parentFolderId": "1",
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      }
+    ],
+    "trigger": [
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "triggerId": "100",
+        "name": "Custom Event - Navigation Route Views",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "^(dashboard_view|planner_view|finance_view|health_view|career_view|vault_view|ai_insights_view|profile_view|admin_panel_view|login_view|register_view|forgot_password_view)$"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1789925294499",
+        "parentFolderId": "1"
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "triggerId": "101",
+        "name": "Custom Event - LifeSync User Actions",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "^(login|sign_up|logout|planner_event_created|planner_event_updated|planner_event_deleted|transaction_created|transaction_deleted|recurring_item_created|recurring_item_deleted|recurring_item_paid|health_log_created|health_log_deleted|wellness_forecast_generated|job_application_created|job_application_updated|job_application_deleted|vault_item_created|vault_item_deleted|ai_insight_generated|ai_insight_viewed|report_generated|profile_updated|password_reset|companion_message_sent|admin_user_approved|admin_user_status_toggled|admin_user_role_toggled|admin_password_reset|admin_user_deleted)$"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1789925294500",
+        "parentFolderId": "1"
+      }
+    ],
+    "variable": [
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "1",
+        "name": "dlv - module",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "module"
+          }
+        ],
+        "fingerprint": "1789925294600",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "2",
+        "name": "dlv - action",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "action"
+          }
+        ],
+        "fingerprint": "1789925294601",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "3",
+        "name": "dlv - method",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "method"
+          }
+        ],
+        "fingerprint": "1789925294602",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "4",
+        "name": "dlv - item_type",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "item_type"
+          }
+        ],
+        "fingerprint": "1789925294603",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "5",
+        "name": "dlv - frequency",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "frequency"
+          }
+        ],
+        "fingerprint": "1789925294604",
+        "parentFolderId": "1",
+        "formatValue": {}
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "variableId": "6",
+        "name": "dlv - page_path",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "page_path"
+          }
+        ],
+        "fingerprint": "1789925294605",
+        "parentFolderId": "1",
+        "formatValue": {}
+      }
+    ],
+    "folder": [
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "folderId": "1",
+        "name": "LifeSync Analytics",
+        "fingerprint": "1789925294700"
+      }
+    ],
+    "builtInVariable": [
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "type": "PAGE_URL",
+        "name": "Page URL"
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "type": "PAGE_PATH",
+        "name": "Page Path"
+      },
+      {
+        "accountId": "6000000000",
+        "containerId": "264022022",
+        "type": "EVENT",
+        "name": "Event"
+      }
+    ],
+    "fingerprint": "1789925294398",
+    "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6000000000/containers/264022022/workspaces?apiLink=version"
+  }
+}

@@ -106,7 +106,7 @@ const AdminPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 0) {
+    if (activeTab === 1) {
       fetchPendingUsers();
     } else {
       fetchAllUsers();
@@ -141,7 +141,7 @@ const AdminPanel: React.FC = () => {
       const res = await apiClient.post(`/api/users/${user.id}/status`, nextStatus);
       if (res.data.isSuccess) {
         trackAction('admin_user_status_toggled', { module: 'admin', action: 'toggle_status' });
-        setSuccessMsg(`User account status updated successfully to ${nextStatus === 2 ? 'Active' : 'Inactive'}.`);
+        setSuccessMsg(`User account status updated successfully to ${nextStatus === 2 ? 'Active (Enabled)' : 'Disabled'}.`);
         setAllUsers((prev) =>
           prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === 2 ? 'Active' : 'Inactive' } : u))
         );
@@ -294,14 +294,14 @@ const AdminPanel: React.FC = () => {
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)} textColor="inherit" sx={{ '& .MuiTabs-indicator': { backgroundColor: 'var(--accent-primary)' } }}>
+            <Tab label="User Directory" sx={{ fontWeight: 600, textTransform: 'none' }} />
             <Tab label="Pending Approvals" sx={{ fontWeight: 600, textTransform: 'none' }} />
-            <Tab label="All User Accounts" sx={{ fontWeight: 600, textTransform: 'none' }} />
           </Tabs>
         </Box>
 
         <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '500px', display: 'flex', flexDirection: 'column', p: 2 }}>
           <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {activeTab === 0 ? (
+            {activeTab === 1 ? (
               // PENDING REGISTRATIONS QUEUE
               <>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
@@ -447,8 +447,8 @@ const AdminPanel: React.FC = () => {
                               </TableCell>
                               <TableCell>
                                 <Chip
-                                  label={user.status}
-                                  color={user.status === 'Active' ? 'success' : user.status === 'Pending' ? 'warning' : 'default'}
+                                  label={user.status === 'Active' ? 'Active' : user.status === 'Pending' ? 'Pending' : 'Disabled'}
+                                  color={user.status === 'Active' ? 'success' : user.status === 'Pending' ? 'warning' : 'error'}
                                   size="small"
                                   sx={{ fontWeight: 600 }}
                                 />
@@ -464,7 +464,7 @@ const AdminPanel: React.FC = () => {
                                     onClick={() => handleToggleStatus(user)}
                                     sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
                                   >
-                                    {user.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                    {user.status === 'Active' ? 'Disable' : 'Enable'}
                                   </Button>
                                   <Button
                                     variant="outlined"

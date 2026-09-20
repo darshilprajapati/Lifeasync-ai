@@ -38,7 +38,7 @@ const Register: React.FC = () => {
       setPassword('');
       setTimeout(() => {
         navigate('/login');
-      }, 5000);
+      }, 2000);
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
     } finally {
@@ -221,7 +221,7 @@ const Register: React.FC = () => {
                 Join LifeSync
               </Typography>
               <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 4 }}>
-                Create your account. Administrator approval required.
+                Create your account to get started immediately.
               </Typography>
 
               {error && (
@@ -357,7 +357,7 @@ const Register: React.FC = () => {
                       },
                     }}
                   >
-                    {submitting ? 'Submitting...' : 'Submit Application'}
+                    {submitting ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </Box>
               </form>

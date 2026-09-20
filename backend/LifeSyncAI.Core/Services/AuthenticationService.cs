@@ -101,7 +101,7 @@ namespace LifeSyncAI.Core.Services
                         Email = targetEmail,
                         PasswordHash = PasswordHasher.HashPassword(dto.Password),
                         Role = UserRole.User,          // Normal user registration
-                        Status = UserStatus.Pending,   // Requires administrator approval
+                        Status = UserStatus.Active,    // Active immediately upon registration
                         CreatedAt = DateTime.UtcNow,
                         CreatedBy = "SelfRegistration"
                     };
@@ -115,7 +115,7 @@ namespace LifeSyncAI.Core.Services
                     }
 
                     var userDto = MapToDto(newUser);
-                    return ApiResponse<UserDto>.Success(userDto, "Registration request submitted. Account is pending administrator approval.");
+                    return ApiResponse<UserDto>.Success(userDto, "Account created successfully. You can now log in.");
                 }
                 catch
                 {
@@ -149,14 +149,9 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<(UserDto, string, string)>.Fail("Invalid email or password.");
             }
 
-            if (user.Status == UserStatus.Pending)
-            {
-                return ApiResponse<(UserDto, string, string)>.Fail("Your account is pending administrator approval.");
-            }
-
             if (user.Status == UserStatus.Inactive)
             {
-                return ApiResponse<(UserDto, string, string)>.Fail("Your account has been deactivated. Please contact support.");
+                return ApiResponse<(UserDto, string, string)>.Fail("Your account has been disabled by an administrator.");
             }
 
             // Retrieve JWT configurations
@@ -209,7 +204,7 @@ namespace LifeSyncAI.Core.Services
 
             if (user.Status != UserStatus.Active)
             {
-                return ApiResponse<(string, string)>.Fail("User status is no longer active.");
+                return ApiResponse<(string, string)>.Fail("Your account has been disabled by an administrator.");
             }
 
             // Generate new rotated tokens

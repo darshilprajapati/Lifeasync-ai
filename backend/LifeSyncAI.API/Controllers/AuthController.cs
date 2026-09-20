@@ -120,6 +120,12 @@ namespace LifeSyncAI.API.Controllers
                 return NotFound(result);
             }
 
+            if (result.Data.Status == "Inactive")
+            {
+                ClearTokenCookies();
+                return Unauthorized(ApiResponse<UserDto>.Fail("Your account has been disabled by an administrator."));
+            }
+
             return Ok(result);
         }
 
