@@ -22,7 +22,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
-      text: "Hey! 🤖 I'm your LifeSync AI Companion. Tell me how your day is going, or ask me for a roast, joke, or flirt! What's up?",
+      text: "Hi! 👋 I'm the LifeSync AI Assistant. I can help you understand LifeSync AI, explore features, explain workflows, and answer questions about the app. What would you like to know?",
       timestamp: new Date()
     }
   ]);
@@ -46,7 +46,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
       setMessages([
         {
           sender: 'bot',
-          text: "Hey! 🤖 I'm your LifeSync AI Companion. Tell me how your day is going, or ask me for a roast, joke, or flirt! What's up?",
+          text: "Hi! 👋 I'm the LifeSync AI Assistant. I can help you understand LifeSync AI, explore features, explain workflows, and answer questions about the app. What would you like to know?",
           timestamp: new Date()
         }
       ]);
@@ -104,6 +104,8 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
         return { color: '#9C27B0', emoji: '💅', glow: 'rgba(156, 39, 176, 0.25)' };
       case 'Financial Roast':
         return { color: '#E85A4F', emoji: '💸', glow: 'rgba(232, 90, 79, 0.25)' };
+      case 'Analytical':
+        return { color: '#00897B', emoji: '📊', glow: 'rgba(0, 137, 123, 0.25)' };
       default:
         return { color: '#8E8D8A', emoji: '🤖', glow: 'rgba(142, 141, 138, 0.25)' };
     }
@@ -143,7 +145,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <ChatIcon sx={{ color: 'var(--accent-primary)', fontSize: 24 }} />
           <Typography variant="h6" sx={{ fontWeight: 700, color: '#2D2D2D', fontSize: '16px' }}>
-            LifeSync Companion
+            LifeSync AI Assistant
           </Typography>
         </Stack>
         <IconButton onClick={onClose} size="small" sx={{ color: '#8D8D8D' }}>
@@ -218,7 +220,7 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
           style={{ display: 'flex', gap: '8px' }}
         >
           <TextField
-            placeholder="Type message, ask a joke..."
+            placeholder="Ask about features, workflows, help..."
             fullWidth
             size="small"
             value={inputValue}

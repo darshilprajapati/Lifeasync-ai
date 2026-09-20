@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using LifeSyncAI.Core.Database;
 using LifeSyncAI.Core.Responses;
 using LifeSyncAI.Core.Models;
+using LifeSyncAI.Core.Services;
 
 namespace LifeSyncAI.API.Controllers
 {
@@ -25,112 +26,6 @@ namespace LifeSyncAI.API.Controllers
 
         // Thread-safe session storage to hold active conversation states for each user
         private static readonly ConcurrentDictionary<int, ChatSession> _sessions = new ConcurrentDictionary<int, ChatSession>();
-
-        // Reusable static fallback routing rules mapping keywords to responsive answers
-        private static readonly List<ConversationalRule> FallbackRules = new List<ConversationalRule>
-        {
-            new ConversationalRule(
-                m => (m.Contains("score") || m.Contains("life")) && (m.Contains("increase") || m.Contains("improve") || m.Contains("boost") || m.Contains("better") || m.Contains("how")),
-                ctx => {
-                    var suggestions = new List<string>();
-                    if (ctx.Water < 2000) suggestions.Add($"💧 Drink more water (you have logged only {ctx.Water}ml today, target is 2000ml)");
-                    if (ctx.Workout < 30) suggestions.Add($"🏋️ Log exercise or workout (logged {ctx.Workout} minutes today)");
-                    if (ctx.Sleep < 8) suggestions.Add($"💤 Aim for 7-8 hours of sleep (logged {ctx.Sleep} hours today)");
-                    if (ctx.Steps < 10000) suggestions.Add($"🚶 Get more steps (logged {ctx.Steps} steps today)");
-                    if (ctx.PendingTasks > 0) suggestions.Add($"📅 Complete tasks from your Planner (you have {ctx.PendingTasks} pending tasks)");
-                    if (ctx.Balance <= 0) suggestions.Add($"💰 Log your transactions to improve net positive balance (current balance: ${ctx.Balance:N2})");
-
-                    if (suggestions.Count > 0)
-                    {
-                        return $"Your current Life Score is **{ctx.LifeScore}/100**. Here are the best ways to boost it today:\n\n" + string.Join("\n", suggestions.Take(3).Select(s => $"- {s}")) + $"\n\nSmall daily changes lead to huge momentum, {ctx.UserName}! Which one will you start with?";
-                    }
-                    return $"Incredible job, {ctx.UserName}! Your Life Score is a perfect **{ctx.LifeScore}/100**! All your healthy habits and tasks are synced. Keep up this amazing momentum!";
-                },
-                "Supportive", "score"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "earn", "salary", "job", "career", "income", "money", "rich", "save", "spending", "savings", "investment", "investing"),
-                ctx => {
-                    var suggestions = new List<string>();
-                    if (ctx.Balance <= 0)
-                    {
-                        suggestions.Add($"Keep a net positive budget inside your **Finance** logs (your current net balance is ${ctx.Balance:N2}).");
-                    }
-                    suggestions.Add("Apply to career postings and track updates under the **Career** dashboard to manage applications efficiently.");
-                    suggestions.Add("Tackle high-priority tasks in your **Planner** to build skills and productivity routines.");
-
-                    return $"To optimize your finances and grow your earnings, {ctx.UserName}, focus on tracking and execution:\n\n" + string.Join("\n", suggestions.Select((s, i) => $"{i+1}. {s}")) + "\n\nChecking your Planner or Career application tracker is a great place to start!";
-                },
-                "Analytical", "finance"
-            ),
-            new ConversationalRule(
-                m => (HasExactWord(m, "don't", "not", "no", "stop", "exit", "cancel") && HasExactWord(m, "game", "play", "games")) || HasExactWord(m, "exit", "stop"),
-                ctx => $"No worries at all, {ctx.UserName}! We'll keep it strictly conversational. Tell me, what else is on your mind? Are you working on a project, or did you want to review some of your logged statistics?",
-                "Supportive", "none"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "nervous", "anxious", "stressed", "scared", "fear", "worry", "worried", "anxiety", "tension"),
-                ctx => $"It is completely natural to feel nervous or stressed, {ctx.UserName}. 🫂 Take a slow, deep breath. Rushing through your task list won't help ease the tension. Try to pick just one tiny, manageable item to focus on, or close your screen and step away for a few minutes. You don't have to figure out everything right now. I'm right here with you. What is causing you the most tension today?",
-                "Supportive", "feeling"
-            ),
-            new ConversationalRule(
-                m => m.Contains("broke up") || m.Contains("breakup") || HasExactWord(m, "relationship", "heartbroken", "divorce", "alone"),
-                ctx => $"I'm so sorry to hear that, {ctx.UserName}. 🫂 Going through a breakup is emotionally exhausting, and it is completely normal to feel distracted, hurt, or empty right now. Please be gentle with yourself. Don't worry about keeping up with perfect habits, schedules, or productivity goals today. Healing takes time. Take a deep breath, do something kind for yourself, and take it one hour at a time. Your emotional well-being is far more important than any score.",
-                "Supportive", "feeling"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "fail", "failed", "failure", "lost", "mistake", "error", "screwed", "ruined"),
-                ctx => $"Please don't be discouraged, {ctx.UserName}. Failure is not a reflection of your worth—it's simply feedback. Every developer, designer, and successful person has hit dead ends, failed milestones, and made mistakes. It's how we grow. Take a breath, analyze what went wrong without judging yourself, and pivot when you feel ready. I'm here to help you reorganize and try again. You've got this!",
-                "Supportive", "feeling"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "motivation", "motivate", "inspirational", "inspire", "encouragement", "cheer"),
-                ctx => $"Motivation gets you started, {ctx.UserName}, but consistent daily routines are what keep you moving forward. You don't need a huge wave of inspiration to make progress—you just need to take one tiny step. Look at your planner, tick off one quick task, or log a simple glass of water. Small wins build momentum. I believe in you, and I'm here to help you track your journey. Let's make progress together, one small win at a time!",
-                "Supportive", "feeling"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "hi", "hii", "hiii", "hello", "hey", "yo", "sup", "greetings"),
-                ctx => $"Hey {ctx.UserName}! 😊 Hope you're doing well today. I'm here as your conversational AI companion—we can chat about programming, discuss design patterns, review your LifeSync metrics, or play a quick game. What's on your mind today?",
-                "Friendly", "greeting"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "react", "reactjs", "dotnet", "core", "c#", "csharp", "javascript", "code", "coding", "project", "build", "programming", "developer", "api", "database", "sql"),
-                ctx => $"Building a full-stack project with ReactJS and .NET Core is an outstanding architectural choice! React handles the user interface beautifully via rich state management (like Redux or Zustand), while .NET Core serves as a high-performance backend, making EF Core database queries and API routing extremely fast.\n\nAre you currently working on setting up your API endpoints and controllers, connecting the frontend Axios client, or writing database schemas? Tell me a bit about your project structure—I can help you review code snippets or map out endpoints!",
-                "Friendly", "coding"
-            ),
-            new ConversationalRule(
-                m => m.Contains("doing") || HasExactWord(m, "who", "what") && m.Contains("you") || m.Contains("feeling") || HasExactWord(m, "feel") || m.Contains("how are you") || m.Contains("how is you"),
-                ctx => $"I'm running smoothly as your LifeSync AI Companion! 🚀 As an AI, I don't experience physical fatigue or emotions, but seeing you organize your planner and hit your health goals keeps my systems fully optimized!\n\nI'm currently scanning your active modules to see if there's any statistics or logs we should go over. How are you holding up today? Are you feeling productive, or just taking things one step at a time?",
-                "Supportive", "feeling"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "bored", "game", "play", "games", "time pass", "timepass"),
-                ctx => $"If you're looking to take a quick break, I've got three text-based mini-games to help you pass the time:\n\n1. **Guess the Number** 🎲 (type 'guess')\n2. **Wellness & Productivity Quiz** 🏆 (type 'quiz')\n3. **The LifeSync Quest RPG** 🚀 (type 'quest')\n\nWhich one would you like to launch, {ctx.UserName}?",
-                "Funny", "game"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "task", "tasks", "planner", "todo", "schedule", "event", "events"),
-                ctx => ctx.UpcomingTasks.Any()
-                    ? $"Here is the latest from your Planner, {ctx.UserName}. You currently have **{ctx.PendingTasks}** pending tasks. Your next three upcoming items:\n\n" + string.Join("\n", ctx.UpcomingTasks.Select((e, i) => $"{i + 1}. **{e.Title}** (Starts: {e.StartTime.ToLocalTime():g})")) + "\n\nToggling these off will give your productivity metrics a great boost! What's your plan for tackling them?"
-                    : $"Your planner is completely clear, {ctx.UserName}! 🌟 You have 0 pending tasks logged right now. Great job keeping your schedule clean!",
-                "Friendly", "data"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "balance", "transaction", "transactions", "spent", "expense", "expenses", "income", "money", "finance", "finances"),
-                ctx => {
-                    var recentText = ctx.RecentTransactions.Any() 
-                        ? string.Join("\n", ctx.RecentTransactions.Select(t => $"- {t.Description}: {(t.Type == "Expense" ? "-" : "+")}${t.Amount}"))
-                        : "No recent transactions found.";
-                    return $"Checking your wallet logs! 💰 Your net balance stands at **${ctx.Balance:N2}**.\nToday's expenses: **${ctx.ExpensesToday:N2}**.\n\nYour 3 most recent transactions:\n{recentText}\n\nStaying consistent with your expense logs is one of the best ways to hit your savings goals. Are you tracking a specific monthly budget right now?";
-                },
-                "Analytical", "data"
-            ),
-            new ConversationalRule(
-                m => HasExactWord(m, "water", "sleep", "step", "steps", "workout", "workouts", "health", "habit", "habits"),
-                ctx => $"Here is your daily wellness scorecard, {ctx.UserName}:\n\n💧 **Water Intake**: {ctx.Water}ml logged\n💤 **Sleep Duration**: {ctx.Sleep} hours logged\n🚶 **Steps Taken**: {ctx.Steps} steps logged\n🏋️ **Workout Time**: {ctx.Workout} minutes logged\n\nStaying hydrated and getting 7-9 hours of sleep are vital for cognitive performance—especially during coding sessions! How are you feeling physically today?",
-                "Supportive", "data"
-            )
-        };
 
         public CompanionController(ApplicationDbContext context)
         {
@@ -159,7 +54,7 @@ namespace LifeSyncAI.API.Controllers
 
             var session = _sessions.GetOrAdd(userId, _ => new ChatSession());
             var message = dto.Message.Trim();
-            var messageLower = message.ToLower();
+            var messageLower = message.ToLowerInvariant();
             var clientDateStr = Request.Headers["X-Client-Date"].ToString();
             var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
             var today = clientDate.Date;
@@ -229,9 +124,7 @@ namespace LifeSyncAI.API.Controllers
 
             var recentAppsText = recentApps.Any() 
                 ? string.Join(", ", recentApps.Select(a => $"{a.Position} at {a.Company} ({a.Status})"))
-                : "No applications logged yet.";
-
-            var vaultCount = await _context.VaultItems.Where(v => v.UserId == userId).CountAsync();
+                : "No job applications logged yet.";
 
             var rec = await _context.AiRecommendations
                 .Where(r => r.UserId == userId)
@@ -275,11 +168,46 @@ namespace LifeSyncAI.API.Controllers
 
             int lifeScore = Math.Max(0, Math.Min(100, (int)Math.Round(score)));
 
+            var userContext = new AssistantUserContext
+            {
+                UserName = userName,
+                Water = (int)waterToday,
+                Sleep = (int)sleepToday,
+                Steps = (int)stepsToday,
+                Workout = (int)workoutToday,
+                PendingTasks = pendingTasks,
+                Balance = balance,
+                ExpensesToday = expensesToday,
+                UpcomingTasks = upcomingTasks,
+                RecentTransactions = recentTransactions,
+                LifeScore = lifeScore,
+                RecentApplicationsSummary = recentAppsText,
+                LatestAiRecommendation = latestInsight
+            };
+
+            // Natural Language Understanding & Entity Extraction
+            var intentResult = LifeSyncAssistantEngine.DetectIntentAndEntity(message, session.LastEntity);
+            if (!string.IsNullOrEmpty(intentResult.TargetEntity))
+            {
+                session.LastEntity = intentResult.TargetEntity;
+            }
+
+            // Strict Security Guardrail
+            if (intentResult.Intent == AssistantIntent.SecurityAttempt)
+            {
+                return Ok(ApiResponse<CompanionResponseDto>.Success(new CompanionResponseDto
+                {
+                    Reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext),
+                    Mood = "Analytical",
+                    LifeScore = lifeScore
+                }, "Response generated."));
+            }
+
             string reply = "";
             string mood = "Friendly";
 
             // ----------------------------------------------------
-            // 1. GAME ACTIVE STATES (SESSION STATE ROUTING)
+            // 1. MINI-GAMES / INTERACTIVE SESSIONS
             // ----------------------------------------------------
             if (session.ActiveGame == "guess_number")
             {
@@ -421,13 +349,35 @@ namespace LifeSyncAI.API.Controllers
                     }
                 }
             }
+            else if (messageLower == "guess" || messageLower == "guess the number")
+            {
+                session.ActiveGame = "guess_number";
+                session.GameTargetNumber = new Random().Next(1, 51);
+                session.GameGuessesCount = 0;
+                reply = "🎲 I've picked a secret number between 1 and 50. Type your guess (or type 'exit' to quit)!";
+                mood = "Friendly";
+            }
+            else if (messageLower == "quiz")
+            {
+                session.ActiveGame = "quiz";
+                session.QuizScore = 0;
+                session.QuizQuestionIndex = 1;
+                reply = "🏆 Starting the Wellness & Productivity Quiz!\n\nQuestion 1:\nHow many hours of sleep are generally recommended for optimal cognitive recovery?\n\nA) 4-5 hours\nB) 7-9 hours\nC) 11-12 hours\n\n(Type A, B, or C, or 'exit' to quit)";
+                mood = "Friendly";
+            }
+            else if (messageLower == "quest" || messageLower == "rpg")
+            {
+                session.ActiveGame = "rpg";
+                session.RpgChapter = 1;
+                reply = "🚀 Welcome to the LifeSync Quest RPG!\nChoose your starting domain path:\n1) Path of the Planner\n2) Path of Finance\n3) Path of Health\n\n(Type 1, 2, or 3, or 'exit' to quit)";
+                mood = "Friendly";
+            }
             // ----------------------------------------------------
-            // 2. REAL-TIME LLM CONVERSATION INTERACTION
+            // 2. CONVERSATIONAL ASSISTANT INTERACTION
             // ----------------------------------------------------
             else
             {
-                var systemInstructions = $"You are the LifeSync AI Companion, a warm, supportive, and realistic companion. User name is {userName}. If the user asks how to increase their life score or improve metrics (e.g. 'how to earn more', 'how to increase score', 'what should I do next', 'how to increase it'), analyze today's statistics context below and provide specific, actionable suggestions based on their low metrics (e.g., suggesting drinking water if under 2000ml, logging exercise if workout is under 30m, completing pending tasks in the planner, or applying to jobs/managing budgets in career/finance modules to earn more). If the user is bored, suggest games ('guess' for Guess the Number, 'quiz' for Quiz, 'quest' for RPG Quest). If sad/depressed/breakup/failed, show deep empathy. Do NOT output role prefixes like 'Companion:' or 'Assistant:' in your responses.\n\n" +
-                                         $"User statistics context today: Life Score: {lifeScore}/100, pending tasks: {pendingTasks}, balance: ${balance:N2}, expenses today: ${expensesToday:N2}, water: {waterToday}ml, sleep: {sleepToday}h, steps: {stepsToday}, active: {workoutToday}m, vault count: {vaultCount}, career apps: {recentAppsText}, AI recommendation: \"{latestInsight}\".";
+                var systemInstructions = LifeSyncAssistantEngine.BuildSystemPrompt(userName, userContext);
 
                 var messages = new List<object>
                 {
@@ -451,17 +401,20 @@ namespace LifeSyncAI.API.Controllers
                         reply = reply.Substring("Companion:".Length).Trim();
                     if (reply.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase))
                         reply = reply.Substring("Assistant:".Length).Trim();
+                    if (reply.StartsWith("LifeSync AI Assistant:", StringComparison.OrdinalIgnoreCase))
+                        reply = reply.Substring("LifeSync AI Assistant:".Length).Trim();
                     if (reply.StartsWith("User:", StringComparison.OrdinalIgnoreCase))
                         reply = reply.Substring("User:".Length).Trim();
+
+                    if (string.IsNullOrWhiteSpace(reply))
+                    {
+                        reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext);
+                    }
 
                     // Infer simple mood from response contents
                     var lowerReply = reply.ToLower();
                     if (lowerReply.Contains("sorry") || lowerReply.Contains("hug") || lowerReply.Contains("breathe") || lowerReply.Contains("comfort"))
                         mood = "Supportive";
-                    else if (lowerReply.Contains("cute") || lowerReply.Contains("match") || lowerReply.Contains("gorgeous") || lowerReply.Contains("😉"))
-                        mood = "Flirty";
-                    else if (lowerReply.Contains("haha") || lowerReply.Contains("joke") || lowerReply.Contains("lol") || lowerReply.Contains("😂"))
-                        mood = "Funny";
                     else if (lowerReply.Contains("analyze") || lowerReply.Contains("stats") || lowerReply.Contains("balance") || lowerReply.Contains("report"))
                         mood = "Analytical";
                     else
@@ -477,41 +430,24 @@ namespace LifeSyncAI.API.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"LLM endpoint failed: {ex.Message}. Falling back to rule-based dialog matcher.");
+                    Console.WriteLine($"LLM endpoint error: {ex.Message}. Falling back to LifeSyncAssistantEngine deterministic response.");
 
-                    // FAULT TOLERANCE FALLBACK (Optimized declarative rule mapping)
-                    var fallbackCtx = new FallbackContext
+                    reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext);
+                    mood = intentResult.Intent switch
                     {
-                        UserName = userName,
-                        Water = (int)waterToday,
-                        Sleep = (int)sleepToday,
-                        Steps = (int)stepsToday,
-                        Workout = (int)workoutToday,
-                        PendingTasks = pendingTasks,
-                        Balance = balance,
-                        ExpensesToday = expensesToday,
-                        UpcomingTasks = upcomingTasks,
-                        RecentTransactions = recentTransactions,
-                        LifeScore = lifeScore
+                        AssistantIntent.CasualGreeting => "Friendly",
+                        AssistantIntent.CreatorInformation => "Friendly",
+                        AssistantIntent.ReportExport => "Analytical",
+                        AssistantIntent.SecurityAttempt => "Analytical",
+                        AssistantIntent.SecurityHelp => "Analytical",
+                        _ => "Supportive"
                     };
 
-                    var matchedRule = FallbackRules.FirstOrDefault(rule => rule.Match(messageLower));
-                    if (matchedRule != null)
+                    session.History.Add(new LlmChatMessage { Role = "user", Content = message });
+                    session.History.Add(new LlmChatMessage { Role = "assistant", Content = reply });
+                    if (session.History.Count > 16)
                     {
-                        reply = matchedRule.GetReply(fallbackCtx);
-                        mood = matchedRule.Mood;
-                        session.LastTopic = matchedRule.Topic;
-                    }
-                    else
-                    {
-                        var generalReplies = new[]
-                        {
-                            $"That makes a lot of sense, {userName}. Full-stack development and daily productivity definitely require a lot of focus and mental energy. How are you thinking of structuring this part of your routine?",
-                            $"I hear you! 😊 What's the biggest challenge you're facing with your goals or your codebase right now? I'd love to help you brainstorm solutions.",
-                            $"Interesting perspective! Tell me a bit more about that, {userName}. By the way, let me know if you want to check your logs or just chat code."
-                        };
-                        reply = generalReplies[new Random().Next(generalReplies.Length)];
-                        session.LastTopic = "none";
+                        session.History.RemoveRange(0, session.History.Count - 16);
                     }
                 }
             }
@@ -546,49 +482,11 @@ namespace LifeSyncAI.API.Controllers
             }
         }
 
-        private static bool HasExactWord(string messageLower, params string[] targetWords)
-        {
-            var words = messageLower.Split(new[] { ' ', '?', '!', ',', '.', '-', '_', '/' }, StringSplitOptions.RemoveEmptyEntries);
-            return targetWords.Any(tw => words.Contains(tw));
-        }
-
         private int GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(claim, out var id) ? id : 0;
         }
-    }
-
-    // Helper classes for optimized declarative dialog rules
-    internal class ConversationalRule
-    {
-        public Func<string, bool> Match { get; }
-        public Func<FallbackContext, string> GetReply { get; }
-        public string Mood { get; }
-        public string Topic { get; }
-
-        public ConversationalRule(Func<string, bool> match, Func<FallbackContext, string> getReply, string mood, string topic)
-        {
-            Match = match;
-            GetReply = getReply;
-            Mood = mood;
-            Topic = topic;
-        }
-    }
-
-    internal class FallbackContext
-    {
-        public string UserName { get; set; } = string.Empty;
-        public int Water { get; set; }
-        public int Sleep { get; set; }
-        public int Steps { get; set; }
-        public int Workout { get; set; }
-        public int PendingTasks { get; set; }
-        public decimal Balance { get; set; }
-        public decimal ExpensesToday { get; set; }
-        public List<PlannerEvent> UpcomingTasks { get; set; } = new List<PlannerEvent>();
-        public List<Transaction> RecentTransactions { get; set; } = new List<Transaction>();
-        public int LifeScore { get; set; }
     }
 
     public class ChatSession
@@ -600,6 +498,7 @@ namespace LifeSyncAI.API.Controllers
         public int QuizQuestionIndex { get; set; }
         public int RpgChapter { get; set; }
         public string LastTopic { get; set; } = "none";
+        public string? LastEntity { get; set; } // Entity tracked across conversational turns
         public List<LlmChatMessage> History { get; set; } = new List<LlmChatMessage>();
     }
 
