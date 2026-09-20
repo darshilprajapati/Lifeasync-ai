@@ -27,17 +27,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Silent check: check if the user is already authenticated on app launch
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 2500);
+
     const checkAuthStatus = async () => {
       const hasToken = localStorage.getItem('lifesync_token') === 'true';
       if (!hasToken) {
-        setUser(null);
-        setLoading(false);
+        if (isMounted) {
+          clearTimeout(timeoutId);
+          setUser(null);
+          setLoading(false);
+        }
         return;
       }
 
-      const startTime = Date.now();
       try {
-        const response = await apiClient.get('/api/auth/me');
+        const response = await apiClient.get('/api/auth/me', { signal: controller.signal });
+        if (!isMounted) return;
+
         if (response.data.isSuccess) {
           setUser(response.data.data);
           localStorage.setItem('lifesync_token', 'true');
@@ -46,15 +56,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('lifesync_token');
         }
       } catch {
-        // Ignored: User is just a guest or cookies are missing/expired
+        if (!isMounted) return;
+        // Either 401 unauthenticated, aborted due to 2.5s timeout, or network error
         setUser(null);
         localStorage.removeItem('lifesync_token');
       } finally {
-        const elapsedTime = Date.now() - startTime;
-        const remainingDelay = Math.max(0, 2000 - elapsedTime);
-        setTimeout(() => {
+        clearTimeout(timeoutId);
+        if (isMounted) {
           setLoading(false);
-        }, remainingDelay);
+        }
       }
     };
 
@@ -73,6 +83,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuthStatus();
 
     return () => {
+      isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
       apiClient.interceptors.response.eject(interceptor);
     };
   }, []);
