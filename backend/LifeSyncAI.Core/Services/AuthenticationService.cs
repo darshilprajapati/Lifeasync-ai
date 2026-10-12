@@ -23,7 +23,6 @@ namespace LifeSyncAI.Core.Services
     /// </summary>
     public class AuthenticationService : IAuthenticationService
     {
-        private static readonly SemaphoreSlim _registrationLock = new(1, 1);
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
@@ -37,106 +36,76 @@ namespace LifeSyncAI.Core.Services
 
         public async Task<ApiResponse<UserDto>> RegisterAsync(RegisterDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Email))
+            {
+                return ApiResponse<UserDto>.Fail("Email is required.");
+            }
+
             var targetEmail = dto.Email.ToLower().Trim();
 
-            // 1. Internet Domain Active Check via DNS lookup (executed before locking)
-            var emailParts = targetEmail.Split('@');
-            if (emailParts.Length != 2)
+            // 1. In-memory email format validation (fast, reliable, no external DNS dependency)
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(targetEmail);
+                if (addr.Address != targetEmail || !targetEmail.Contains('.'))
+                {
+                    return ApiResponse<UserDto>.Fail("Invalid email address format.");
+                }
+            }
+            catch
             {
                 return ApiResponse<UserDto>.Fail("Invalid email address format.");
             }
-            var domain = emailParts[1];
+
+            if (string.IsNullOrWhiteSpace(dto.FullName))
+            {
+                return ApiResponse<UserDto>.Fail("Full Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
+            {
+                return ApiResponse<UserDto>.Fail("Password must be at least 6 characters long.");
+            }
+
+            // 2. Concurrency-safe duplicate email check
+            var emailExists = await _context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.Email == targetEmail);
+
+            if (emailExists)
+            {
+                return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
+            }
+
+            var newUser = new User
+            {
+                FullName = dto.FullName.Trim(),
+                Email = targetEmail,
+                PasswordHash = PasswordHasher.HashPassword(dto.Password),
+                Role = UserRole.User,          // Normal user registration
+                Status = UserStatus.Active,    // Active immediately upon registration
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "SelfRegistration"
+            };
+
+            await _context.Users.AddAsync(newUser);
 
             try
             {
-                var addresses = await System.Net.Dns.GetHostAddressesAsync(domain);
-                if (addresses == null || addresses.Length == 0)
-                {
-                    return ApiResponse<UserDto>.Fail($"The email domain '{domain}' does not exist on the internet.");
-                }
+                await _context.SaveChangesAsync();
             }
-            catch (Exception)
+            catch (DbUpdateException)
             {
-                return ApiResponse<UserDto>.Fail($"The email domain '{domain}' is invalid or does not exist on the internet.");
+                // Gracefully handle concurrent registration race conditions caught by database unique constraint
+                if (await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == targetEmail))
+                {
+                    return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
+                }
+                throw;
             }
 
-            // 2. Concurrency-Safe First-User Determination and Registration
-            await _registrationLock.WaitAsync();
-            try
-            {
-                string provider = _context.Database.ProviderName ?? string.Empty;
-                bool isPostgreSql = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
-                                    provider.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase);
-
-                IDbContextTransaction? transaction = null;
-                if (_context.Database.IsRelational())
-                {
-                    transaction = await _context.Database.BeginTransactionAsync();
-                }
-
-                try
-                {
-                    if (isPostgreSql)
-                    {
-                        // Acquire transaction-scoped PostgreSQL advisory lock (key: 746392015).
-                        // Guarantees cross-instance serialization on Neon PostgreSQL across multiple Render containers.
-                        // Automatically released upon transaction commit or rollback.
-                        await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(746392015);");
-                    }
-
-                    // Enforce strict single-registration constraints (including soft-deleted users)
-                    var emailExists = await _context.Users
-                        .IgnoreQueryFilters()
-                        .AnyAsync(u => u.Email == targetEmail);
-
-                    if (emailExists)
-                    {
-                        if (transaction != null) await transaction.RollbackAsync();
-                        return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
-                    }
-
-                    var newUser = new User
-                    {
-                        FullName = dto.FullName.Trim(),
-                        Email = targetEmail,
-                        PasswordHash = PasswordHasher.HashPassword(dto.Password),
-                        Role = UserRole.User,          // Normal user registration
-                        Status = UserStatus.Active,    // Active immediately upon registration
-                        CreatedAt = DateTime.UtcNow,
-                        CreatedBy = "SelfRegistration"
-                    };
-
-                    await _context.Users.AddAsync(newUser);
-                    await _context.SaveChangesAsync();
-
-                    if (transaction != null)
-                    {
-                        await transaction.CommitAsync();
-                    }
-
-                    var userDto = MapToDto(newUser);
-                    return ApiResponse<UserDto>.Success(userDto, "Account created successfully. You can now log in.");
-                }
-                catch
-                {
-                    if (transaction != null)
-                    {
-                        await transaction.RollbackAsync();
-                    }
-                    throw;
-                }
-                finally
-                {
-                    if (transaction != null)
-                    {
-                        await transaction.DisposeAsync();
-                    }
-                }
-            }
-            finally
-            {
-                _registrationLock.Release();
-            }
+            var userDto = MapToDto(newUser);
+            return ApiResponse<UserDto>.Success(userDto, "Account created successfully. You can now log in.");
         }
 
         public async Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> LoginAsync(LoginDto dto)

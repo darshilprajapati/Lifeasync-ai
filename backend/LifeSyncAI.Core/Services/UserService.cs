@@ -154,48 +154,43 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<bool>.Fail("Cannot delete the System Admin.");
             }
 
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            try
             {
-                try
-                {
-                    // Delete associated user data first to avoid database junk or foreign keys constraint blocks
-                    var plannerEvents = _context.PlannerEvents.Where(e => e.UserId == userId);
-                    _context.PlannerEvents.RemoveRange(plannerEvents);
+                // Delete associated user data first to avoid database junk or foreign keys constraint blocks
+                var plannerEvents = _context.PlannerEvents.Where(e => e.UserId == userId);
+                _context.PlannerEvents.RemoveRange(plannerEvents);
 
-                    var transactions = _context.Transactions.Where(t => t.UserId == userId);
-                    _context.Transactions.RemoveRange(transactions);
+                var transactions = _context.Transactions.Where(t => t.UserId == userId);
+                _context.Transactions.RemoveRange(transactions);
 
-                    var healthLogs = _context.HealthLogs.Where(l => l.UserId == userId);
-                    _context.HealthLogs.RemoveRange(healthLogs);
+                var healthLogs = _context.HealthLogs.Where(l => l.UserId == userId);
+                _context.HealthLogs.RemoveRange(healthLogs);
 
-                    var jobApps = _context.JobApplications.Where(a => a.UserId == userId);
-                    _context.JobApplications.RemoveRange(jobApps);
+                var jobApps = _context.JobApplications.Where(a => a.UserId == userId);
+                _context.JobApplications.RemoveRange(jobApps);
 
-                    var vaultItems = _context.VaultItems.Where(v => v.UserId == userId);
-                    _context.VaultItems.RemoveRange(vaultItems);
+                var vaultItems = _context.VaultItems.Where(v => v.UserId == userId);
+                _context.VaultItems.RemoveRange(vaultItems);
 
-                    var recommendations = _context.AiRecommendations.Where(r => r.UserId == userId);
-                    _context.AiRecommendations.RemoveRange(recommendations);
+                var recommendations = _context.AiRecommendations.Where(r => r.UserId == userId);
+                _context.AiRecommendations.RemoveRange(recommendations);
 
-                    var recurringItems = _context.RecurringItems.Where(r => r.UserId == userId);
-                    _context.RecurringItems.RemoveRange(recurringItems);
+                var recurringItems = _context.RecurringItems.Where(r => r.UserId == userId);
+                _context.RecurringItems.RemoveRange(recurringItems);
 
-                    // Delete the user record permanently
-                    _context.Users.Remove(user);
+                // Delete the user record permanently
+                _context.Users.Remove(user);
 
-                    // Clean up cached and physical PDF reports from server
-                    _reportRepository.DeleteByUserId(userId);
+                // Clean up cached and physical PDF reports from server
+                _reportRepository.DeleteByUserId(userId);
 
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
+                await _context.SaveChangesAsync();
 
-                    return ApiResponse<bool>.Success(true, "User account and all associated data permanently deleted.");
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    return ApiResponse<bool>.Fail($"Failed to delete user: {ex.Message}");
-                }
+                return ApiResponse<bool>.Success(true, "User account and all associated data permanently deleted.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.Fail($"Failed to delete user: {ex.Message}");
             }
         }
 

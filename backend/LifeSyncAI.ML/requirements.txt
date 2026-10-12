@@ -5,3 +5,4 @@ pyjwt[crypto]
 scikit-learn
 pandas
 numpy
+httpx

@@ -1,18 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
-import Dashboard from '../pages/Dashboard';
-import Planner from '../pages/Planner';
-import Finance from '../pages/Finance';
-import Health from '../pages/Health';
-import Career from '../pages/Career';
-import Vault from '../pages/Vault';
-import AIInsights from '../pages/AIInsights';
-import AdminPanel from '../pages/AdminPanel';
-import Profile from '../pages/Profile';
-import Login from '../pages/Login';
-import Register from '../pages/Register';
-import ForgotPassword from '../pages/ForgotPassword';
+import { Dashboard } from '../features/dashboard';
+import { Planner } from '../features/planner';
+import { Finance } from '../features/finance';
+import { Health } from '../features/health';
+import { Career } from '../features/career';
+import { Vault } from '../features/vault';
+import { AIInsights } from '../features/insights';
+import { AdminPanel } from '../features/admin';
+import { Profile } from '../features/profile';
+import { Login, Register, ForgotPassword } from '../features/auth';
 import { ProtectedRoute, GuestRoute, AdminRoute } from './RouteGuards';
 
 /**
