@@ -39,10 +39,12 @@ namespace LifeSyncAI.Core.Services
     {
         private static readonly ConcurrentDictionary<int, ChatSession> _sessions = new ConcurrentDictionary<int, ChatSession>();
         private readonly ApplicationDbContext _context;
+        private readonly IExternalSearchService _externalSearchService;
 
-        public CompanionService(ApplicationDbContext context)
+        public CompanionService(ApplicationDbContext context, IExternalSearchService externalSearchService)
         {
             _context = context;
+            _externalSearchService = externalSearchService;
         }
 
         public ApiResponse<string> ResetSession(int userId)
@@ -135,6 +137,11 @@ namespace LifeSyncAI.Core.Services
                 .FirstOrDefaultAsync();
             var latestInsight = rec?.InsightText ?? "No recommendations compiled yet.";
 
+            // Gather count of items stored in Secure Vault without exposing any secrets, passwords, or notes
+            var vaultItemsCount = await _context.VaultItems
+                .Where(v => v.UserId == userId)
+                .CountAsync();
+
             // Calculate Life Score exactly matching React frontend Dashboard.tsx formula
             double score = 0;
 
@@ -185,7 +192,8 @@ namespace LifeSyncAI.Core.Services
                 RecentTransactions = recentTransactions,
                 LifeScore = lifeScore,
                 RecentApplicationsSummary = recentAppsText,
-                LatestAiRecommendation = latestInsight
+                LatestAiRecommendation = latestInsight,
+                VaultItemsCount = vaultItemsCount
             };
 
             // Natural Language Understanding & Entity Extraction
@@ -208,6 +216,8 @@ namespace LifeSyncAI.Core.Services
 
             string reply = "";
             string mood = "Friendly";
+            bool isExternalSearch = false;
+            List<string>? sources = null;
 
             // 1. MINI-GAMES / INTERACTIVE SESSIONS
             if (session.ActiveGame == "guess_number")
@@ -375,7 +385,84 @@ namespace LifeSyncAI.Core.Services
             }
             else
             {
-                var systemInstructions = LifeSyncAssistantEngine.BuildSystemPrompt(userName, userContext);
+                // 1. Check Retrieval-Augmented Generation (RAG) knowledge base
+                var retrieval = LifeSyncKnowledgeRetriever.RetrieveRelevantParagraphs(message);
+                bool isInternalKnowledge = retrieval.IsConfidentMatch || !string.IsNullOrEmpty(intentResult.TargetEntity);
+
+                // 2. If user query is asking about their personal authorized data
+                if (intentResult.Intent == AssistantIntent.UserMetrics)
+                {
+                    reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext, retrieval.MatchedParagraphs);
+                    mood = "Analytical";
+
+                    session.History.Add(new LlmChatMessage { Role = "user", Content = message });
+                    session.History.Add(new LlmChatMessage { Role = "assistant", Content = reply });
+                    if (session.History.Count > 16) session.History.RemoveRange(0, session.History.Count - 16);
+
+                    return ApiResponse<CompanionResponseDto>.Success(new CompanionResponseDto
+                    {
+                        Reply = reply,
+                        Mood = mood,
+                        LifeScore = lifeScore,
+                        IsExternalSearch = false
+                    }, "Response generated from authorized user metrics.");
+                }
+
+                // 3. If query is an unknown external topic (not internal knowledge, not greetings/conversations/capabilities/creator)
+                bool isCasualOrCore = intentResult.Intent == AssistantIntent.CasualGreeting ||
+                                      intentResult.Intent == AssistantIntent.CasualConversation ||
+                                      intentResult.Intent == AssistantIntent.Capabilities ||
+                                      intentResult.Intent == AssistantIntent.CreatorInformation ||
+                                      intentResult.Intent == AssistantIntent.ApplicationOverview ||
+                                      intentResult.Intent == AssistantIntent.ReportExport;
+
+                if (!isInternalKnowledge && !isCasualOrCore)
+                {
+                    // Execute External Web Search Provider
+                    var searchResult = await _externalSearchService.SearchAsync(message);
+                    if (searchResult.IsSuccess && searchResult.Items.Any())
+                    {
+                        var formattedSources = string.Join("\n\n", searchResult.Items.Select(i => $"**{i.Title}**\n{i.Snippet}"));
+                        reply = $"🌐 **External Web Search Results:**\n\n{formattedSources}\n\n*(Note: This information is retrieved from public external sources outside the LifeSync AI application.)*";
+                        mood = "Analytical";
+                        isExternalSearch = true;
+                        sources = searchResult.Items.Select(i => i.Url).ToList();
+
+                        session.History.Add(new LlmChatMessage { Role = "user", Content = message });
+                        session.History.Add(new LlmChatMessage { Role = "assistant", Content = reply });
+                        if (session.History.Count > 16) session.History.RemoveRange(0, session.History.Count - 16);
+
+                        return ApiResponse<CompanionResponseDto>.Success(new CompanionResponseDto
+                        {
+                            Reply = reply,
+                            Mood = mood,
+                            LifeScore = lifeScore,
+                            IsExternalSearch = true,
+                            Sources = sources
+                        }, "Response generated via external search provider.");
+                    }
+                    else if (intentResult.Intent == AssistantIntent.UnrelatedQuestion || !retrieval.MatchedParagraphs.Any())
+                    {
+                        // External search is unconfigured or failed, and internal knowledge has no match
+                        reply = "I couldn't find information about that in the LifeSync AI knowledge base or your personal account. External Google search is currently unconfigured (requires GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX). If your question relates to LifeSync AI, feel free to ask about any feature, such as the Dashboard, Planner, Finance, Health, Career, or Vault!";
+                        mood = "Supportive";
+
+                        session.History.Add(new LlmChatMessage { Role = "user", Content = message });
+                        session.History.Add(new LlmChatMessage { Role = "assistant", Content = reply });
+                        if (session.History.Count > 16) session.History.RemoveRange(0, session.History.Count - 16);
+
+                        return ApiResponse<CompanionResponseDto>.Success(new CompanionResponseDto
+                        {
+                            Reply = reply,
+                            Mood = mood,
+                            LifeScore = lifeScore,
+                            IsExternalSearch = false
+                        }, "Response generated.");
+                    }
+                }
+
+                // 4. Grounded RAG Generation for LifeSync AI platform features
+                var systemInstructions = LifeSyncAssistantEngine.BuildSystemPrompt(userName, userContext, retrieval.MatchedParagraphs);
 
                 var messages = new List<object>
                 {
@@ -404,7 +491,7 @@ namespace LifeSyncAI.Core.Services
 
                     if (string.IsNullOrWhiteSpace(reply))
                     {
-                        reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext);
+                        reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext, retrieval.MatchedParagraphs);
                     }
 
                     var lowerReply = reply.ToLower();
@@ -426,7 +513,7 @@ namespace LifeSyncAI.Core.Services
                 {
                     Console.WriteLine($"LLM endpoint error: {ex.Message}. Falling back to LifeSyncAssistantEngine deterministic response.");
 
-                    reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext);
+                    reply = LifeSyncAssistantEngine.GenerateDeterministicResponse(intentResult, userName, userContext, retrieval.MatchedParagraphs);
                     mood = intentResult.Intent switch
                     {
                         AssistantIntent.CasualGreeting => "Friendly",
@@ -450,7 +537,9 @@ namespace LifeSyncAI.Core.Services
             {
                 Reply = reply,
                 Mood = mood,
-                LifeScore = lifeScore
+                LifeScore = lifeScore,
+                IsExternalSearch = isExternalSearch,
+                Sources = sources
             }, "Response generated.");
         }
 

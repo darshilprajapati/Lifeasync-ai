@@ -12,6 +12,8 @@ using LifeSyncAI.Core.Responses;
 using LifeSyncAI.Core.Services;
 using Xunit;
 
+using LifeSyncAI.Tests.Helpers;
+
 namespace LifeSyncAI.Tests
 {
     public class MockEmailService : IEmailService
@@ -75,12 +77,7 @@ namespace LifeSyncAI.Tests
         public async Task RegisterAsync_WithValidDetails_CreatesAccountSuccessfully()
         {
             // Arrange
-            var registerDto = new RegisterDto
-            {
-                FullName = "Jane Doe",
-                Email = "jane.doe@example.com",
-                Password = "SecurePassword123!"
-            };
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("janedoe");
 
             // Act
             var result = await _authService.RegisterAsync(registerDto);
@@ -88,13 +85,13 @@ namespace LifeSyncAI.Tests
             // Assert
             Assert.True(result.IsSuccess);
             Assert.NotNull(result.Data);
-            Assert.Equal("Jane Doe", result.Data.FullName);
-            Assert.Equal("jane.doe@example.com", result.Data.Email);
+            Assert.Equal(registerDto.FullName, result.Data.FullName);
+            Assert.Equal(registerDto.Email, result.Data.Email);
 
             // Verify persisted in database
-            var savedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "jane.doe@example.com");
+            var savedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == registerDto.Email);
             Assert.NotNull(savedUser);
-            Assert.NotEqual("SecurePassword123!", savedUser.PasswordHash);
+            Assert.NotEqual(registerDto.Password, savedUser.PasswordHash);
         }
 
         [Theory]
@@ -145,17 +142,18 @@ namespace LifeSyncAI.Tests
         public async Task RegisterAsync_WithDuplicateEmail_RejectsDuplicate()
         {
             // Arrange
+            var duplicateEmail = TestUserFactory.GenerateUniqueEmail("duplicate");
             var registerDto1 = new RegisterDto
             {
-                FullName = "First User",
-                Email = "duplicate@example.com",
+                FullName = TestUserFactory.GenerateUniqueUsername("UserA"),
+                Email = duplicateEmail,
                 Password = "Password123!"
             };
 
             var registerDto2 = new RegisterDto
             {
-                FullName = "Second User",
-                Email = "duplicate@example.com",
+                FullName = TestUserFactory.GenerateUniqueUsername("UserB"),
+                Email = duplicateEmail,
                 Password = "AnotherPassword123!"
             };
 
@@ -173,18 +171,13 @@ namespace LifeSyncAI.Tests
         public async Task LoginAsync_AfterSuccessfulRegistration_AuthenticatesUser()
         {
             // Arrange
-            var registerDto = new RegisterDto
-            {
-                FullName = "John Smith",
-                Email = "john.smith@example.com",
-                Password = "Password123!"
-            };
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("johnsmith");
             await _authService.RegisterAsync(registerDto);
 
             var loginDto = new LoginDto
             {
-                Email = "john.smith@example.com",
-                Password = "Password123!"
+                Email = registerDto.Email,
+                Password = registerDto.Password
             };
 
             // Act
@@ -201,17 +194,12 @@ namespace LifeSyncAI.Tests
         public async Task LoginAsync_WithWrongPassword_Fails()
         {
             // Arrange
-            var registerDto = new RegisterDto
-            {
-                FullName = "John Smith",
-                Email = "john.wrong@example.com",
-                Password = "Password123!"
-            };
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("johnwrong");
             await _authService.RegisterAsync(registerDto);
 
             var loginDto = new LoginDto
             {
-                Email = "john.wrong@example.com",
+                Email = registerDto.Email,
                 Password = "WrongPassword999!"
             };
 
@@ -221,6 +209,58 @@ namespace LifeSyncAI.Tests
             // Assert
             Assert.False(loginResult.IsSuccess);
             Assert.Contains("Invalid email or password", loginResult.Message);
+        }
+
+        [Fact]
+        public async Task RegisterWithSessionAsync_WithValidDetails_CreatesAccountAndReturnsSessionTokens()
+        {
+            // Arrange
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("alicewonder");
+
+            // Act
+            var result = await _authService.RegisterWithSessionAsync(registerDto);
+
+            // Assert
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.Data.User);
+            Assert.Equal(registerDto.FullName, result.Data.User.FullName);
+            Assert.Equal(registerDto.Email, result.Data.User.Email);
+            Assert.False(string.IsNullOrEmpty(result.Data.AccessToken));
+            Assert.False(string.IsNullOrEmpty(result.Data.RefreshToken));
+
+            // Verify persisted in database
+            var savedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == registerDto.Email);
+            Assert.NotNull(savedUser);
+            Assert.NotNull(savedUser.RefreshToken);
+            Assert.True(savedUser.RefreshTokenExpiryTime > DateTime.UtcNow);
+        }
+
+        [Fact]
+        public async Task RegisterWithSessionAsync_WithDuplicateEmail_RejectsDuplicate()
+        {
+            // Arrange
+            var duplicateEmail = TestUserFactory.GenerateUniqueEmail("dup_session");
+            var registerDto1 = new RegisterDto
+            {
+                FullName = TestUserFactory.GenerateUniqueUsername("UserOne"),
+                Email = duplicateEmail,
+                Password = "Password123!"
+            };
+            var registerDto2 = new RegisterDto
+            {
+                FullName = TestUserFactory.GenerateUniqueUsername("UserTwo"),
+                Email = duplicateEmail,
+                Password = "AnotherPassword123!"
+            };
+
+            // Act
+            var firstResult = await _authService.RegisterWithSessionAsync(registerDto1);
+            var secondResult = await _authService.RegisterWithSessionAsync(registerDto2);
+
+            // Assert
+            Assert.True(firstResult.IsSuccess);
+            Assert.False(secondResult.IsSuccess);
+            Assert.Contains("already exists", secondResult.Message, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -107,6 +107,7 @@ namespace LifeSyncAI.API
                 builder.Services.AddScoped<IVaultService, VaultService>();
                 builder.Services.AddScoped<IAiInsightsService, AiInsightsService>();
                 builder.Services.AddScoped<IWellnessForecasterService, WellnessForecasterService>();
+                builder.Services.AddScoped<IExternalSearchService, ExternalSearchService>();
                 builder.Services.AddScoped<ICompanionService, CompanionService>();
 
                 // Register Reports Asynchronous Background Processing Services

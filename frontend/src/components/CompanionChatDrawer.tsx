@@ -10,6 +10,8 @@ interface Message {
   sender: 'user' | 'bot';
   text: string;
   timestamp: Date;
+  isExternalSearch?: boolean;
+  sources?: string[];
 }
 
 interface CompanionChatDrawerProps {
@@ -72,12 +74,20 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
         trackAction('companion_message_sent', { module: 'companion' });
         const reply = res.data.data.reply;
         const mood = res.data.data.mood;
+        const isExternalSearch = res.data.data.isExternalSearch;
+        const sources = res.data.data.sources;
 
         setBotMood(mood);
 
         setMessages((prev) => [
           ...prev,
-          { sender: 'bot', text: reply, timestamp: new Date() }
+          {
+            sender: 'bot',
+            text: reply,
+            timestamp: new Date(),
+            isExternalSearch,
+            sources
+          }
         ]);
       }
     } catch {
@@ -183,6 +193,41 @@ const CompanionChatDrawer: React.FC<CompanionChatDrawerProps> = ({ open, onClose
                 <Typography variant="body2" sx={{ color: '#2D2D2D', fontSize: '13px', lineHeight: 1.45, wordBreak: 'break-word', whiteSpace: 'pre-line' }}>
                   {m.text}
                 </Typography>
+                {m.sources && m.sources.length > 0 && (
+                  <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                    <Typography variant="caption" sx={{ color: '#8E8D8A', fontWeight: 600, display: 'block', mb: 0.5 }}>
+                      Sources:
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                      {m.sources.map((src, sIdx) => {
+                        let domain = src;
+                        try { domain = new URL(src).hostname.replace('www.', ''); } catch { /* ignore */ }
+                        return (
+                          <a
+                            key={sIdx}
+                            href={src}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '11px',
+                              color: '#2196F3',
+                              textDecoration: 'none',
+                              padding: '2px 8px',
+                              borderRadius: '8px',
+                              backgroundColor: 'rgba(33, 150, 243, 0.08)',
+                              border: '1px solid rgba(33, 150, 243, 0.2)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            🔗 {domain}
+                          </a>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                )}
               </Paper>
             </Stack>
           </Box>

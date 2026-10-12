@@ -53,6 +53,7 @@ namespace LifeSyncAI.Core.Services
         public int LifeScore { get; set; }
         public string RecentApplicationsSummary { get; set; } = string.Empty;
         public string LatestAiRecommendation { get; set; } = string.Empty;
+        public int VaultItemsCount { get; set; }
     }
 
     public static class LifeSyncAssistantEngine
@@ -158,8 +159,8 @@ namespace LifeSyncAI.Core.Services
                 return result;
             }
 
-            // 8. Personal metrics queries (e.g. "what is my balance?", "how much water have I drank?", "my score")
-            if (MatchesAny(text, "my score", "my balance", "my tasks", "my water", "my sleep", "my steps", "my health", "my stats", "my metrics", "my progress", "my jobs", "my applications", "my career", "my insights", "my recommendations", "mera score", "mera balance", "how many tasks do i have", "how much balance", "what is my balance", "my transactions", "what jobs have i applied to", "what are my insights", "what are my health logs"))
+            // 8. Personal metrics queries (e.g. "what is my balance?", "how much water have I drank?", "my score", "what are my vault passwords?")
+            if (MatchesAny(text, "my score", "my balance", "my tasks", "my water", "my sleep", "my steps", "my health", "my stats", "my metrics", "my progress", "my jobs", "my applications", "my career", "my insights", "my recommendations", "my vault", "my password", "my passwords", "vault password", "vault passwords", "saved passwords", "stored passwords", "my secrets", "mera score", "mera balance", "how many tasks do i have", "how much balance", "what is my balance", "my transactions", "what jobs have i applied to", "what are my insights", "what are my health logs"))
             {
                 result.Intent = AssistantIntent.UserMetrics;
                 result.TargetEntity = "UserMetrics";
@@ -280,12 +281,73 @@ namespace LifeSyncAI.Core.Services
             return false;
         }
 
-        public static string GenerateDeterministicResponse(IntentDetectionResult intentResult, string userName, AssistantUserContext context)
+        public static string GenerateDeterministicResponse(IntentDetectionResult intentResult, string userName, AssistantUserContext context, List<KnowledgeParagraph>? retrievedParagraphs = null)
         {
+            // 1. Security guardrail always takes absolute precedence
+            if (intentResult.Intent == AssistantIntent.SecurityAttempt)
+            {
+                return "🔒 For security and data integrity reasons, I cannot reveal passwords, encryption keys, tokens, database credentials, or administrative system secrets. LifeSync AI protects all sensitive user and system information.";
+            }
+
+            // 2. Personal user metrics & vault status queries always format authenticated user context
+            if (intentResult.Intent == AssistantIntent.UserMetrics)
+            {
+                var msg = intentResult.CleanedMessage.ToLower();
+                if (msg.Contains("job") || msg.Contains("career") || msg.Contains("application"))
+                {
+                    return $"Here is your current career pipeline summary, {userName}:\n\n" +
+                           $"💼 {context.RecentApplicationsSummary}\n\n" +
+                           "You can manage your pipeline stages ('Applied', 'Interviewing', 'Offered', 'Rejected') in the **Career** module.";
+                }
+                if (msg.Contains("insight") || msg.Contains("recommendation"))
+                {
+                    return $"Here is your latest AI coaching insight, {userName}:\n\n" +
+                           (!string.IsNullOrWhiteSpace(context.LatestAiRecommendation) ? $"💡 \"{context.LatestAiRecommendation}\"" : "No personalized recommendations compiled yet.") +
+                           "\n\nYou can view categorized coaching cards in the **AI Insights** tab.";
+                }
+                if (msg.Contains("task") || msg.Contains("planner") || msg.Contains("todo"))
+                {
+                    var taskList = context.UpcomingTasks != null && context.UpcomingTasks.Any()
+                        ? "\nUpcoming items:\n" + string.Join("\n", context.UpcomingTasks.Select((t, i) => $"{i+1}. {t.Title} (Starts: {t.StartTime.ToLocalTime():g})"))
+                        : "";
+                    return $"You currently have **{context.PendingTasks}** pending task(s) in your **Planner**.{taskList}";
+                }
+                if (msg.Contains("balance") || msg.Contains("expense") || msg.Contains("spent") || msg.Contains("transaction") || msg.Contains("money"))
+                {
+                    return $"Your current net financial balance is **${context.Balance:N2}**.\nToday's recorded expenses: **${context.ExpensesToday:N2}**.\n\nYou can log new transactions in the **Finance** module.";
+                }
+                if (msg.Contains("water") || msg.Contains("sleep") || msg.Contains("step") || msg.Contains("workout") || msg.Contains("health"))
+                {
+                    return $"Here are your logged wellness metrics for today, {userName}:\n\n" +
+                           $"- 💧 Water: **{context.Water}ml** (Goal: 2000ml)\n" +
+                           $"- 💤 Sleep: **{context.Sleep}h** (Goal: 8h)\n" +
+                           $"- 🚶 Steps: **{context.Steps}** (Goal: 10,000)\n" +
+                           $"- 🏋️ Workout: **{context.Workout}m** (Goal: 30m)";
+                }
+                if (msg.Contains("vault") || msg.Contains("password") || msg.Contains("credential") || msg.Contains("secret note"))
+                {
+                    return $"You currently have **{context.VaultItemsCount}** item(s) secured in your **Secure Vault**.\n\n🔒 For your security, passwords, credentials, and notes are encrypted with AES-256 and are never accessible to the AI Assistant. You can view, decrypt, and manage them securely in the **Vault** module.";
+                }
+                return $"Here is your live LifeSync summary today, {userName}:\n\n" +
+                       $"🏆 **Life Score**: {context.LifeScore}/100\n" +
+                       $"💰 **Net Balance**: ${context.Balance:N2} (Today's Expenses: ${context.ExpensesToday:N2})\n" +
+                       $"📅 **Planner**: {context.PendingTasks} pending task(s)\n" +
+                       $"💧 **Water**: {context.Water}ml logged (Goal: 2000ml)\n" +
+                       $"💤 **Sleep**: {context.Sleep}h logged (Goal: 8h)\n" +
+                       $"🚶 **Steps**: {context.Steps} steps logged (Goal: 10,000)\n" +
+                       $"🏋️ **Workout**: {context.Workout}m logged\n\n" +
+                       "You can ask me for tips on how to improve your score or how to use any of these modules!";
+            }
+
+            // 3. Multi-paragraph knowledge base chunks for feature & application questions
+            if (retrievedParagraphs != null && retrievedParagraphs.Any())
+            {
+                var combined = string.Join("\n\n", retrievedParagraphs.Select(p => $"### {p.Title}\n{p.Content}"));
+                return $"Here is what you need to know about that in LifeSync AI:\n\n{combined}";
+            }
+
             switch (intentResult.Intent)
             {
-                case AssistantIntent.SecurityAttempt:
-                    return "🔒 For security and data integrity reasons, I cannot reveal passwords, encryption keys, tokens, database credentials, or administrative system secrets. LifeSync AI protects all sensitive user and system information.";
 
                 case AssistantIntent.CasualGreeting:
                     return $"Hi {userName}! 👋 I'm the LifeSync AI Assistant. I can help you understand LifeSync AI, its features, workflows, reports, and how to make the most of the application. What can I help you with today?";
@@ -354,48 +416,6 @@ namespace LifeSyncAI.Core.Services
                     }
                     break;
 
-                case AssistantIntent.UserMetrics:
-                    string msg = intentResult.CleanedMessage;
-                    if (msg.Contains("job") || msg.Contains("applied") || msg.Contains("career") || msg.Contains("application"))
-                    {
-                        return $"Here are your recent career applications, {userName}:\n\n" +
-                               (!string.IsNullOrWhiteSpace(context.RecentApplicationsSummary) ? context.RecentApplicationsSummary : "No active job applications found.") +
-                               "\n\nYou can track and update interview stages directly in the **Career** module.";
-                    }
-                    if (msg.Contains("insight") || msg.Contains("recommendation"))
-                    {
-                        return $"Here is your latest AI coaching insight, {userName}:\n\n" +
-                               (!string.IsNullOrWhiteSpace(context.LatestAiRecommendation) ? $"💡 \"{context.LatestAiRecommendation}\"" : "No personalized recommendations compiled yet.") +
-                               "\n\nYou can view categorized coaching cards in the **AI Insights** tab.";
-                    }
-                    if (msg.Contains("task"))
-                    {
-                        var taskList = context.UpcomingTasks != null && context.UpcomingTasks.Any()
-                            ? "\nUpcoming items:\n" + string.Join("\n", context.UpcomingTasks.Select((t, i) => $"{i+1}. {t.Title} (Starts: {t.StartTime.ToLocalTime():g})"))
-                            : "";
-                        return $"You currently have **{context.PendingTasks}** pending task(s) in your **Planner**.{taskList}";
-                    }
-                    if (msg.Contains("balance") || msg.Contains("expense") || msg.Contains("spent") || msg.Contains("transaction") || msg.Contains("money"))
-                    {
-                        return $"Your current net financial balance is **${context.Balance:N2}**.\nToday's recorded expenses: **${context.ExpensesToday:N2}**.\n\nYou can log new transactions in the **Finance** module.";
-                    }
-                    if (msg.Contains("water") || msg.Contains("sleep") || msg.Contains("step") || msg.Contains("workout") || msg.Contains("health"))
-                    {
-                        return $"Here are your logged wellness metrics for today, {userName}:\n\n" +
-                               $"- 💧 Water: **{context.Water}ml** (Goal: 2000ml)\n" +
-                               $"- 💤 Sleep: **{context.Sleep}h** (Goal: 8h)\n" +
-                               $"- 🚶 Steps: **{context.Steps}** (Goal: 10,000)\n" +
-                               $"- 🏋️ Workout: **{context.Workout}m** (Goal: 30m)";
-                    }
-                    return $"Here is your live LifeSync summary today, {userName}:\n\n" +
-                           $"🏆 **Life Score**: {context.LifeScore}/100\n" +
-                           $"💰 **Net Balance**: ${context.Balance:N2} (Today's Expenses: ${context.ExpensesToday:N2})\n" +
-                           $"📅 **Planner**: {context.PendingTasks} pending task(s)\n" +
-                           $"💧 **Water**: {context.Water}ml logged (Goal: 2000ml)\n" +
-                           $"💤 **Sleep**: {context.Sleep}h logged (Goal: 8h)\n" +
-                           $"🚶 **Steps**: {context.Steps} steps logged (Goal: 10,000)\n" +
-                           $"🏋️ **Workout**: {context.Workout}m logged\n\n" +
-                           "You can ask me for tips on how to improve your score or how to use any of these modules!";
 
                 case AssistantIntent.UnsupportedFunctionality:
                     return "LifeSync AI does not currently support this functionality. I don't have enough information to answer that accurately. I can assist you with our core modules: Dashboard, Planner, Finance, Health, Career, Vault, AI Insights, and PDF Reports!";
@@ -436,13 +456,18 @@ namespace LifeSyncAI.Core.Services
                    $"**How to use it**\n{mod.HowToUse}";
         }
 
-        public static string BuildSystemPrompt(string userName, AssistantUserContext ctx)
+        public static string BuildSystemPrompt(string userName, AssistantUserContext ctx, List<KnowledgeParagraph>? retrievedParagraphs = null)
         {
             var modulesSummary = string.Join("\n\n", LifeSyncKnowledgeBase.Modules.Values.Select(m =>
                 $"[{m.Name}]\nWhat it is: {m.WhatItIs}\nActions: {string.Join("; ", m.WhatYouCanDo)}\nHow it helps: {m.HowItHelps}\nHow to use: {m.HowToUse}\nButtons: {m.ButtonsAndActions}\nFormulas/Details: {m.ExactFormulasOrTech}"
             ));
 
             var reportSummary = string.Join("\n", LifeSyncKnowledgeBase.ReportKnowledge.Select(r => $"- {r}"));
+
+            var ragSection = (retrievedParagraphs != null && retrievedParagraphs.Any())
+                ? "\n\n================ RETRIEVED KNOWLEDGE FOR THIS QUERY (RAG) ================\n" +
+                  string.Join("\n\n", retrievedParagraphs.Select(p => $"[{p.Title}]\n{p.Content}"))
+                : "";
 
             return $"You are the {LifeSyncKnowledgeBase.AssistantName}, a knowledgeable, helpful, professional, and friendly product assistant for the LifeSync AI platform.\n" +
                    $"User Name: {userName}.\n" +
@@ -452,7 +477,8 @@ namespace LifeSyncAI.Core.Services
                    $"{LifeSyncKnowledgeBase.AppOverview}\n\n" +
                    $"{modulesSummary}\n\n" +
                    "================ REPORT & PDF EXPORT KNOWLEDGE ================\n" +
-                   $"{reportSummary}\n\n" +
+                   $"{reportSummary}" +
+                   ragSection + "\n\n" +
                    "================ USER'S LIVE DATA CONTEXT ================\n" +
                    $"- Life Score: {ctx.LifeScore}/100\n" +
                    $"- Pending Tasks: {ctx.PendingTasks}\n" +

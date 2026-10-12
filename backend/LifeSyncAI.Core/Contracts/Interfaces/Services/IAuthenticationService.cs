@@ -16,6 +16,11 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         Task<ApiResponse<UserDto>> RegisterAsync(RegisterDto dto);
 
         /// <summary>
+        /// Registers a new user and immediately issues active session tokens and cookies.
+        /// </summary>
+        Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> RegisterWithSessionAsync(RegisterDto dto);
+
+        /// <summary>
         /// Authenticates user credentials. Returns user details alongside generated access/refresh tokens.
         /// </summary>
         Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> LoginAsync(LoginDto dto);

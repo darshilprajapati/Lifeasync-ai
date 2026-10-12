@@ -108,6 +108,89 @@ namespace LifeSyncAI.Core.Services
             return ApiResponse<UserDto>.Success(userDto, "Account created successfully. You can now log in.");
         }
 
+        public async Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> RegisterWithSessionAsync(RegisterDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Email))
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("Email is required.");
+            }
+
+            var targetEmail = dto.Email.ToLower().Trim();
+
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(targetEmail);
+                if (addr.Address != targetEmail || !targetEmail.Contains('.'))
+                {
+                    return ApiResponse<(UserDto, string, string)>.Fail("Invalid email address format.");
+                }
+            }
+            catch
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("Invalid email address format.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.FullName))
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("Full Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("Password must be at least 6 characters long.");
+            }
+
+            var emailExists = await _context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.Email == targetEmail);
+
+            if (emailExists)
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("A user with this email address already exists.");
+            }
+
+            var jwtSection = _configuration.GetSection("JwtSettings");
+            var secret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
+            var issuer = jwtSection["Issuer"] ?? "LifeSyncAI_API";
+            var audience = jwtSection["Audience"] ?? "LifeSyncAI_Client";
+            var expiryMin = int.Parse(jwtSection["ExpiryMinutes"] ?? "15");
+            var refreshDays = int.Parse(jwtSection["RefreshTokenExpiryDays"] ?? "7");
+
+            var refreshToken = JwtHelper.GenerateRefreshToken();
+
+            var newUser = new User
+            {
+                FullName = dto.FullName.Trim(),
+                Email = targetEmail,
+                PasswordHash = PasswordHasher.HashPassword(dto.Password),
+                Role = UserRole.User,
+                Status = UserStatus.Active,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshDays),
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "SelfRegistration"
+            };
+
+            await _context.Users.AddAsync(newUser);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                if (await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == targetEmail))
+                {
+                    return ApiResponse<(UserDto, string, string)>.Fail("A user with this email address already exists.");
+                }
+                throw;
+            }
+
+            var accessToken = JwtHelper.GenerateAccessToken(newUser, secret, issuer, audience, expiryMin);
+            var userDto = MapToDto(newUser);
+            return ApiResponse<(UserDto, string, string)>.Success((userDto, accessToken, refreshToken), "Account created successfully.");
+        }
+
         public async Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> LoginAsync(LoginDto dto)
         {
             var user = await _context.Users

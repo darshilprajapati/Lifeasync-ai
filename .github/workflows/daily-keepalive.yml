@@ -1,0 +1,38 @@
+name: LifeSync AI — Daily Keep-Alive & Database Probe
+
+# Run daily at 12:00 PM IST (Asia/Kolkata, UTC+05:30 -> 06:30 AM UTC)
+on:
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: lifesync-daily-keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive-check:
+    name: Execute Daily Database Keep-Alive
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Keep-Alive Probe & Notification Runner
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai-api.onrender.com' }}
+          KEEPALIVE_SECRET: ${{ secrets.KEEPALIVE_SECRET }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: |
+          python .github/scripts/keepalive_runner.py

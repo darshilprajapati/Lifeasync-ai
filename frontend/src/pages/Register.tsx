@@ -30,15 +30,10 @@ const Register: React.FC = () => {
     setSuccess(null);
     setSubmitting(true);
     try {
-      const msg = await register(name, email, password);
+      await register(name, email, password);
       trackAction('sign_up', { method: 'email_password' });
-      setSuccess(msg);
-      setName('');
-      setEmail('');
-      setPassword('');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      // Registration immediately establishes authenticated session; navigate to dashboard
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
     } finally {

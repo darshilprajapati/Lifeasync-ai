@@ -62,37 +62,47 @@ apiClient.interceptors.response.use(
     }
 
     // Intercept 401 Unauthorized responses
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If refresh is already in-progress, queue request until refresh finishes
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => {
-            return apiClient(originalRequest);
+    if (error.response?.status === 401) {
+      if (!originalRequest._retry) {
+        if (isRefreshing) {
+          // If refresh is already in-progress, queue request until refresh finishes
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
           })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
+            .then(() => {
+              return apiClient(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+        originalRequest._retry = true;
+        isRefreshing = true;
 
-      try {
-        // Trigger silent token refresh - server updates secure cookies automatically
-        await apiClient.post('/api/auth/refresh');
-        
-        processQueue(null);
-        isRefreshing = false;
-        
-        // Retry the original request with new cookies active
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError as Error, null);
-        isRefreshing = false;
-        
-        return Promise.reject(refreshError);
+        try {
+          // Trigger silent token refresh - server updates secure cookies automatically
+          await apiClient.post('/api/auth/refresh');
+          
+          processQueue(null);
+          isRefreshing = false;
+          
+          // Retry the original request with new cookies active
+          return apiClient(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError as Error, null);
+          isRefreshing = false;
+          
+          // Refresh failed: session cannot be recovered
+          localStorage.removeItem('lifesync_token');
+          window.dispatchEvent(new CustomEvent('lifesync:unauthorized'));
+          
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // Request already retried and still returned 401: unrecoverable session
+        localStorage.removeItem('lifesync_token');
+        window.dispatchEvent(new CustomEvent('lifesync:unauthorized'));
       }
     }
 

@@ -14,7 +14,7 @@ interface AuthContextType {
   user: UserDto | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserDto>;
-  register: (fullName: string, email: string, password: string) => Promise<string>;
+  register: (fullName: string, email: string, password: string) => Promise<UserDto>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: UserDto) => void;
 }
@@ -68,17 +68,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Global listener: If any request fails with 401 (e.g. after refresh token expired), clear user state
-    const interceptor = apiClient.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          setUser(null);
-          localStorage.removeItem('lifesync_token');
-        }
-        return Promise.reject(error);
+    // Global listener: If refresh fails or session is unrecoverably 401, clear user state
+    const handleUnauthorized = () => {
+      if (isMounted) {
+        setUser(null);
+        localStorage.removeItem('lifesync_token');
       }
-    );
+    };
+    window.addEventListener('lifesync:unauthorized', handleUnauthorized);
 
     checkAuthStatus();
 
@@ -86,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMounted = false;
       controller.abort();
       clearTimeout(timeoutId);
-      apiClient.interceptors.response.eject(interceptor);
+      window.removeEventListener('lifesync:unauthorized', handleUnauthorized);
     };
   }, []);
 
@@ -105,11 +102,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (fullName: string, email: string, password: string): Promise<string> => {
+  const register = async (fullName: string, email: string, password: string): Promise<UserDto> => {
     try {
       const response = await apiClient.post('/api/auth/register', { fullName, email, password });
       if (response.data.isSuccess) {
-        return response.data.message || 'Registration request submitted.';
+        if (response.data.data) {
+          setUser(response.data.data);
+          localStorage.setItem('lifesync_token', 'true');
+        }
+        return response.data.data;
       }
       throw new Error(response.data.message || 'Registration failed.');
     } catch (err: any) {

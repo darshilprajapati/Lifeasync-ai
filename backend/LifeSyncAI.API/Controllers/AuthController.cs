@@ -30,12 +30,16 @@ namespace LifeSyncAI.API.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Register([FromBody] RegisterDto dto)
         {
-            var result = await _authService.RegisterAsync(dto);
+            var result = await _authService.RegisterWithSessionAsync(dto);
             if (!result.IsSuccess)
             {
-                return BadRequest(result);
+                return BadRequest(ApiResponse<UserDto>.Fail(result.Message));
             }
-            return Ok(result);
+
+            // Automatically issue authentication cookies upon successful registration
+            SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
+
+            return Ok(ApiResponse<UserDto>.Success(result.Data.User, result.Message));
         }
 
         [HttpPost("login")]

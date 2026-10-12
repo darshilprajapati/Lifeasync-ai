@@ -16,10 +16,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LifeSyncAI.Core\LifeSyncAI.Core.csproj" />
+    <ProjectReference Include="..\LifeSyncAI.API\LifeSyncAI.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+  <Target Name="SignTestAssembly" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="powershell -NoProfile -Command &quot;if (Test-Path '$(TargetPath)') { Set-AuthenticodeSignature -FilePath '$(TargetPath)' -Certificate (Get-ChildItem -Path Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1) -ErrorAction SilentlyContinue | Out-Null }&quot;" IgnoreExitCode="true" />
+  </Target>
 
 </Project>
