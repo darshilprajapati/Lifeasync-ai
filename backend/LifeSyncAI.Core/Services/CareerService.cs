@@ -52,6 +52,10 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
+                if (dto.AppliedDate.Year < 1900 || dto.AppliedDate.Year > 2100)
+                {
+                    return ApiResponse<JobApplicationDto>.Fail("Applied Date year must be a valid 4-digit year between 1900 and 2100.");
+                }
                 var app = new JobApplication
                 {
                     Company = dto.Company,

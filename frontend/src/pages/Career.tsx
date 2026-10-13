@@ -29,8 +29,85 @@ const Career: React.FC = () => {
   const [position, setPosition] = useState('');
   const [status, setStatus] = useState('Applied');
   const [appliedDate, setAppliedDate] = useState('');
+  const [dateError, setDateError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const validateDateString = (value: string): { isValid: boolean; error?: string } => {
+    if (!value) {
+      return { isValid: false, error: 'Applied date is required.' };
+    }
+
+    const parts = value.trim().split('-');
+    if (parts.length !== 3) {
+      return { isValid: false, error: 'Please enter a valid date in YYYY-MM-DD format.' };
+    }
+
+    const [yearPart, monthPart, dayPart] = parts;
+
+    // Strict 4-digit year rule: cannot be less or more than 4 digits
+    if (yearPart.length !== 4 || !/^\d{4}$/.test(yearPart)) {
+      return { isValid: false, error: 'Year must be exactly four digits (YYYY).' };
+    }
+
+    const year = parseInt(yearPart, 10);
+    const month = parseInt(monthPart, 10);
+    const day = parseInt(dayPart, 10);
+
+    if (isNaN(year) || year < 1900 || year > 2100) {
+      return { isValid: false, error: 'Year must be a 4-digit number between 1900 and 2100.' };
+    }
+
+    if (isNaN(month) || month < 1 || month > 12) {
+      return { isValid: false, error: 'Month must be between 01 and 12.' };
+    }
+
+    const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const maxDays = daysInMonth[month - 1];
+
+    if (isNaN(day) || day < 1 || day > maxDays) {
+      if (month === 2 && day === 29 && !isLeapYear) {
+        return { isValid: false, error: `${year} is not a leap year. February only has 28 days.` };
+      }
+      return { isValid: false, error: `Day must be between 01 and ${maxDays} for month ${month}.` };
+    }
+
+    return { isValid: true };
+  };
+
+  const handleDateChange = (rawVal: string) => {
+    if (!rawVal) {
+      setAppliedDate('');
+      setDateError(null);
+      return;
+    }
+
+    // Intercept and sanitize if year part exceeds 4 digits (e.g. 6-digit year like 202644)
+    const parts = rawVal.split('-');
+    let sanitized = rawVal;
+    if (parts.length > 0 && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      sanitized = parts.join('-');
+    }
+
+    setAppliedDate(sanitized);
+    const check = validateDateString(sanitized);
+    setDateError(check.isValid ? null : (check.error || 'Invalid date.'));
+  };
+
+  const handleDatePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasteData = e.clipboardData.getData('text').trim();
+    const parts = pasteData.split('-');
+    if (parts.length > 0 && parts[0].length > 4) {
+      e.preventDefault();
+      parts[0] = parts[0].slice(0, 4);
+      const sanitized = parts.join('-');
+      setAppliedDate(sanitized);
+      const check = validateDateString(sanitized);
+      setDateError(check.isValid ? null : (check.error || 'Invalid date.'));
+    }
+  };
 
   const fetchApplications = async () => {
     try {
@@ -53,7 +130,15 @@ const Career: React.FC = () => {
   const handleAddApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company || !position || !status || !appliedDate) return;
+
+    const dateValidation = validateDateString(appliedDate);
+    if (!dateValidation.isValid) {
+      setDateError(dateValidation.error || 'Please enter a valid 4-digit year date.');
+      return;
+    }
+
     setError(null);
+    setDateError(null);
     setSubmitting(true);
     try {
       const res = await apiClient.post('/api/career', {
@@ -71,6 +156,7 @@ const Career: React.FC = () => {
         setPosition('');
         setStatus('Applied');
         setAppliedDate('');
+        setDateError(null);
         setNotes('');
       }
     } catch (err: any) {
@@ -196,8 +282,17 @@ const Career: React.FC = () => {
                       required
                       fullWidth
                       value={appliedDate}
-                      onChange={(e) => setAppliedDate(e.target.value)}
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      error={Boolean(dateError)}
+                      helperText={dateError || "Enter a valid date with a 4-digit year (YYYY-MM-DD)"}
+                      slotProps={{
+                        htmlInput: {
+                          min: '1900-01-01',
+                          max: '2099-12-31',
+                          onPaste: handleDatePaste
+                        },
+                        inputLabel: { shrink: true }
+                      }}
                     />
                     <TextField
                       label="Pipeline Notes / Reminders"
