@@ -176,7 +176,12 @@ namespace LifeSyncAI.Core.Services
                 score -= 5;
             }
 
-            int lifeScore = Math.Max(0, Math.Min(100, (int)Math.Round(score)));
+            int missedTasks = await _context.PlannerEvents
+                .Where(e => e.UserId == userId && (e.EndTime.Date == clientDate.Date || e.StartTime.Date == clientDate.Date))
+                .CountAsync(e => e.MissedDeadlinePenalized || (DateTime.UtcNow > e.EndTime && (!e.IsCompleted || (e.CompletedAt != null && e.CompletedAt > e.EndTime))));
+
+            int penaltyPoints = missedTasks * 2;
+            int lifeScore = Math.Max(0, (int)Math.Round(Math.Min(100.0, Math.Max(0.0, score))) - penaltyPoints);
 
             var userContext = new AssistantUserContext
             {

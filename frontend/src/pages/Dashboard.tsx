@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardContent, Button, Stack } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Button,
+  Stack,
+  Alert,
+  Chip,
+  Tooltip
+} from '@mui/material';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
@@ -12,6 +23,8 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import LocalDrinkIcon from '@mui/icons-material/LocalDrink';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import HistoryIcon from '@mui/icons-material/History';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
@@ -36,6 +49,9 @@ interface PlannerEvent {
   id: number;
   isCompleted: boolean;
   startTime: string;
+  endTime: string;
+  completedAt?: string;
+  missedDeadlinePenalized?: boolean;
 }
 
 interface HealthLog {
@@ -45,12 +61,19 @@ interface HealthLog {
   logDate: string;
 }
 
-
-
 interface AiRecommendation {
   id: number;
   insightText: string;
   category: string;
+}
+
+interface HistoricalScore {
+  date: string;
+  score: number;
+  penaltyPoints: number;
+  missedDeadlinesCount: number;
+  totalTasks: number;
+  completedTasks: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -67,21 +90,28 @@ const Dashboard: React.FC = () => {
   const [completedTasks, setCompletedTasks] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
   const [latestInsight, setLatestInsight] = useState<string | null>(null);
-  
-  // Scoring
-  const [lifeScore, setLifeScore] = useState(50);
+
+  // Life Score & Penalty State
+  const [lifeScore, setLifeScore] = useState(0);
+  const [penaltyPoints, setPenaltyPoints] = useState(0);
+  const [missedDeadlinesCount, setMissedDeadlinesCount] = useState(0);
+  const [penaltyNotice, setPenaltyNotice] = useState<string | null>(null);
+  const [historicalScores, setHistoricalScores] = useState<HistoricalScore[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       const today = new Date();
 
-      // Trigger parallel API loading
-      const [finRes, healthRes, plannerRes, insightsRes] = await Promise.all([
+      // Trigger parallel API loading including backend LifeScore calculations
+      const [finRes, healthRes, plannerRes, insightsRes, scoreRes, historyRes] = await Promise.all([
         apiClient.get('/api/finance/summary').catch(() => null),
         apiClient.get('/api/health').catch(() => null),
         apiClient.get('/api/planner').catch(() => null),
-        apiClient.get('/api/insights').catch(() => null)
+        apiClient.get('/api/insights').catch(() => null),
+        apiClient.get('/api/lifescore/today').catch(() => null),
+        apiClient.get('/api/lifescore/history?days=7').catch(() => null),
       ]);
 
       // 1. Finance
@@ -128,10 +158,19 @@ const Dashboard: React.FC = () => {
       // 3. Planner
       let completedCount = 0;
       let totalCount = 0;
+      let missedCount = 0;
       if (plannerRes && plannerRes.data.isSuccess) {
         const events = plannerRes.data.data as PlannerEvent[];
-        completedCount = events.filter((e) => e.isCompleted).length;
-        totalCount = events.length;
+        const todayTasks = events.filter((e) => isSameDay(parseDateSafe(e.endTime || e.startTime), today));
+        totalCount = todayTasks.length;
+        completedCount = todayTasks.filter((e) => e.isCompleted).length;
+        missedCount = todayTasks.filter((e) => {
+          if (e.missedDeadlinePenalized) return true;
+          if (new Date() > new Date(e.endTime)) {
+            return !e.isCompleted || (e.completedAt && new Date(e.completedAt) > new Date(e.endTime));
+          }
+          return false;
+        }).length;
 
         setCompletedTasks(completedCount);
         setTotalTasks(totalCount);
@@ -145,42 +184,61 @@ const Dashboard: React.FC = () => {
         }
       }
 
-      // 5. Dynamic Life Score Calculation
-      let score = 0;
+      // 5. Life Score Calculation (Server authority first, client fallback)
+      if (scoreRes && scoreRes.data.isSuccess && scoreRes.data.data) {
+        const data = scoreRes.data.data;
+        setLifeScore(data.finalScore);
+        setPenaltyPoints(data.penaltyPoints);
+        setMissedDeadlinesCount(data.missedDeadlinesCount);
+        setPenaltyNotice(data.penaltyNotice);
+      } else {
+        // Deterministic client fallback strictly adhering to the same rules
+        let score = 0;
+        const hasWater = waterSum > 0;
+        const hasSleep = sleepSum > 0;
+        const hasSteps = stepsSum > 0;
+        const hasCalories = caloriesSum > 0;
+        const hasWorkout = workoutSum > 0;
 
-      // Check if user has performed ANY daily activity
-      const hasWater = waterSum > 0;
-      const hasSleep = sleepSum > 0;
-      const hasSteps = stepsSum > 0;
-      const hasCalories = caloriesSum > 0;
-      const hasWorkout = workoutSum > 0;
+        if (totalCount > 0 || hasWater || hasSleep || hasSteps || hasCalories || hasWorkout) {
+          score += 5;
+        }
 
-      // Start baseline points if there is active logging or scheduled tasks
-      if (totalCount > 0 || hasWater || hasSleep || hasSteps || hasCalories || hasWorkout) {
-        score += 5;
+        if (totalCount > 0) {
+          score += (completedCount / totalCount) * 15;
+        }
+
+        score += Math.min(30, (waterSum / 2000) * 30);
+        score += Math.min(15, (workoutSum / 30) * 15);
+        score += Math.min(10, (sleepSum / 8) * 10);
+        score += Math.min(10, (stepsSum / 10000) * 10);
+        score += caloriesSum > 0 ? 10 : 0;
+
+        if (currentBalance > 0) {
+          score += 5;
+        } else if (currentBalance < 0) {
+          score -= 5;
+        }
+
+        const positive = Math.max(0, Math.min(100, score));
+        const penalty = missedCount * 2;
+        const finalCalculated = Math.max(0, positive - penalty);
+
+        setLifeScore(finalCalculated);
+        setPenaltyPoints(penalty);
+        setMissedDeadlinesCount(missedCount);
+        if (penalty > 0) {
+          setPenaltyNotice(`A missed deadline resulted in a permanent -${penalty} pt deduction for today.`);
+        } else {
+          setPenaltyNotice(null);
+        }
       }
 
-      // A. Tasks completion factor (Up to +15 points)
-      if (totalCount > 0) {
-        score += (completedCount / totalCount) * 15;
+      // 6. Historical Scores
+      if (historyRes && historyRes.data.isSuccess && historyRes.data.data) {
+        setHistoricalScores(historyRes.data.data);
       }
-
-      // B. Health & Wellness factor (Total max +75: Hydration: 30, Workout: 15, Sleep: 10, Steps: 10, Calories: 10)
-      score += Math.min(30, (waterSum / 2000) * 30);
-      score += Math.min(15, (workoutSum / 30) * 15);
-      score += Math.min(10, (sleepSum / 8) * 10);
-      score += Math.min(10, (stepsSum / 10000) * 10);
-      score += caloriesSum > 0 ? 10 : 0;
-
-      // C. Financial balance factor (Up to +5 points)
-      if (currentBalance > 0) {
-        score += 5;
-      } else if (currentBalance < 0) {
-        score -= 5; // penalty for negative net balances
-      }
-
-      setLifeScore(Math.max(0, Math.min(100, score)));
-
+      setSelectedDate(null);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -191,6 +249,25 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleSelectHistoryDate = async (dateStr: string) => {
+    try {
+      setLoading(true);
+      setSelectedDate(dateStr);
+      const res = await apiClient.get(`/api/lifescore?date=${dateStr}`);
+      if (res.data.isSuccess && res.data.data) {
+        const d = res.data.data;
+        setLifeScore(d.finalScore);
+        setPenaltyPoints(d.penaltyPoints);
+        setMissedDeadlinesCount(d.missedDeadlinesCount);
+        setPenaltyNotice(d.penaltyNotice);
+      }
+    } catch (err) {
+      console.error('Failed to load historical score for date:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Greeting helper based on time
   const getGreeting = () => {
@@ -268,7 +345,7 @@ const Dashboard: React.FC = () => {
     if (tasksRem > 0) {
       boosts.push({
         label: 'Planner Tasks',
-        current: totalTasks === 0 ? 'No tasks scheduled' : `${completedTasks}/${totalTasks} completed`,
+        current: totalTasks === 0 ? 'No tasks today' : `${completedTasks}/${totalTasks} completed`,
         remainingPoints: tasksRem,
         icon: <EventAvailableIcon sx={{ color: '#2196F3', fontSize: '16px' }} />
       });
@@ -284,43 +361,116 @@ const Dashboard: React.FC = () => {
       });
     }
 
-    const heading = lifeScore >= 90 
+    const heading = lifeScore >= 90
       ? 'Exceptional routine! Maintain this streak!'
       : (isWaterGoalMet && isTasksGoalMet && lifeScore > 0)
       ? 'Core goals achieved! Exceptional routine today.'
-      : lifeScore >= 60 
+      : lifeScore >= 60
       ? 'Healthy momentum. Keep pushing forward!'
-      : 'Low baseline activity. Let\'s sync your daily metrics.';
+      : 'A fresh day starts at zero. Log your habits to build your score.';
 
     return (
       <Stack spacing={1.5} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Typography variant="body2" sx={{ opacity: 0.95, fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
           {heading}
         </Typography>
+
+        {/* Permanent Missed-Deadline Penalty Notice */}
+        {penaltyPoints > 0 && (
+          <Alert
+            severity="error"
+            icon={<WarningAmberIcon />}
+            sx={{
+              borderRadius: '12px',
+              fontSize: '12.5px',
+              border: '1px solid #fecaca',
+              bgcolor: 'rgba(239, 68, 68, 0.05)',
+              color: '#991b1b',
+              mb: 1
+            }}
+          >
+            <strong>Missed Deadline Penalty (−{penaltyPoints} pts):</strong>{' '}
+            {penaltyNotice || `Deducted for ${missedDeadlinesCount} missed task deadline(s). This deduction is permanent for today's score. Focus on your remaining tasks to build consistency for tomorrow!`}
+          </Alert>
+        )}
+
         {boosts.length > 0 && (
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', opacity: 0.9, fontWeight: 700, mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8E8D8A' }}>
-              Pending Boosts:
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600, mb: 1, display: 'block' }}>
+              Potential Points to Elevate Today's Score:
             </Typography>
-            <Stack spacing={0.8} sx={{ maxHeight: '180px', overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.08)', borderRadius: '2px' } }}>
+            <Stack spacing={1} sx={{ overflowY: 'auto', maxHeight: '140px', pr: 0.5 }}>
               {boosts.map((boost, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'var(--bg-secondary)', p: '8px 12px', borderRadius: '10px', border: '1px solid var(--neutral-primary)', backdropFilter: 'blur(6px)' }}>
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 1,
+                    borderRadius: '8px',
+                    bgcolor: 'var(--bg-secondary)',
+                    border: '1px solid rgba(0,0,0,0.03)'
+                  }}
+                >
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     {boost.icon}
                     <Box>
-                      <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)', fontSize: '11px', lineHeight: 1.2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', color: 'var(--text-primary)' }}>
                         {boost.label}
                       </Typography>
-                      <Typography variant="caption" sx={{ display: 'block', color: 'var(--text-secondary)', fontSize: '9px' }}>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
                         {boost.current}
                       </Typography>
                     </Box>
                   </Stack>
-                  <Typography variant="caption" sx={{ fontWeight: 750, color: '#3FA76D', fontSize: '10px', whiteSpace: 'nowrap' }}>
-                    +{boost.remainingPoints.toFixed(2)} pts
+                  <Typography variant="caption" sx={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '11px' }}>
+                    +{boost.remainingPoints.toFixed(1)} pts
                   </Typography>
                 </Box>
               ))}
+            </Stack>
+          </Box>
+        )}
+
+        {/* 7-Day Historical Scores Pill Selector */}
+        {historicalScores.length > 0 && (
+          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <HistoryIcon sx={{ fontSize: 13, verticalAlign: 'middle', mr: 0.5 }} />
+                7-Day Score History
+              </Typography>
+              {selectedDate && (
+                <Button size="small" onClick={fetchDashboardData} sx={{ fontSize: '11px', textTransform: 'none', py: 0 }}>
+                  Back to Today
+                </Button>
+              )}
+            </Stack>
+            <Stack direction="row" spacing={0.8} sx={{ overflowX: 'auto', pb: 0.5 }}>
+              {historicalScores.map((h) => {
+                const isSelected = selectedDate === h.date || (!selectedDate && h.date === new Date().toISOString().split('T')[0]);
+                const dayLabel = h.date.slice(5); // e.g. "10-14"
+
+                return (
+                  <Tooltip key={h.date} title={`${h.date}: Score ${Math.round(h.score)}/100 ${h.penaltyPoints > 0 ? `(-${h.penaltyPoints} penalty)` : ''}`} arrow>
+                    <Chip
+                      size="small"
+                      label={`${dayLabel}: ${Math.round(h.score)}`}
+                      color={isSelected ? 'primary' : h.penaltyPoints > 0 ? 'error' : 'default'}
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      onClick={() => handleSelectHistoryDate(h.date)}
+                      sx={{
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '11px',
+                        height: '24px',
+                        borderWidth: isSelected ? 2 : 1
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
             </Stack>
           </Box>
         )}
@@ -330,15 +480,14 @@ const Dashboard: React.FC = () => {
 
   return (
     <PageWrapper>
-      <Box sx={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-        {/* Header */}
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
               {getGreeting()}, {user?.fullName || 'User'}
             </Typography>
             <Typography variant="body1" sx={{ color: 'var(--text-secondary)' }}>
-              Here is your personal real-time habit intelligence summary for today.
+              {selectedDate ? `Reviewing historical performance for ${selectedDate}.` : 'Here is your daily habit intelligence and Life Score for today.'}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
@@ -371,9 +520,6 @@ const Dashboard: React.FC = () => {
         ) : (
           <motion.div variants={containerVariants} initial="initial" animate="animate">
             <Grid container spacing={3}>
-              {/* Life Score Modern Art Card */}
-              {/* Row 1: 4 Symmetrical Metric Cards */}
-
               {/* Card 1: Life Score Card */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
@@ -381,7 +527,7 @@ const Dashboard: React.FC = () => {
                     position: 'relative',
                     borderRadius: '18px',
                     boxShadow: 'var(--shadow-soft)',
-                    bgcolor: 'var(--card-bg)', // aligned background color
+                    bgcolor: 'var(--card-bg)',
                     color: 'var(--text-primary)',
                     height: '100%',
                     overflow: 'hidden',
@@ -418,115 +564,40 @@ const Dashboard: React.FC = () => {
                       pointerEvents: 'none',
                     }} />
 
-                    {/* Futuristic Whole-Card Vertical Fluid Progress Loader */}
+                    {/* Fluid Progress Level Indicator */}
                     <Box sx={{
                       position: 'absolute',
                       bottom: 0,
                       left: 0,
                       right: 0,
-                      height: `${Math.max(12, lifeScore)}%`,
-                      background: 'linear-gradient(180deg, rgba(232, 90, 79, 0.35) 0%, rgba(183, 28, 28, 0.18) 100%)', // themed coral gradient
+                      height: `${Math.max(12, Math.min(100, lifeScore))}%`,
+                      background: penaltyPoints > 0
+                        ? 'linear-gradient(180deg, rgba(239, 68, 68, 0.4) 0%, rgba(185, 28, 28, 0.2) 100%)'
+                        : 'linear-gradient(180deg, rgba(232, 90, 79, 0.35) 0%, rgba(183, 28, 28, 0.18) 100%)',
                       transition: 'height 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       zIndex: 1,
                       overflow: 'hidden',
-                    }}>
-                      {/* Wave 1 - Primary Coral Red Layer */}
-                      <Box sx={{
-                        position: 'absolute',
-                        top: '-15px',
-                        left: 0,
-                        width: '200%',
-                        height: '24px',
-                        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 120\' preserveAspectRatio=\'none\'%3E%3Cpath d=\'M0,60 C150,90 350,90 500,60 C650,30 850,30 1000,60 C1150,90 1300,90 1450,60 L1450,120 L0,120 Z\' fill=\'rgba(232, 90, 79, 0.52)\'/%3E%3C/svg%3E")',
-                        backgroundRepeat: 'repeat-x',
-                        backgroundSize: '50% 100%',
-                        animation: 'wave-move-1 4.8s infinite ease-in-out', // ease-in-out timing for organic sloshing
-                        filter: 'drop-shadow(0 -1.5px 3px rgba(232, 90, 79, 0.3))'
-                      }} />
-
-                      {/* Wave 2 - Rose Gold Accent Depth Layer */}
-                      <Box sx={{
-                        position: 'absolute',
-                        top: '-11px',
-                        left: 0,
-                        width: '200%',
-                        height: '24px',
-                        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 120\' preserveAspectRatio=\'none\'%3E%3Cpath d=\'M0,50 C200,85 400,85 600,50 C800,15 1000,15 1200,50 C1400,85 1600,85 1800,50 L1800,120 L0,120 Z\' fill=\'rgba(233, 128, 116, 0.32)\'/%3E%3C/svg%3E")',
-                        backgroundRepeat: 'repeat-x',
-                        backgroundSize: '50% 100%',
-                        animation: 'wave-move-2 7.2s infinite ease-in-out', // ease-in-out timing
-                        opacity: 0.8
-                      }} />
-
-                      {/* Wave 3 - Glowing Meniscus Surface Highlight */}
-                      <Box sx={{
-                        position: 'absolute',
-                        top: '-16px',
-                        left: 0,
-                        width: '200%',
-                        height: '22px',
-                        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1200 120\' preserveAspectRatio=\'none\'%3E%3Cpath d=\'M0,65 C100,85 300,85 400,65 C500,45 700,45 800,65 C900,85 1100,85 1200,65 L1200,120 L0,120 Z\' fill=\'rgba(255, 138, 128, 0.72)\'/%3E%3C/svg%3E")',
-                        backgroundRepeat: 'repeat-x',
-                        backgroundSize: '50% 100%',
-                        animation: 'wave-move-1 5.8s infinite ease-in-out', // ease-in-out timing
-                        filter: 'drop-shadow(0 -3px 5px rgba(232, 90, 79, 0.7))',
-                        opacity: 0.9,
-                      }} />
-
-                      {/* Floating Bubbles */}
-                      <Box className="bubble bubble-1" />
-                      <Box className="bubble bubble-2" />
-                      <Box className="bubble bubble-3" />
-                      <Box className="bubble bubble-4" />
-                    </Box>
-
-                    {/* CSS Keyframe Styles */}
-                    <style dangerouslySetInnerHTML={{ __html: `
-                      @keyframes wave-move-1 {
-                        0% { transform: translateX(0) translateY(0) rotate(0deg); }
-                        50% { transform: translateX(-25%) translateY(-5px) rotate(1.5deg); }
-                        100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
-                      }
-                      @keyframes wave-move-2 {
-                        0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
-                        50% { transform: translateX(-25%) translateY(6px) rotate(-1.5deg); }
-                        100% { transform: translateX(0) translateY(0) rotate(0deg); }
-                      }
-                      @keyframes rise {
-                        0% { bottom: -10px; transform: translateX(0) scale(1); opacity: 0; }
-                        15% { opacity: 0.6; }
-                        35% { transform: translateX(-9px) scale(1.15); }
-                        65% { transform: translateX(9px) scale(0.92); }
-                        85% { opacity: 0.6; }
-                        100% { bottom: 100%; transform: translateX(1px) scale(0.8); opacity: 0; }
-                      }
-                      @keyframes bobbing {
-                        0% { transform: translateY(0) rotate(0deg); }
-                        50% { transform: translateY(-5px) rotate(4deg); }
-                        100% { transform: translateY(0) rotate(0deg); }
-                      }
-                      .bubble {
-                        position: absolute;
-                        bottom: 0;
-                        border-radius: 50%;
-                        background: rgba(255, 255, 255, 0.4);
-                        box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
-                        animation: rise 4.2s infinite ease-in-out;
-                        pointer-events: none;
-                        z-index: 1;
-                      }
-                      .bubble-1 { left: 15%; width: 4px; height: 4px; animation-delay: 0s; animation-duration: 3.5s; }
-                      .bubble-2 { left: 45%; width: 6px; height: 6px; animation-delay: 0.8s; animation-duration: 4.8s; }
-                      .bubble-3 { left: 70%; width: 3px; height: 3px; animation-delay: 1.8s; animation-duration: 3.2s; }
-                      .bubble-4 { left: 85%; width: 5px; height: 5px; animation-delay: 2.8s; animation-duration: 4.2s; }
-                    `}} />
+                    }} />
 
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, zIndex: 2, position: 'relative' }}>
-                      <FavoriteIcon sx={{ color: '#E85A4F', fontSize: '32px', mb: 2, animation: 'bobbing 3s infinite ease-in-out' }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Life Score</Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', textShadow: '0 1px 2px rgba(255,255,255,0.8)' }}>
-                        {lifeScore.toFixed(2)}
+                      <FavoriteIcon sx={{ color: penaltyPoints > 0 ? '#ef4444' : '#E85A4F', fontSize: '32px', mb: 1.5 }} />
+                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 0.5 }}>
+                        {selectedDate ? `Life Score (${selectedDate})` : 'Daily Life Score'}
                       </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', textShadow: '0 1px 2px rgba(255,255,255,0.8)' }}>
+                        {lifeScore.toFixed(1)} / 100
+                      </Typography>
+
+                      {penaltyPoints > 0 && (
+                        <Tooltip title="Missed deadlines result in an unrecoverable -2 penalty for this day." arrow>
+                          <Chip
+                            size="small"
+                            label={`−${penaltyPoints} pts penalty`}
+                            color="error"
+                            sx={{ mt: 1, height: '22px', fontSize: '11px', fontWeight: 700 }}
+                          />
+                        </Tooltip>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -574,17 +645,17 @@ const Dashboard: React.FC = () => {
                     }
                   }} onClick={() => navigate('/health')}>
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
-                      <HealthAndSafetyIcon sx={{ color: '#3FA76D', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Hydration Score</Typography>
+                      <LocalDrinkIcon sx={{ color: '#00BCD4', fontSize: '32px', mb: 2 }} />
+                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Today's Water</Typography>
                       <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {Math.min(100, Math.round((todaysWater / 2000) * 100))}%
+                        {todaysWater} / 2000 ml
                       </Typography>
                     </CardContent>
                   </Card>
                 </motion.div>
               </Grid>
 
-              {/* Card 4: Today's Tasks */}
+              {/* Card 4: Planner Tasks */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
                   <Card sx={{
@@ -601,16 +672,21 @@ const Dashboard: React.FC = () => {
                   }} onClick={() => navigate('/planner')}>
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
                       <EventAvailableIcon sx={{ color: '#4A90E2', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Total Tasks</Typography>
+                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Today's Tasks</Typography>
                       <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         {completedTasks} / {totalTasks}
                       </Typography>
+                      {missedDeadlinesCount > 0 && (
+                        <Typography variant="caption" sx={{ color: '#ef4444', fontWeight: 600, mt: 0.5 }}>
+                          {missedDeadlinesCount} missed
+                        </Typography>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
               </Grid>
 
-              {/* Row 2: AI Habit Recommendations and Pending Boosts split */}
+              {/* Row 2: AI Habit Recommendations and Score Feedback split */}
               <Grid size={{ xs: 12, md: 8 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
                   <Card sx={{ borderRadius: '18px', boxShadow: 'var(--shadow-soft)', bgcolor: 'var(--bg-secondary)', border: '1px solid var(--neutral-primary)', height: '100%', display: 'flex', alignItems: 'center' }}>
@@ -647,4 +723,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-

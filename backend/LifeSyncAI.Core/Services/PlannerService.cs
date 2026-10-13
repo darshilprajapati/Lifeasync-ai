@@ -14,6 +14,7 @@ namespace LifeSyncAI.Core.Services
 {
     public class PlannerService : IPlannerService
     {
+        private const string InvalidTimeRangeMessage = "The end time must be later than the start time. Choose a valid deadline for your task.";
         private readonly ApplicationDbContext _context;
 
         public PlannerService(ApplicationDbContext context)
@@ -21,15 +22,34 @@ namespace LifeSyncAI.Core.Services
             _context = context;
         }
 
-
-
         public async Task<ApiResponse<List<PlannerEventDto>>> GetEventsAsync(int userId, DateTime clientDate)
         {
             try
             {
                 var events = await _context.PlannerEvents
                     .Where(e => e.UserId == userId)
+                    .OrderBy(e => e.StartTime)
                     .ToListAsync();
+
+                var nowUtc = DateTime.UtcNow;
+                bool stateModified = false;
+
+                // Evaluate overdue incomplete tasks to ensure missed-deadline penalties are recorded idempotently
+                foreach (var ev in events)
+                {
+                    if (!ev.IsCompleted && nowUtc > ev.EndTime && !ev.MissedDeadlinePenalized)
+                    {
+                        ev.MissedDeadlinePenalized = true;
+                        ev.PenaltyAppliedAt = nowUtc;
+                        ev.UpdatedAt = nowUtc;
+                        stateModified = true;
+                    }
+                }
+
+                if (stateModified)
+                {
+                    await _context.SaveChangesAsync();
+                }
 
                 var dtos = events.Select(e => new PlannerEventDto
                 {
@@ -39,6 +59,9 @@ namespace LifeSyncAI.Core.Services
                     StartTime = e.StartTime,
                     EndTime = e.EndTime,
                     IsCompleted = e.IsCompleted,
+                    CompletedAt = e.CompletedAt,
+                    MissedDeadlinePenalized = e.MissedDeadlinePenalized,
+                    ReminderSent = e.ReminderSent,
                     UserId = e.UserId
                 }).ToList();
 
@@ -54,13 +77,23 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
+                // Strict validation: End time must strictly exceed start time
+                if (dto.EndTime <= dto.StartTime)
+                {
+                    return ApiResponse<PlannerEventDto>.Fail(InvalidTimeRangeMessage);
+                }
+
+                var nowUtc = DateTime.UtcNow;
                 var plannerEvent = new PlannerEvent
                 {
-                    Title = dto.Title,
-                    Description = dto.Description,
+                    Title = dto.Title.Trim(),
+                    Description = dto.Description?.Trim(),
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                     IsCompleted = dto.IsCompleted,
+                    CompletedAt = dto.IsCompleted ? nowUtc : null,
+                    CreatedAt = nowUtc,
+                    UpdatedAt = nowUtc,
                     UserId = userId
                 };
 
@@ -70,11 +103,14 @@ namespace LifeSyncAI.Core.Services
                 var createdDto = new PlannerEventDto
                 {
                     Id = plannerEvent.Id,
-                    Title = dto.Title,
-                    Description = dto.Description,
-                    StartTime = dto.StartTime,
-                    EndTime = dto.EndTime,
-                    IsCompleted = dto.IsCompleted,
+                    Title = plannerEvent.Title,
+                    Description = plannerEvent.Description,
+                    StartTime = plannerEvent.StartTime,
+                    EndTime = plannerEvent.EndTime,
+                    IsCompleted = plannerEvent.IsCompleted,
+                    CompletedAt = plannerEvent.CompletedAt,
+                    MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
+                    ReminderSent = plannerEvent.ReminderSent,
                     UserId = userId
                 };
 
@@ -86,17 +122,121 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<bool>> ToggleEventAsync(int id, bool isCompleted)
+        public async Task<ApiResponse<PlannerEventDto>> UpdateEventAsync(int id, UpdatePlannerEventDto dto, int userId)
+        {
+            try
+            {
+                // Strict validation: End time must strictly exceed start time
+                if (dto.EndTime <= dto.StartTime)
+                {
+                    return ApiResponse<PlannerEventDto>.Fail(InvalidTimeRangeMessage);
+                }
+
+                var plannerEvent = await _context.PlannerEvents.FindAsync(id);
+                if (plannerEvent == null || plannerEvent.UserId != userId)
+                {
+                    return ApiResponse<PlannerEventDto>.Fail("Event not found or access denied.");
+                }
+
+                var nowUtc = DateTime.UtcNow;
+
+                // Recalculate reminder eligibility if deadline changed to future > 1 hour
+                if (dto.EndTime != plannerEvent.EndTime && dto.EndTime > nowUtc.AddMinutes(65))
+                {
+                    plannerEvent.ReminderSent = false;
+                    plannerEvent.ReminderSentAt = null;
+                }
+
+                // Note: A deadline change cannot retroactively erase an already-recorded penalty.
+                // MissedDeadlinePenalized is preserved.
+
+                plannerEvent.Title = dto.Title.Trim();
+                plannerEvent.Description = dto.Description?.Trim();
+                plannerEvent.StartTime = dto.StartTime;
+                plannerEvent.EndTime = dto.EndTime;
+                plannerEvent.UpdatedAt = nowUtc;
+
+                if (dto.IsCompleted && !plannerEvent.IsCompleted)
+                {
+                    plannerEvent.IsCompleted = true;
+                    plannerEvent.CompletedAt = nowUtc;
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                    }
+                }
+                else if (!dto.IsCompleted && plannerEvent.IsCompleted)
+                {
+                    plannerEvent.IsCompleted = false;
+                    plannerEvent.CompletedAt = null;
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                var updatedDto = new PlannerEventDto
+                {
+                    Id = plannerEvent.Id,
+                    Title = plannerEvent.Title,
+                    Description = plannerEvent.Description,
+                    StartTime = plannerEvent.StartTime,
+                    EndTime = plannerEvent.EndTime,
+                    IsCompleted = plannerEvent.IsCompleted,
+                    CompletedAt = plannerEvent.CompletedAt,
+                    MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
+                    ReminderSent = plannerEvent.ReminderSent,
+                    UserId = plannerEvent.UserId
+                };
+
+                return ApiResponse<PlannerEventDto>.Success(updatedDto, "Planner event updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<PlannerEventDto>.Fail($"Failed to update planner event: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> ToggleEventAsync(int id, bool isCompleted, int userId = 0)
         {
             try
             {
                 var plannerEvent = await _context.PlannerEvents.FindAsync(id);
-                if (plannerEvent != null)
+                if (plannerEvent == null || (userId > 0 && plannerEvent.UserId != userId))
                 {
-                    plannerEvent.IsCompleted = isCompleted;
-                    await _context.SaveChangesAsync();
+                    return ApiResponse<bool>.Fail("Event not found or access denied.");
                 }
 
+                var nowUtc = DateTime.UtcNow;
+                plannerEvent.IsCompleted = isCompleted;
+                plannerEvent.UpdatedAt = nowUtc;
+
+                if (isCompleted)
+                {
+                    plannerEvent.CompletedAt = nowUtc;
+                    // If completed AFTER the deadline, mark as penalized (completing late does NOT remove the penalty)
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                    }
+                }
+                else
+                {
+                    plannerEvent.CompletedAt = null;
+                    // If unchecked when past the deadline, it's overdue
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
                 return ApiResponse<bool>.Success(true, "Event status toggled successfully.");
             }
             catch (Exception ex)
@@ -105,16 +245,18 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<bool>> DeleteEventAsync(int id)
+        public async Task<ApiResponse<bool>> DeleteEventAsync(int id, int userId = 0)
         {
             try
             {
                 var plannerEvent = await _context.PlannerEvents.FindAsync(id);
-                if (plannerEvent != null)
+                if (plannerEvent == null || (userId > 0 && plannerEvent.UserId != userId))
                 {
-                    _context.PlannerEvents.Remove(plannerEvent);
-                    await _context.SaveChangesAsync();
+                    return ApiResponse<bool>.Fail("Event not found or access denied.");
                 }
+
+                _context.PlannerEvents.Remove(plannerEvent);
+                await _context.SaveChangesAsync();
 
                 return ApiResponse<bool>.Success(true, "Event deleted successfully.");
             }

@@ -10,6 +10,9 @@ namespace LifeSyncAI.Core.DTO.Output.Planner
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public bool IsCompleted { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public bool MissedDeadlinePenalized { get; set; }
+        public bool ReminderSent { get; set; }
         public int UserId { get; set; }
     }
 }

@@ -46,10 +46,20 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<PlannerEventDto>>> UpdateEvent(int id, [FromBody] UpdatePlannerEventDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _plannerService.UpdateEventAsync(id, dto, userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpPut("{id}/toggle")]
         public async Task<ActionResult<ApiResponse<bool>>> ToggleEvent(int id, [FromBody] bool isCompleted)
         {
-            var result = await _plannerService.ToggleEventAsync(id, isCompleted);
+            var userId = GetUserId();
+            var result = await _plannerService.ToggleEventAsync(id, isCompleted, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -57,7 +67,8 @@ namespace LifeSyncAI.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteEvent(int id)
         {
-            var result = await _plannerService.DeleteEventAsync(id);
+            var userId = GetUserId();
+            var result = await _plannerService.DeleteEventAsync(id, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

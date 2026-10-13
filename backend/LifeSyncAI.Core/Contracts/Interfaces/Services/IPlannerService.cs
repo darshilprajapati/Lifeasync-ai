@@ -10,7 +10,8 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
     {
         Task<ApiResponse<List<PlannerEventDto>>> GetEventsAsync(int userId, System.DateTime clientDate);
         Task<ApiResponse<PlannerEventDto>> CreateEventAsync(CreatePlannerEventDto dto, int userId, System.DateTime clientDate);
-        Task<ApiResponse<bool>> ToggleEventAsync(int id, bool isCompleted);
-        Task<ApiResponse<bool>> DeleteEventAsync(int id);
+        Task<ApiResponse<PlannerEventDto>> UpdateEventAsync(int id, UpdatePlannerEventDto dto, int userId);
+        Task<ApiResponse<bool>> ToggleEventAsync(int id, bool isCompleted, int userId = 0);
+        Task<ApiResponse<bool>> DeleteEventAsync(int id, int userId = 0);
     }
 }

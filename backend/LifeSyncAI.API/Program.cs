@@ -109,11 +109,13 @@ namespace LifeSyncAI.API
                 builder.Services.AddScoped<IWellnessForecasterService, WellnessForecasterService>();
                 builder.Services.AddScoped<IExternalSearchService, ExternalSearchService>();
                 builder.Services.AddScoped<ICompanionService, CompanionService>();
+                builder.Services.AddScoped<ILifeScoreService, LifeScoreService>();
 
                 // Register Reports Asynchronous Background Processing Services
                 builder.Services.AddSingleton<LifeSyncAI.Core.Services.IReportQueue, LifeSyncAI.Core.Services.ReportQueue>();
                 builder.Services.AddSingleton<LifeSyncAI.Core.Services.IReportRepository, LifeSyncAI.Core.Services.ReportRepository>();
                 builder.Services.AddHostedService<LifeSyncAI.Core.Services.ReportProcessorService>();
+                builder.Services.AddHostedService<LifeSyncAI.Core.Services.PlannerAutomationHostedService>();
 
                 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
                 builder.Services.AddEndpointsApiExplorer();

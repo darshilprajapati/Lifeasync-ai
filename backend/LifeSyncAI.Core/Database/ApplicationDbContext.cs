@@ -25,6 +25,7 @@ namespace LifeSyncAI.Core.Database
         public DbSet<VaultItem> VaultItems { get; set; }
         public DbSet<AiRecommendation> AiRecommendations { get; set; }
         public DbSet<RecurringItem> RecurringItems { get; set; }
+        public DbSet<UserNotificationLog> UserNotificationLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -90,6 +91,17 @@ namespace LifeSyncAI.Core.Database
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserNotificationLog>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserNotificationLog>()
+                .HasIndex(n => new { n.UserId, n.NotificationType, n.ReferenceId })
+                .HasFilter("\"IsSuccess\" = true")
+                .IsUnique();
         }
 
         public override int SaveChanges()
