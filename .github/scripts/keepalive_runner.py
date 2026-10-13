@@ -99,7 +99,26 @@ def send_notification_email(is_success, probe_result):
     smtp_port = os.environ.get("SMTP_PORT", "587")
     smtp_user = os.environ.get("SMTP_USER") or os.environ.get("SMTP_USERNAME")
     smtp_pass = os.environ.get("SMTP_PASSWORD") or os.environ.get("SMTP_PASS")
-    sender_email = os.environ.get("SMTP_FROM") or smtp_user or "notifications@lifesync.ai"
+    sender_email = os.environ.get("SMTP_FROM")
+
+    # Local development fallback if running manual diagnostic on development machine
+    if not (smtp_user and smtp_pass):
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            dev_settings = os.path.join(repo_root, "backend", "LifeSyncAI.API", "appsettings.Development.json")
+            if os.path.exists(dev_settings):
+                with open(dev_settings, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    scfg = cfg.get("SmtpSettings", {})
+                    smtp_host = smtp_host or scfg.get("Host")
+                    smtp_port = smtp_port or scfg.get("Port", "587")
+                    smtp_user = smtp_user or scfg.get("Username")
+                    smtp_pass = smtp_pass or scfg.get("Password")
+                    sender_email = sender_email or scfg.get("SenderEmail")
+        except Exception:
+            pass
+
+    sender_email = sender_email or smtp_user or "notifications@lifesync.ai"
 
     if not smtp_host or not smtp_user or not smtp_pass:
         print("\n[WARNING] Email dispatch skipped: SMTP credentials not fully configured in environment.")

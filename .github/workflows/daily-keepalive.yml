@@ -27,7 +27,8 @@ jobs:
 
       - name: Run Keep-Alive Probe & Notification Runner
         env:
-          API_BASE_URL: ${{ vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai.onrender.com' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai.onrender.com' }}
+          API_BASE_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai.onrender.com' }}
           KEEPALIVE_SECRET: ${{ secrets.KEEPALIVE_SECRET || 'LifeSync_KeepAlive_Secret_2026_Key!' }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
