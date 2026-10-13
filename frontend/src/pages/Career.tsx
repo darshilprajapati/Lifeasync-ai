@@ -76,36 +76,43 @@ const Career: React.FC = () => {
     return { isValid: true };
   };
 
-  const handleDateChange = (rawVal: string) => {
+  const handleDateChange = (rawVal: string, validity?: ValidityState) => {
     if (!rawVal) {
-      setAppliedDate('');
-      setDateError(null);
+      if (validity && (validity.badInput || validity.rangeOverflow)) {
+        setDateError('Year must be a 4-digit number between 1900 and 2100.');
+      } else {
+        setAppliedDate('');
+        setDateError(null);
+      }
       return;
     }
 
-    // Intercept and sanitize if year part exceeds 4 digits (e.g. 6-digit year like 202644)
+    setAppliedDate(rawVal);
+
     const parts = rawVal.split('-');
-    let sanitized = rawVal;
     if (parts.length > 0 && parts[0].length > 4) {
-      parts[0] = parts[0].slice(0, 4);
-      sanitized = parts.join('-');
+      setDateError('Year cannot exceed 4 digits (YYYY).');
+      return;
     }
 
-    setAppliedDate(sanitized);
-    const check = validateDateString(sanitized);
+    const check = validateDateString(rawVal);
     setDateError(check.isValid ? null : (check.error || 'Invalid date.'));
   };
 
   const handleDatePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasteData = e.clipboardData.getData('text').trim();
-    const parts = pasteData.split('-');
-    if (parts.length > 0 && parts[0].length > 4) {
+    const parts = pasteData.split(/[-/.]/);
+    const hasOversizedYear = parts.some((p) => /^\d{5,}$/.test(p)) || /\d{5,}/.test(pasteData);
+    if (hasOversizedYear) {
       e.preventDefault();
-      parts[0] = parts[0].slice(0, 4);
-      const sanitized = parts.join('-');
-      setAppliedDate(sanitized);
-      const check = validateDateString(sanitized);
-      setDateError(check.isValid ? null : (check.error || 'Invalid date.'));
+      setDateError('Year cannot exceed 4 digits (YYYY).');
+      return;
+    }
+
+    const match = pasteData.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      e.preventDefault();
+      handleDateChange(pasteData);
     }
   };
 
@@ -282,7 +289,10 @@ const Career: React.FC = () => {
                       required
                       fullWidth
                       value={appliedDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
+                      onChange={(e) => {
+                        const target = e.target as HTMLInputElement;
+                        handleDateChange(target.value, target.validity);
+                      }}
                       error={Boolean(dateError)}
                       helperText={dateError || "Enter a valid date with a 4-digit year (YYYY-MM-DD)"}
                       slotProps={{
