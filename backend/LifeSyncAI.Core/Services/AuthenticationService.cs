@@ -67,12 +67,15 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<UserDto>.Fail("Password must be at least 6 characters long.");
             }
 
-            // 2. Concurrency-safe duplicate email check
-            var emailExists = await _context.Users
+            // 2. Concurrently execute DB email uniqueness check and CPU-bound password hashing
+            var emailCheckTask = _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Email == targetEmail);
+            var hashTask = Task.Run(() => PasswordHasher.HashPassword(dto.Password));
 
-            if (emailExists)
+            await Task.WhenAll(emailCheckTask, hashTask);
+
+            if (emailCheckTask.Result)
             {
                 return ApiResponse<UserDto>.Fail("A user with this email address already exists.");
             }
@@ -81,7 +84,7 @@ namespace LifeSyncAI.Core.Services
             {
                 FullName = dto.FullName.Trim(),
                 Email = targetEmail,
-                PasswordHash = PasswordHasher.HashPassword(dto.Password),
+                PasswordHash = hashTask.Result,
                 Role = UserRole.User,          // Normal user registration
                 Status = UserStatus.Active,    // Active immediately upon registration
                 CreatedAt = DateTime.UtcNow,
@@ -140,11 +143,15 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<(UserDto, string, string)>.Fail("Password must be at least 6 characters long.");
             }
 
-            var emailExists = await _context.Users
+            // Concurrently execute DB email uniqueness check and CPU-bound password hashing
+            var emailCheckTask = _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Email == targetEmail);
+            var hashTask = Task.Run(() => PasswordHasher.HashPassword(dto.Password));
 
-            if (emailExists)
+            await Task.WhenAll(emailCheckTask, hashTask);
+
+            if (emailCheckTask.Result)
             {
                 return ApiResponse<(UserDto, string, string)>.Fail("A user with this email address already exists.");
             }
@@ -162,7 +169,7 @@ namespace LifeSyncAI.Core.Services
             {
                 FullName = dto.FullName.Trim(),
                 Email = targetEmail,
-                PasswordHash = PasswordHasher.HashPassword(dto.Password),
+                PasswordHash = hashTask.Result,
                 Role = UserRole.User,
                 Status = UserStatus.Active,
                 RefreshToken = refreshToken,
@@ -193,10 +200,17 @@ namespace LifeSyncAI.Core.Services
 
         public async Task<ApiResponse<(UserDto User, string AccessToken, string RefreshToken)>> LoginAsync(LoginDto dto)
         {
+            var normalizedEmail = dto.Email.ToLower().Trim();
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower().Trim());
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
-            if (user == null || !PasswordHasher.VerifyPassword(dto.Password, user.PasswordHash))
+            if (user == null)
+            {
+                return ApiResponse<(UserDto, string, string)>.Fail("Invalid email or password.");
+            }
+
+            var isValidPassword = await Task.Run(() => PasswordHasher.VerifyPassword(dto.Password, user.PasswordHash));
+            if (!isValidPassword)
             {
                 return ApiResponse<(UserDto, string, string)>.Fail("Invalid email or password.");
             }

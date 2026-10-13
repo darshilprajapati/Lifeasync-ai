@@ -18,7 +18,7 @@ from email.mime.text import MIMEText
 
 RECIPIENT_EMAIL = "gdarshil1203@gmail.com"
 MAX_RETRIES = 2
-REQUEST_TIMEOUT_SECONDS = 15
+REQUEST_TIMEOUT_SECONDS = 60
 RETRY_DELAY_SECONDS = 5
 
 
@@ -211,8 +211,8 @@ def send_notification_email(is_success, probe_result):
 
 
 def main():
-    api_base_url = os.environ.get("API_BASE_URL") or os.environ.get("BACKEND_URL") or "https://lifesync-ai-api.onrender.com"
-    keepalive_secret = os.environ.get("KEEPALIVE_SECRET")
+    api_base_url = os.environ.get("API_BASE_URL") or os.environ.get("BACKEND_URL") or "https://lifesync-ai.onrender.com"
+    keepalive_secret = os.environ.get("KEEPALIVE_SECRET") or "LifeSync_KeepAlive_Secret_2026_Key!"
 
     print(f"=== LifeSync AI Scheduled Keep-Alive Task ===")
     print(f"Target API Base: {api_base_url}")

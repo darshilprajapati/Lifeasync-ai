@@ -101,11 +101,8 @@ const AppLayout: React.FC = () => {
   }, [isDragging, activeZone]);
 
   React.useEffect(() => {
-    setPageChanging(true);
-    const timer = setTimeout(() => {
-      setPageChanging(false);
-    }, 450);
-    return () => clearTimeout(timer);
+    // Instantaneous, non-blocking route transitions
+    setPageChanging(false);
   }, [location.pathname]);
 
   const menuItems: SidebarItem[] = [

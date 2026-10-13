@@ -114,6 +114,7 @@ namespace LifeSyncAI.API
                 builder.Services.AddSingleton<LifeSyncAI.Core.Services.IReportQueue, LifeSyncAI.Core.Services.ReportQueue>();
                 builder.Services.AddSingleton<LifeSyncAI.Core.Services.IReportRepository, LifeSyncAI.Core.Services.ReportRepository>();
                 builder.Services.AddHostedService<LifeSyncAI.Core.Services.ReportProcessorService>();
+                builder.Services.AddHostedService<LifeSyncAI.Core.Services.KeepAliveAutomationHostedService>();
 
                 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
                 builder.Services.AddEndpointsApiExplorer();

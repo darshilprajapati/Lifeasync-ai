@@ -10,6 +10,7 @@ using LifeSyncAI.Core.DTO.Input;
 using LifeSyncAI.Core.Models;
 using LifeSyncAI.Core.Responses;
 using LifeSyncAI.Core.Services;
+using LifeSyncAI.Core.Helpers;
 using Xunit;
 
 using LifeSyncAI.Tests.Helpers;
@@ -261,6 +262,43 @@ namespace LifeSyncAI.Tests
             Assert.True(firstResult.IsSuccess);
             Assert.False(secondResult.IsSuccess);
             Assert.Contains("already exists", secondResult.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task MeasureAuthenticationTimings()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // 1. Password hashing timing
+            sw.Restart();
+            var hash = PasswordHasher.HashPassword("SecurePassword123!");
+            sw.Stop();
+            var hashMs = sw.ElapsedMilliseconds;
+
+            // 2. Password verification timing
+            sw.Restart();
+            var verified = PasswordHasher.VerifyPassword("SecurePassword123!", hash);
+            sw.Stop();
+            var verifyMs = sw.ElapsedMilliseconds;
+
+            // 3. Complete RegisterWithSessionAsync timing
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("benchmark_user");
+            sw.Restart();
+            var regResult = await _authService.RegisterWithSessionAsync(registerDto);
+            sw.Stop();
+            var registerMs = sw.ElapsedMilliseconds;
+
+            // 4. Complete LoginAsync timing
+            var loginDto = new LoginDto { Email = registerDto.Email, Password = registerDto.Password };
+            sw.Restart();
+            var loginResult = await _authService.LoginAsync(loginDto);
+            sw.Stop();
+            var loginMs = sw.ElapsedMilliseconds;
+
+            System.Console.WriteLine($"[PERF BENCHMARK] BCrypt Hash: {hashMs}ms | BCrypt Verify: {verifyMs}ms | Full RegisterWithSession: {registerMs}ms | Full Login: {loginMs}ms");
+            Assert.True(verified);
+            Assert.True(regResult.IsSuccess);
+            Assert.True(loginResult.IsSuccess);
         }
     }
 }

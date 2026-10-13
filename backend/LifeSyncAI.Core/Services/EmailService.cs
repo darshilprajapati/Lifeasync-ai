@@ -29,7 +29,7 @@ namespace LifeSyncAI.Core.Services
             var senderEmail = section["SenderEmail"] ?? "no-reply@lifesync.ai";
             var senderName = section["SenderName"] ?? "LifeSync AI";
 
-            // Backwards compatibility check: If provider is mock but SMTP is configured, auto-select SMTP
+            // Auto-select SMTP if valid SMTP settings are configured and not placeholders
             if (provider.Equals("Mock", StringComparison.OrdinalIgnoreCase))
             {
                 var smtpHost = _configuration.GetSection("SmtpSettings")["Host"];
@@ -37,7 +37,6 @@ namespace LifeSyncAI.Core.Services
                 var smtpPass = _configuration.GetSection("SmtpSettings")["Password"];
 
                 if (!string.IsNullOrEmpty(smtpHost) &&
-                    smtpHost != "smtp.gmail.com" &&
                     !string.IsNullOrEmpty(smtpUser) && !smtpUser.Contains("YOUR_SMTP") &&
                     !string.IsNullOrEmpty(smtpPass) && !smtpPass.Contains("YOUR_SMTP"))
                 {
@@ -152,18 +151,21 @@ namespace LifeSyncAI.Core.Services
 
                             using (var smtpClient = new SmtpClient(host, port))
                             {
+                                smtpClient.UseDefaultCredentials = false;
                                 smtpClient.Credentials = new NetworkCredential(username, password);
                                 smtpClient.EnableSsl = enableSsl;
+                                smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                                smtpClient.Timeout = 20000;
                                 
                                 await smtpClient.SendMailAsync(mailMessage);
-                                _logger.LogInformation("Successfully sent OTP email to {ToEmail} using SMTP server.", toEmail);
+                                _logger.LogInformation("Successfully sent email to {ToEmail} using SMTP server ({Host}:{Port}).", toEmail, host, port);
                             }
                         }
                         return;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to deliver email to {ToEmail} via SMTP.", toEmail);
+                        _logger.LogError(ex, "Failed to deliver email to {ToEmail} via SMTP ({Host}:{Port}).", toEmail, host, port);
                         throw new Exception($"Email delivery failed via SMTP: {ex.Message}", ex);
                     }
                 }
