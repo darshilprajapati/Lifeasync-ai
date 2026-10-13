@@ -294,7 +294,7 @@ const Career: React.FC = () => {
                         handleDateChange(target.value, target.validity);
                       }}
                       error={Boolean(dateError)}
-                      helperText={dateError || "Enter a valid date with a 4-digit year (YYYY-MM-DD)"}
+                      helperText={dateError}
                       slotProps={{
                         htmlInput: {
                           min: '1900-01-01',

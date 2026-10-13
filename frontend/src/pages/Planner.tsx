@@ -369,7 +369,7 @@ const Planner: React.FC = () => {
                       value={endTime}
                       onChange={(e) => handleEndTimeChange(e.target.value)}
                       error={!!timeRangeError}
-                      helperText={timeRangeError || 'Must be strictly later than Start Time.'}
+                      helperText={timeRangeError}
                       slotProps={{
                         inputLabel: { shrink: true },
                         htmlInput: { min: startTime || undefined }
