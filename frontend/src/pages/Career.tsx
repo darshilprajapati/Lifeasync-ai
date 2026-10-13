@@ -33,26 +33,65 @@ const Career: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const validateDateString = (value: string): { isValid: boolean; error?: string } => {
+  const parseDateParts = (dateStr: string): { year: number; month: number; day: number; yearStr: string } | null => {
+    if (!dateStr) return null;
+    const parts = dateStr.trim().split(/[-/.]/);
+    if (parts.length !== 3) return null;
+
+    let yearPart = '';
+    let monthPart = '';
+    let dayPart = '';
+
+    if (parts[0].length >= 4) {
+      // YYYY-MM-DD
+      yearPart = parts[0];
+      monthPart = parts[1];
+      dayPart = parts[2];
+    } else if (parts[2].length >= 4) {
+      // DD-MM-YYYY or MM-DD-YYYY
+      yearPart = parts[2];
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+      if (p0 > 12) {
+        dayPart = parts[0];
+        monthPart = parts[1];
+      } else if (p1 > 12) {
+        monthPart = parts[0];
+        dayPart = parts[1];
+      } else {
+        dayPart = parts[0];
+        monthPart = parts[1];
+      }
+    } else {
+      yearPart = parts[0];
+      monthPart = parts[1];
+      dayPart = parts[2];
+    }
+
+    return {
+      year: parseInt(yearPart, 10),
+      month: parseInt(monthPart, 10),
+      day: parseInt(dayPart, 10),
+      yearStr: yearPart
+    };
+  };
+
+  const validateDateString = (value: string): { isValid: boolean; error?: string; normalized?: string } => {
     if (!value) {
       return { isValid: false, error: 'Applied date is required.' };
     }
 
-    const parts = value.trim().split('-');
-    if (parts.length !== 3) {
-      return { isValid: false, error: 'Please enter a valid date in YYYY-MM-DD format.' };
+    const parsed = parseDateParts(value);
+    if (!parsed) {
+      return { isValid: false, error: 'Please enter a valid date in YYYY-MM-DD or DD-MM-YYYY format.' };
     }
 
-    const [yearPart, monthPart, dayPart] = parts;
+    const { year, month, day, yearStr } = parsed;
 
     // Strict 4-digit year rule: cannot be less or more than 4 digits
-    if (yearPart.length !== 4 || !/^\d{4}$/.test(yearPart)) {
+    if (yearStr.length !== 4 || !/^\d{4}$/.test(yearStr)) {
       return { isValid: false, error: 'Year must be exactly four digits (YYYY).' };
     }
-
-    const year = parseInt(yearPart, 10);
-    const month = parseInt(monthPart, 10);
-    const day = parseInt(dayPart, 10);
 
     if (isNaN(year) || year < 1900 || year > 2100) {
       return { isValid: false, error: 'Year must be a 4-digit number between 1900 and 2100.' };
@@ -73,30 +112,34 @@ const Career: React.FC = () => {
       return { isValid: false, error: `Day must be between 01 and ${maxDays} for month ${month}.` };
     }
 
-    return { isValid: true };
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const normalized = `${year}-${pad(month)}-${pad(day)}`;
+
+    return { isValid: true, normalized };
   };
 
-  const handleDateChange = (rawVal: string, validity?: ValidityState) => {
+  const handleDateChange = (rawVal: string) => {
     if (!rawVal) {
-      if (validity && (validity.badInput || validity.rangeOverflow)) {
-        setDateError('Year must be a 4-digit number between 1900 and 2100.');
-      } else {
-        setAppliedDate('');
-        setDateError(null);
-      }
+      setAppliedDate('');
+      setDateError(null);
       return;
     }
 
-    setAppliedDate(rawVal);
-
-    const parts = rawVal.split('-');
-    if (parts.length > 0 && parts[0].length > 4) {
+    const parsed = parseDateParts(rawVal);
+    if (parsed && parsed.yearStr.length > 4) {
+      setAppliedDate(rawVal);
       setDateError('Year cannot exceed 4 digits (YYYY).');
       return;
     }
 
     const check = validateDateString(rawVal);
-    setDateError(check.isValid ? null : (check.error || 'Invalid date.'));
+    if (check.isValid && check.normalized) {
+      setAppliedDate(check.normalized);
+      setDateError(null);
+    } else {
+      setAppliedDate(rawVal);
+      setDateError(check.error || 'Invalid date.');
+    }
   };
 
   const handleDatePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -109,10 +152,11 @@ const Career: React.FC = () => {
       return;
     }
 
-    const match = pasteData.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
+    const check = validateDateString(pasteData);
+    if (check.isValid && check.normalized) {
       e.preventDefault();
-      handleDateChange(pasteData);
+      setAppliedDate(check.normalized);
+      setDateError(null);
     }
   };
 
@@ -152,7 +196,7 @@ const Career: React.FC = () => {
         company,
         position,
         status,
-        appliedDate: new Date(appliedDate).toISOString(),
+        appliedDate: new Date(dateValidation.normalized || appliedDate).toISOString(),
         notes
       });
 
@@ -289,10 +333,7 @@ const Career: React.FC = () => {
                       required
                       fullWidth
                       value={appliedDate}
-                      onChange={(e) => {
-                        const target = e.target as HTMLInputElement;
-                        handleDateChange(target.value, target.validity);
-                      }}
+                      onChange={(e) => handleDateChange(e.target.value)}
                       error={Boolean(dateError)}
                       helperText={dateError}
                       slotProps={{
