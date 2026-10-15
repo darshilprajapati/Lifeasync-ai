@@ -238,6 +238,7 @@ namespace LifeSyncAI.Core.Services
                     {
                         plannerEvent.MissedDeadlinePenalized = true;
                         plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                        await RecordPersistentPenaltyLogAsync(plannerEvent);
                     }
                 }
                 else
@@ -248,6 +249,7 @@ namespace LifeSyncAI.Core.Services
                     {
                         plannerEvent.MissedDeadlinePenalized = true;
                         plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                        await RecordPersistentPenaltyLogAsync(plannerEvent);
                     }
                 }
 
@@ -270,6 +272,15 @@ namespace LifeSyncAI.Core.Services
                     return ApiResponse<bool>.Fail("Event not found or access denied.");
                 }
 
+                var nowUtc = DateTime.UtcNow;
+
+                // Crucial requirement: If task missed its deadline or was penalized, the penalty
+                // MUST remain deducted from the user's score even after deleting the event!
+                if (plannerEvent.MissedDeadlinePenalized || (nowUtc > plannerEvent.EndTime && !plannerEvent.IsCompleted))
+                {
+                    await RecordPersistentPenaltyLogAsync(plannerEvent);
+                }
+
                 _context.PlannerEvents.Remove(plannerEvent);
                 await _context.SaveChangesAsync();
 
@@ -278,6 +289,36 @@ namespace LifeSyncAI.Core.Services
             catch (Exception ex)
             {
                 return ApiResponse<bool>.Fail($"Failed to delete event: {ex.Message}");
+            }
+        }
+
+        private async Task RecordPersistentPenaltyLogAsync(PlannerEvent plannerEvent)
+        {
+            try
+            {
+                string refId = plannerEvent.Id.ToString();
+                bool alreadyLogged = await _context.UserNotificationLogs.AnyAsync(n =>
+                    n.UserId == plannerEvent.UserId &&
+                    n.NotificationType == "MissedDeadlinePenalty" &&
+                    n.ReferenceId == refId);
+
+                if (!alreadyLogged)
+                {
+                    await _context.UserNotificationLogs.AddAsync(new UserNotificationLog
+                    {
+                        UserId = plannerEvent.UserId,
+                        NotificationType = "MissedDeadlinePenalty",
+                        ReferenceId = refId,
+                        SentAt = plannerEvent.EndTime,
+                        RecipientEmail = string.Empty,
+                        IsSuccess = true,
+                        Details = $"Missed deadline penalty (-2 pts) permanently retained for task '{plannerEvent.Title}'."
+                    });
+                }
+            }
+            catch
+            {
+                // Non-blocking log persistence
             }
         }
     }

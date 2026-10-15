@@ -7,8 +7,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using LifeSyncAI.Core.Contracts.Interfaces.Services;
 using LifeSyncAI.Core.Database;
+using LifeSyncAI.Core.Models;
 
 namespace LifeSyncAI.Core.Services
 {
@@ -145,6 +147,20 @@ namespace LifeSyncAI.Core.Services
                 _logger.LogError(ex, "[DatabaseKeepAlive] Exception while testing database connection.");
             }
 
+            string todayIstStr = nowIst.ToString("yyyy-MM-dd");
+
+            // Verify if daily keep-alive email was already sent today
+            bool alreadySentToday = await context.UserNotificationLogs.AnyAsync(n =>
+                n.NotificationType == "DailyKeepAliveEmail" &&
+                n.ReferenceId == todayIstStr &&
+                n.IsSuccess, cancellationToken);
+
+            if (alreadySentToday)
+            {
+                _logger.LogInformation("[DatabaseKeepAlive] Daily status email already delivered for {TodayIst}. Skipping duplicate email.", todayIstStr);
+                return;
+            }
+
             // Dispatch status email to ADMIN_EMAIL via IEmailService (Brevo)
             try
             {
@@ -179,6 +195,27 @@ namespace LifeSyncAI.Core.Services
 
                 await emailService.SendEmailAsync(recipientEmail, subject, bodyHtml);
                 _logger.LogInformation("[DatabaseKeepAlive] Daily status email dispatched to {Recipient}.", recipientEmail);
+
+                if (isSuccess)
+                {
+                    int adminUserId = await context.Users
+                        .Where(u => u.Role == LifeSyncAI.Core.Enums.UserRole.Admin)
+                        .Select(u => u.Id)
+                        .FirstOrDefaultAsync(cancellationToken);
+                    if (adminUserId == 0) adminUserId = 1;
+
+                    context.UserNotificationLogs.Add(new UserNotificationLog
+                    {
+                        UserId = adminUserId,
+                        NotificationType = "DailyKeepAliveEmail",
+                        ReferenceId = todayIstStr,
+                        SentAt = nowUtc,
+                        RecipientEmail = recipientEmail,
+                        IsSuccess = true,
+                        Details = $"Autonomous 12:00 PM hosted service email delivered at {timestampIstStr}."
+                    });
+                    await context.SaveChangesAsync(cancellationToken);
+                }
             }
             catch (Exception ex)
             {

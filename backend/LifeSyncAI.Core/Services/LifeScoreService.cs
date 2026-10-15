@@ -43,9 +43,19 @@ namespace LifeSyncAI.Core.Services
                     .Where(e => e.UserId == userId && e.EndTime >= startOfDay && e.EndTime < endOfDay)
                     .ToListAsync();
 
+                // Fetch persistent penalty logs for this day to ensure deleted tasks STILL retain their penalty!
+                var persistentPenaltyLogs = await _context.UserNotificationLogs
+                    .Where(n => n.UserId == userId &&
+                                n.NotificationType == "MissedDeadlinePenalty" &&
+                                n.SentAt >= startOfDay &&
+                                n.SentAt < endOfDay)
+                    .Select(n => n.ReferenceId)
+                    .ToListAsync();
+
+                var penalizedTaskIds = new HashSet<string>(persistentPenaltyLogs.Where(id => !string.IsNullOrEmpty(id))!);
+
                 int totalTasks = dayTasks.Count;
                 int onTimeCompletedTasks = 0;
-                int missedDeadlinesCount = 0;
 
                 foreach (var task in dayTasks)
                 {
@@ -65,13 +75,15 @@ namespace LifeSyncAI.Core.Services
 
                     if (isMissed)
                     {
-                        missedDeadlinesCount++;
+                        penalizedTaskIds.Add(task.Id.ToString());
                     }
                     else if (task.IsCompleted)
                     {
                         onTimeCompletedTasks++;
                     }
                 }
+
+                int missedDeadlinesCount = penalizedTaskIds.Count;
 
                 // 3. Financial Balance Factor
                 var transactions = await _context.Transactions
@@ -82,7 +94,7 @@ namespace LifeSyncAI.Core.Services
                 decimal balance = income - expense;
 
                 // 4. Score Breakdown Calculation
-                bool hasActivity = totalTasks > 0 || waterSum > 0 || sleepSum > 0 || stepsSum > 0 || caloriesSum > 0 || workoutSum > 0;
+                bool hasActivity = totalTasks > 0 || missedDeadlinesCount > 0 || waterSum > 0 || sleepSum > 0 || stepsSum > 0 || caloriesSum > 0 || workoutSum > 0;
                 double baseline = hasActivity ? 5.0 : 0.0;
                 double tasksPts = totalTasks > 0 ? ((double)onTimeCompletedTasks / totalTasks) * 15.0 : 0.0;
                 double waterPts = Math.Min(30.0, (waterSum / 2000.0) * 30.0);

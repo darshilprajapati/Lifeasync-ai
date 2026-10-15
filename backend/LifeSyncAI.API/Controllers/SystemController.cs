@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
 using LifeSyncAI.Core.Contracts.Interfaces.Services;
 using LifeSyncAI.Core.Database;
 using LifeSyncAI.Core.DTO.Output.System;
+using LifeSyncAI.Core.Models;
 using LifeSyncAI.Core.Responses;
 using Serilog;
 
@@ -130,7 +132,7 @@ namespace LifeSyncAI.API.Controllers
                 if (!canConnect)
                 {
                     Log.Warning("Keep-alive database probe returned false during connectivity check.");
-                    await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check failed: Unable to establish connection.", timestampIstStr, "Relational");
+                    await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check failed: Unable to establish connection.", timestampIstStr, "Relational", nowUtc, nowIst);
                     return StatusCode(503, ApiResponse<KeepAliveResultDto>.Fail("Database connectivity check failed: Unable to establish connection."));
                 }
 
@@ -152,27 +154,53 @@ namespace LifeSyncAI.API.Controllers
                 };
 
                 Log.Information("Keep-alive probe succeeded at {TimestampIst} (Provider: {Provider})", result.TimestampIst, providerName);
-                await TrySendNotificationEmailAsync(isSuccess: true, "Database connectivity check passed.", timestampIstStr, providerName);
+                await TrySendNotificationEmailAsync(isSuccess: true, "Database connectivity check passed.", timestampIstStr, providerName, nowUtc, nowIst);
                 return Ok(ApiResponse<KeepAliveResultDto>.Success(result, "Database connectivity check passed."));
             }
             catch (OperationCanceledException)
             {
                 Log.Error("Keep-alive database connectivity probe timed out after 5 seconds.");
-                await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check timed out after 5 seconds.", timestampIstStr, "Unknown");
+                await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check timed out after 5 seconds.", timestampIstStr, "Unknown", nowUtc, nowIst);
                 return StatusCode(504, ApiResponse<KeepAliveResultDto>.Fail("Database connectivity check timed out."));
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Unexpected error occurred during keep-alive database probe.");
-                await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check failed: " + ex.Message, timestampIstStr, "Unknown");
+                await TrySendNotificationEmailAsync(isSuccess: false, "Database connectivity check failed: " + ex.Message, timestampIstStr, "Unknown", nowUtc, nowIst);
                 return StatusCode(503, ApiResponse<KeepAliveResultDto>.Fail("Database connectivity check failed."));
             }
         }
 
-        private async Task TrySendNotificationEmailAsync(bool isSuccess, string message, string timestampIst, string provider)
+        private async Task TrySendNotificationEmailAsync(bool isSuccess, string message, string timestampIst, string provider, DateTime nowUtc, DateTime nowIst)
         {
             try
             {
+                string todayIstStr = nowIst.ToString("yyyy-MM-dd");
+
+                // Strict policy: Send daily keep-alive email ONLY ONCE PER DAY at 12:00 PM (Noon) IST!
+                // Any other hits (from keep-alive monitors, pingers, or browser tabs) keep the database awake
+                // but do NOT spam the user's inbox with multiple emails.
+                bool isNoonWindow = nowIst.Hour == 12; // Between 12:00 PM and 12:59 PM IST
+                bool forceEmail = Request?.Query.ContainsKey("forceEmail") == true;
+
+                if (!isNoonWindow && !forceEmail)
+                {
+                    Log.Information("Keep-alive email suppressed: current time {TimestampIst} is outside the scheduled 12:00 PM IST window.", timestampIst);
+                    return;
+                }
+
+                // Check if already dispatched today in UserNotificationLogs
+                bool alreadySentToday = await _context.UserNotificationLogs.AnyAsync(n =>
+                    n.NotificationType == "DailyKeepAliveEmail" &&
+                    n.ReferenceId == todayIstStr &&
+                    n.IsSuccess);
+
+                if (alreadySentToday && !forceEmail)
+                {
+                    Log.Information("Keep-alive email suppressed: daily notification already dispatched for {TodayIst}.", todayIstStr);
+                    return;
+                }
+
                 string subject = isSuccess
                     ? "LifeSync AI — Daily Keep-Alive SUCCESS"
                     : "LifeSync AI — Daily Keep-Alive FAILED";
@@ -200,6 +228,28 @@ namespace LifeSyncAI.API.Controllers
 
                 await _emailService.SendEmailAsync(NotificationRecipient, subject, bodyHtml);
                 Log.Information("Daily keep-alive notification email dispatched to {Recipient}", NotificationRecipient);
+
+                if (isSuccess)
+                {
+                    int adminUserId = await _context.Users
+                        .Where(u => u.Role == LifeSyncAI.Core.Enums.UserRole.Admin)
+                        .Select(u => u.Id)
+                        .FirstOrDefaultAsync();
+
+                    if (adminUserId == 0) adminUserId = 1;
+
+                    _context.UserNotificationLogs.Add(new UserNotificationLog
+                    {
+                        UserId = adminUserId,
+                        NotificationType = "DailyKeepAliveEmail",
+                        ReferenceId = todayIstStr,
+                        SentAt = nowUtc,
+                        RecipientEmail = NotificationRecipient,
+                        IsSuccess = true,
+                        Details = $"Daily keep-alive email successfully delivered at {timestampIst}."
+                    });
+                    await _context.SaveChangesAsync();
+                }
             }
             catch (Exception ex)
             {

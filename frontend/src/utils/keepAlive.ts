@@ -1,11 +1,10 @@
 import apiClient from '../api/apiClient';
 
-const KEEPALIVE_SECRET = 'LifeSync_KeepAlive_Secret_2026_Key!';
 const STORAGE_KEY = 'lifesync_last_daily_activation';
 
 /**
- * Sends a non-blocking keep-alive ping to the backend API to wake up Neon PostgreSQL
- * and trigger the daily activation status email.
+ * Sends a non-blocking keep-alive ping to the backend API to wake up Render and Neon PostgreSQL.
+ * Uses /api/system/ping to keep services active without dispatching duplicate status emails.
  */
 export async function triggerDailyDatabaseActivation(): Promise<void> {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -16,19 +15,16 @@ export async function triggerDailyDatabaseActivation(): Promise<void> {
   }
 
   try {
-    console.log('[LifeSync Keep-Alive] Triggering daily database activation ping...');
-    await apiClient.get('/api/system/keep-alive', {
-      headers: {
-        'X-KeepAlive-Key': KEEPALIVE_SECRET,
-      },
-      timeout: 60000, // 60s timeout to allow free tier backend to cold-start
+    console.log('[LifeSync Keep-Alive] Triggering database wake-up ping...');
+    await apiClient.get('/api/system/ping', {
+      timeout: 30000,
     });
 
     localStorage.setItem(STORAGE_KEY, todayStr);
-    console.log('[LifeSync Keep-Alive] Daily activation ping succeeded. Status email dispatched.');
+    console.log('[LifeSync Keep-Alive] Wake-up ping succeeded.');
   } catch (error) {
     // Non-blocking; fails silently on UI while server boots up
-    console.warn('[LifeSync Keep-Alive] Activation ping sent:', error);
+    console.warn('[LifeSync Keep-Alive] Wake-up ping sent:', error);
   }
 }
 

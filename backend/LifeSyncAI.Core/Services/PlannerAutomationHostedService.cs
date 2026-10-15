@@ -413,6 +413,17 @@ namespace LifeSyncAI.Core.Services
                 task.MissedDeadlinePenalized = true;
                 task.PenaltyAppliedAt = nowUtc;
                 task.UpdatedAt = nowUtc;
+
+                context.UserNotificationLogs.Add(new UserNotificationLog
+                {
+                    UserId = task.UserId,
+                    NotificationType = "MissedDeadlinePenalty",
+                    ReferenceId = task.Id.ToString(),
+                    SentAt = task.EndTime,
+                    RecipientEmail = string.Empty,
+                    IsSuccess = true,
+                    Details = $"Missed deadline penalty (-2 pts) permanently retained for task '{task.Title}'."
+                });
             }
 
             await context.SaveChangesAsync(cancellationToken);
