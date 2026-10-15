@@ -19,7 +19,7 @@ namespace LifeSyncAI.API.Controllers
     [Route("api/[controller]")]
     public class SystemController : ControllerBase
     {
-        private const string NotificationRecipient = "gdarshil1203@gmail.com";
+        private string NotificationRecipient => _configuration["ADMIN_EMAIL"] ?? "gdarshil1203@gmail.com";
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IHostEnvironment _environment;
