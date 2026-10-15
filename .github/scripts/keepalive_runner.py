@@ -264,7 +264,7 @@ def send_notification_email(is_success, probe_result):
 
 
 def main():
-    api_base_url = os.environ.get("BACKEND_URL") or "https://lifesync-ai.onrender.com"
+    api_base_url = os.environ.get("BACKEND_URL") or "https://lifesync-api-3x29.onrender.com"
     keepalive_secret = os.environ.get("KeepAliveSettings__SecretKey") or "LifeSync_KeepAlive_Secret_2026_Key!"
     recipient_email = os.environ.get("ADMIN_EMAIL") or "gdarshil1203@gmail.com"
 

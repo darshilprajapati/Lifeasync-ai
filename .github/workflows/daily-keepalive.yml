@@ -27,7 +27,7 @@ jobs:
 
       - name: Run Keep-Alive Probe & Notification Runner
         env:
-          BACKEND_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || 'https://lifesync-ai.onrender.com' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || 'https://lifesync-api-3x29.onrender.com' }}
           EmailSettings__ApiKey: ${{ secrets.EmailSettings__ApiKey }}
           EmailSettings__Provider: ${{ secrets.EmailSettings__Provider || 'Brevo' }}
           EmailSettings__SenderEmail: ${{ secrets.EmailSettings__SenderEmail || 'roomsmessage999@gmail.com' }}

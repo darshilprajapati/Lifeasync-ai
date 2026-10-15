@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const backendUrl = process.env.VITE_API_URL || process.env.BACKEND_URL || 'https://lifesync-ai.onrender.com';
+    const backendUrl = process.env.VITE_API_URL || process.env.BACKEND_URL || 'https://lifesync-api-3x29.onrender.com';
     const secretKey = process.env.KeepAliveSettings__SecretKey || process.env.KEEPALIVE_SECRET || 'LifeSync_KeepAlive_Secret_2026_Key!';
 
     console.log(`[Vercel Cron] Triggering daily keep-alive: ${backendUrl}/api/system/keep-alive`);
