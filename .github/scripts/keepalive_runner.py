@@ -2,7 +2,14 @@
 """
 LifeSync AI - Daily Keep-Alive and Database Connectivity Probe Runner
 Scheduled to run daily at 12:00 PM IST (06:30 AM UTC / '30 6 * * *')
-Performs lightweight database connectivity probe and dispatches status notification to gdarshil1203@gmail.com
+Performs lightweight database connectivity probe and dispatches status notification.
+Uses exact configuration variable names from Render environment:
+- ADMIN_EMAIL
+- EmailSettings__ApiKey
+- EmailSettings__Provider
+- EmailSettings__SenderEmail
+- EmailSettings__SenderName
+- KeepAliveSettings__SecretKey
 """
 
 import os
@@ -16,7 +23,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-RECIPIENT_EMAIL = "gdarshil1203@gmail.com"
 MAX_RETRIES = 2
 REQUEST_TIMEOUT_SECONDS = 60
 RETRY_DELAY_SECONDS = 5
@@ -53,7 +59,10 @@ def probe_keep_alive(api_base_url, keepalive_secret):
                 except Exception:
                     payload = {}
 
-                if status_code == 200 and payload.get("isSuccess"):
+                if response_body.strip().startswith("<") or "<html" in response_body.lower():
+                    last_status = status_code
+                    last_error = f"API returned HTML instead of JSON. Ensure BACKEND_URL points to your ASP.NET Core Web Service (backend) on Render, not your frontend static site."
+                elif status_code == 200 and payload.get("isSuccess"):
                     return {
                         "success": True,
                         "status_code": status_code,
@@ -92,47 +101,49 @@ def probe_keep_alive(api_base_url, keepalive_secret):
     }
 
 
+def send_via_brevo(api_key, sender_email, sender_name, to_email, subject, html_content, text_content):
+    brevo_url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content,
+        "textContent": text_content
+    }
+    req = urllib.request.Request(brevo_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.getcode() in (200, 201)
+
+
 def send_notification_email(is_success, probe_result):
     ist_time_str = get_current_ist_time()
     
-    smtp_host = os.environ.get("SMTP_HOST")
-    smtp_port = os.environ.get("SMTP_PORT", "587")
-    smtp_user = os.environ.get("SMTP_USER") or os.environ.get("SMTP_USERNAME")
-    smtp_pass = os.environ.get("SMTP_PASSWORD") or os.environ.get("SMTP_PASS")
-    sender_email = os.environ.get("SMTP_FROM")
+    # Read variables strictly from the Render environment configuration
+    recipient_email = os.environ.get("ADMIN_EMAIL") or "gdarshil1203@gmail.com"
+    email_api_key = os.environ.get("EmailSettings__ApiKey")
+    sender_email = os.environ.get("EmailSettings__SenderEmail") or "roomsmessage999@gmail.com"
+    sender_name = os.environ.get("EmailSettings__SenderName") or "LifeSync Support"
+    email_provider = os.environ.get("EmailSettings__Provider") or "Brevo"
 
-    # Local development fallback if running manual diagnostic on development machine
-    if not (smtp_user and smtp_pass):
+    # Local fallback for diagnostics if running locally
+    if not email_api_key:
         try:
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             dev_settings = os.path.join(repo_root, "backend", "LifeSyncAI.API", "appsettings.Development.json")
             if os.path.exists(dev_settings):
                 with open(dev_settings, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
-                    scfg = cfg.get("SmtpSettings", {})
-                    smtp_host = smtp_host or scfg.get("Host")
-                    smtp_port = smtp_port or scfg.get("Port", "587")
-                    smtp_user = smtp_user or scfg.get("Username")
-                    smtp_pass = smtp_pass or scfg.get("Password")
-                    sender_email = sender_email or scfg.get("SenderEmail")
+                    esec = cfg.get("EmailSettings", {})
+                    email_api_key = email_api_key or esec.get("ApiKey")
+                    sender_email = sender_email or esec.get("SenderEmail")
+                    sender_name = sender_name or esec.get("SenderName")
         except Exception:
             pass
-
-    sender_email = sender_email or smtp_user or "notifications@lifesync.ai"
-
-    if not smtp_host or not smtp_user or not smtp_pass:
-        print("\n[WARNING] Email dispatch skipped: SMTP credentials not fully configured in environment.")
-        print("Required GitHub Secrets:")
-        print("  - SMTP_HOST (e.g. smtp.gmail.com or smtp.sendgrid.net)")
-        print("  - SMTP_PORT (e.g. 587)")
-        print("  - SMTP_USER / SMTP_USERNAME")
-        print("  - SMTP_PASSWORD")
-        print(f"Target recipient: {RECIPIENT_EMAIL}\n")
-        return False
-
-    msg = MIMEMultipart("alternative")
-    msg["To"] = RECIPIENT_EMAIL
-    msg["From"] = sender_email
 
     if is_success:
         subject = "LifeSync AI — Daily Keep-Alive SUCCESS"
@@ -199,54 +210,68 @@ def send_notification_email(is_success, probe_result):
       <tr><td style="padding: 8px 0; color: #6b7280; font-weight: bold;">Action Required:</td><td style="color: #dc2626; font-weight: bold;">YES (Please inspect backend and database status)</td></tr>
     </table>
     <div style="margin-top: 24px; padding: 12px; background-color: #fef2f2; border-radius: 6px; color: #991b1b; font-size: 13px;">
-      Please check Render/backend logs and verify Neon PostgreSQL database status.
+      Please check Render backend Web Service status and verify Neon PostgreSQL database connection.
     </div>
   </div>
 </body>
 </html>"""
 
-    msg["Subject"] = subject
-    msg.attach(MIMEText(text_content, "plain"))
-    msg.attach(MIMEText(html_content, "html"))
+    # 1. Send via Brevo API if EmailSettings__ApiKey is configured
+    if email_api_key:
+        try:
+            if send_via_brevo(email_api_key, sender_email, sender_name, recipient_email, subject, html_content, text_content):
+                print(f"[{ist_time_str}] Notification email successfully dispatched to {recipient_email} via Brevo API.")
+                return True
+        except Exception as e:
+            print(f"[{ist_time_str}] Brevo dispatch failed: {type(e).__name__}: {str(e)}.")
 
+    # 2. Fallback to local SMTP if present in development configuration
     try:
-        port_num = int(smtp_port)
-        if port_num == 465:
-            server = smtplib.SMTP_SSL(smtp_host, port_num, timeout=20)
-        else:
-            server = smtplib.SMTP(smtp_host, port_num, timeout=20)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        dev_settings = os.path.join(repo_root, "backend", "LifeSyncAI.API", "appsettings.Development.json")
+        if os.path.exists(dev_settings):
+            with open(dev_settings, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                scfg = cfg.get("SmtpSettings", {})
+                smtp_host = scfg.get("Host")
+                smtp_port = int(scfg.get("Port", 587))
+                smtp_user = scfg.get("Username")
+                smtp_pass = scfg.get("Password")
 
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(sender_email, [RECIPIENT_EMAIL], msg.as_string())
-        server.quit()
-        print(f"[{ist_time_str}] Notification email successfully dispatched to {RECIPIENT_EMAIL}.")
-        return True
+                if smtp_host and smtp_user and smtp_pass:
+                    msg = MIMEMultipart("alternative")
+                    msg["To"] = recipient_email
+                    msg["From"] = sender_email
+                    msg["Subject"] = subject
+                    msg.attach(MIMEText(text_content, "plain"))
+                    msg.attach(MIMEText(html_content, "html"))
+
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=20)
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(smtp_user, smtp_pass)
+                    server.sendmail(sender_email, [recipient_email], msg.as_string())
+                    server.quit()
+                    print(f"[{ist_time_str}] Notification email successfully dispatched to {recipient_email} via local SMTP fallback.")
+                    return True
     except Exception as e:
-        print(f"[{ist_time_str}] Failed to deliver notification email: {type(e).__name__}: {str(e)}")
-        return False
+        print(f"[{ist_time_str}] Local fallback failed: {e}")
+
+    print("\n[WARNING] Email dispatch skipped: EmailSettings__ApiKey is not configured in environment.")
+    print(f"Target recipient: {recipient_email}\n")
+    return False
 
 
 def main():
-    api_base_url = os.environ.get("API_BASE_URL") or os.environ.get("BACKEND_URL") or "https://lifesync-ai.onrender.com"
-    keepalive_secret = os.environ.get("KEEPALIVE_SECRET") or "LifeSync_KeepAlive_Secret_2026_Key!"
+    api_base_url = os.environ.get("BACKEND_URL") or "https://lifesync-ai.onrender.com"
+    keepalive_secret = os.environ.get("KeepAliveSettings__SecretKey") or "LifeSync_KeepAlive_Secret_2026_Key!"
+    recipient_email = os.environ.get("ADMIN_EMAIL") or "gdarshil1203@gmail.com"
 
     print(f"=== LifeSync AI Scheduled Keep-Alive Task ===")
     print(f"Target API Base: {api_base_url}")
-    print(f"Notification Recipient: {RECIPIENT_EMAIL}")
+    print(f"Notification Recipient (ADMIN_EMAIL): {recipient_email}")
     print(f"Time (IST): {get_current_ist_time()}")
-
-    if not keepalive_secret:
-        print("[ERROR] KEEPALIVE_SECRET environment variable is missing. Cannot authenticate keep-alive probe.")
-        probe_result = {
-            "success": False,
-            "status_code": None,
-            "error": "Missing KEEPALIVE_SECRET configuration in GitHub Actions Secrets."
-        }
-        send_notification_email(False, probe_result)
-        sys.exit(1)
 
     result = probe_keep_alive(api_base_url, keepalive_secret)
 

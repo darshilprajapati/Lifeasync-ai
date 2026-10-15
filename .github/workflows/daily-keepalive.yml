@@ -27,13 +27,12 @@ jobs:
 
       - name: Run Keep-Alive Probe & Notification Runner
         env:
-          BACKEND_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai.onrender.com' }}
-          API_BASE_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || vars.API_BASE_URL || secrets.API_BASE_URL || 'https://lifesync-ai.onrender.com' }}
-          KEEPALIVE_SECRET: ${{ secrets.KEEPALIVE_SECRET || 'LifeSync_KeepAlive_Secret_2026_Key!' }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
-          SMTP_USER: ${{ secrets.SMTP_USER || secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.SMTP_PASS }}
-          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || secrets.BACKEND_URL || 'https://lifesync-ai.onrender.com' }}
+          EmailSettings__ApiKey: ${{ secrets.EmailSettings__ApiKey }}
+          EmailSettings__Provider: ${{ secrets.EmailSettings__Provider || 'Brevo' }}
+          EmailSettings__SenderEmail: ${{ secrets.EmailSettings__SenderEmail || 'roomsmessage999@gmail.com' }}
+          EmailSettings__SenderName: ${{ secrets.EmailSettings__SenderName || 'LifeSync Support' }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || 'gdarshil1203@gmail.com' }}
+          KeepAliveSettings__SecretKey: ${{ secrets.KeepAliveSettings__SecretKey || 'LifeSync_KeepAlive_Secret_2026_Key!' }}
         run: |
           python .github/scripts/keepalive_runner.py
