@@ -8,6 +8,7 @@ import AppRoutes from './routes';
 import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { trackNavigation } from './utils/analytics';
+import { setupNoonKeepAliveScheduler } from './utils/keepAlive';
 
 // Initialize TanStack query client
 const queryClient = new QueryClient();
@@ -33,6 +34,12 @@ function AppContent() {
   const { loading } = useAuth();
   const location = useLocation();
   const lastTrackedRouteRef = useRef<string | null>(null);
+
+  // Initialize automatic daily database keep-alive scheduler
+  useEffect(() => {
+    const cleanup = setupNoonKeepAliveScheduler();
+    return cleanup;
+  }, []);
 
   // Dedicated navigation events fired exactly once per genuine route transition (preventing re-render duplicates)
   useEffect(() => {
