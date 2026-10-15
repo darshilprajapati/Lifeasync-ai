@@ -38,6 +38,25 @@ namespace LifeSyncAI.API.Controllers
         }
 
         /// <summary>
+        /// Public, lightweight ping endpoint requiring zero authentication or login.
+        /// Ideal for keep-alive services, UptimeRobot, and browser health verification.
+        /// </summary>
+        [HttpGet("ping")]
+        [HttpHead("ping")]
+        [HttpGet("health")]
+        [HttpHead("health")]
+        public IActionResult Ping()
+        {
+            return Ok(new
+            {
+                status = "Healthy",
+                service = "LifeSync AI API",
+                timestampUtc = DateTime.UtcNow,
+                timestampIst = DateTime.UtcNow.AddMinutes(330).ToString("yyyy-MM-dd HH:mm:ss 'IST'")
+            });
+        }
+
+        /// <summary>
         /// Daily scheduled keep-alive & database health check endpoint.
         /// Authenticates the request using a secure secret key header and performs a lightweight, read-only connectivity probe.
         /// Automatically dispatches daily status notification to gdarshil1203@gmail.com using the configured IEmailService.

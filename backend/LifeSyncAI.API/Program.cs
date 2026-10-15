@@ -293,7 +293,23 @@ namespace LifeSyncAI.API
                 app.UseAuthentication();
                 app.UseAuthorization();
 
-                app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
+                // Unauthenticated Health & Ping probes for UptimeRobot, Render, and Keep-Alive
+                // Supports both GET and HEAD methods so monitors like UptimeRobot succeed with 200 OK
+                var healthProbe = () => Results.Ok(new
+                {
+                    status = "Healthy",
+                    service = "LifeSync AI API",
+                    timestampUtc = DateTime.UtcNow,
+                    timestampIst = DateTime.UtcNow.AddMinutes(330).ToString("yyyy-MM-dd HH:mm:ss 'IST'")
+                });
+
+                string[] probeMethods = ["GET", "HEAD"];
+                app.MapMethods("/", probeMethods, healthProbe).AllowAnonymous();
+                app.MapMethods("/health", probeMethods, healthProbe).AllowAnonymous();
+                app.MapMethods("/ping", probeMethods, healthProbe).AllowAnonymous();
+                app.MapMethods("/api/health", probeMethods, healthProbe).AllowAnonymous();
+                app.MapMethods("/api/ping", probeMethods, healthProbe).AllowAnonymous();
+
                 app.MapControllers();
                 
                 // Map hubs for SignalR (to be defined later)
