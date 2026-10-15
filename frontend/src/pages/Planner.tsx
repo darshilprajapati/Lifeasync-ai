@@ -50,6 +50,7 @@ const Planner: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
+  const [reminderTimeError, setReminderTimeError] = useState<string | null>(null);
 
   // Form Fields
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -92,8 +93,33 @@ const Planner: React.FC = () => {
     return null;
   };
 
-  const handleStartTimeChange = (val: string) => {
+  // Restricts year to exactly 4 digits maximum to avoid 6-digit browser year issues
+  const sanitizeDateTimeInput = (val: string): string => {
+    if (!val) return '';
+    const parts = val.split('-');
+    if (parts.length > 0 && parts[0].length > 4) {
+      return [parts[0].slice(0, 4), ...parts.slice(1)].join('-');
+    }
+    return val;
+  };
+
+  const isValidFourDigitYear = (val: string): boolean => {
+    if (!val) return true;
+    const parts = val.split('-');
+    if (parts.length === 0) return true;
+    const yearStr = parts[0];
+    if (yearStr.length !== 4 || !/^\d{4}$/.test(yearStr)) return false;
+    const year = parseInt(yearStr, 10);
+    return !isNaN(year) && year >= 1900 && year <= 2099;
+  };
+
+  const handleStartTimeChange = (raw: string) => {
+    const val = sanitizeDateTimeInput(raw);
     setStartTime(val);
+    if (val && !isValidFourDigitYear(val)) {
+      setTimeRangeError('Start time year must be a 4-digit number between 1900 and 2099.');
+      return;
+    }
     if (endTime) {
       const err = validateRange(val, endTime);
       setTimeRangeError(err);
@@ -102,13 +128,28 @@ const Planner: React.FC = () => {
     }
   };
 
-  const handleEndTimeChange = (val: string) => {
+  const handleEndTimeChange = (raw: string) => {
+    const val = sanitizeDateTimeInput(raw);
     setEndTime(val);
+    if (val && !isValidFourDigitYear(val)) {
+      setTimeRangeError('Deadline year must be a 4-digit number between 1900 and 2099.');
+      return;
+    }
     if (startTime) {
       const err = validateRange(startTime, val);
       setTimeRangeError(err);
     } else {
       setTimeRangeError(null);
+    }
+  };
+
+  const handleCustomReminderChange = (raw: string) => {
+    const val = sanitizeDateTimeInput(raw);
+    setCustomReminderDate(val);
+    if (val && !isValidFourDigitYear(val)) {
+      setReminderTimeError('Reminder year must be a 4-digit number between 1900 and 2099.');
+    } else {
+      setReminderTimeError(null);
     }
   };
 
@@ -198,6 +239,7 @@ const Planner: React.FC = () => {
     setReminderSchedule('15m');
     setCustomReminderDate('');
     setTimeRangeError(null);
+    setReminderTimeError(null);
   };
 
   const handleStartEdit = (event: PlannerEvent) => {
@@ -234,6 +276,7 @@ const Planner: React.FC = () => {
     }
 
     setTimeRangeError(null);
+    setReminderTimeError(null);
   };
 
   const handleToggleEvent = async (id: number, currentCompleted: boolean) => {
@@ -328,8 +371,11 @@ const Planner: React.FC = () => {
     !title.trim() ||
     !startTime ||
     !endTime ||
-    (reminderSchedule === 'custom' && !customReminderDate) ||
+    !isValidFourDigitYear(startTime) ||
+    !isValidFourDigitYear(endTime) ||
+    (reminderSchedule === 'custom' && (!customReminderDate || !isValidFourDigitYear(customReminderDate))) ||
     !!timeRangeError ||
+    !!reminderTimeError ||
     submitting;
 
   return (
@@ -405,7 +451,13 @@ const Planner: React.FC = () => {
                       fullWidth
                       value={startTime}
                       onChange={(e) => handleStartTimeChange(e.target.value)}
-                      slotProps={{ inputLabel: { shrink: true } }}
+                      slotProps={{
+                        inputLabel: { shrink: true },
+                        htmlInput: {
+                          min: '1900-01-01T00:00',
+                          max: '2099-12-31T23:59',
+                        }
+                      }}
                     />
                     <TextField
                       label="End Time (Deadline)"
@@ -418,7 +470,10 @@ const Planner: React.FC = () => {
                       helperText={timeRangeError}
                       slotProps={{
                         inputLabel: { shrink: true },
-                        htmlInput: { min: startTime || undefined }
+                        htmlInput: {
+                          min: startTime || '1900-01-01T00:00',
+                          max: '2099-12-31T23:59',
+                        }
                       }}
                     />
                     <TextField
@@ -443,8 +498,16 @@ const Planner: React.FC = () => {
                         required
                         fullWidth
                         value={customReminderDate}
-                        onChange={(e) => setCustomReminderDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        onChange={(e) => handleCustomReminderChange(e.target.value)}
+                        error={!!reminderTimeError}
+                        helperText={reminderTimeError}
+                        slotProps={{
+                          inputLabel: { shrink: true },
+                          htmlInput: {
+                            min: '1900-01-01T00:00',
+                            max: '2099-12-31T23:59',
+                          }
+                        }}
                       />
                     )}
                     <Button
