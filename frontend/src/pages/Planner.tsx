@@ -21,6 +21,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
@@ -38,6 +39,7 @@ interface PlannerEvent {
   completedAt?: string;
   missedDeadlinePenalized?: boolean;
   reminderSent?: boolean;
+  reminderTime?: string;
 }
 
 const INVALID_TIME_RANGE_MESSAGE =
@@ -55,6 +57,8 @@ const Planner: React.FC = () => {
   const [description, setDescription] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [reminderSchedule, setReminderSchedule] = useState<'none' | 'at_start' | '15m' | '30m' | '1h' | 'custom'>('15m');
+  const [customReminderDate, setCustomReminderDate] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchEvents = async () => {
@@ -122,6 +126,24 @@ const Planner: React.FC = () => {
     setTimeRangeError(null);
     setSubmitting(true);
 
+    const getCalculatedReminderIso = (): string | null => {
+      if (reminderSchedule === 'none' || !startTime) return null;
+      if (reminderSchedule === 'custom') {
+        return customReminderDate ? new Date(customReminderDate).toISOString() : null;
+      }
+      const startMs = new Date(startTime).getTime();
+      if (isNaN(startMs)) return null;
+
+      let offsetMs = 0;
+      if (reminderSchedule === '15m') offsetMs = 15 * 60 * 1000;
+      else if (reminderSchedule === '30m') offsetMs = 30 * 60 * 1000;
+      else if (reminderSchedule === '1h') offsetMs = 60 * 60 * 1000;
+
+      return new Date(startMs - offsetMs).toISOString();
+    };
+
+    const calculatedReminderTime = getCalculatedReminderIso();
+
     try {
       if (editingId) {
         // Update existing event
@@ -130,6 +152,7 @@ const Planner: React.FC = () => {
           description: description.trim(),
           startTime: new Date(startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
+          reminderTime: calculatedReminderTime,
           isCompleted: false,
         });
 
@@ -147,6 +170,7 @@ const Planner: React.FC = () => {
           description: description.trim(),
           startTime: new Date(startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
+          reminderTime: calculatedReminderTime,
           isCompleted: false,
         });
 
@@ -171,6 +195,8 @@ const Planner: React.FC = () => {
     setDescription('');
     setStartTime('');
     setEndTime('');
+    setReminderSchedule('15m');
+    setCustomReminderDate('');
     setTimeRangeError(null);
   };
 
@@ -188,6 +214,25 @@ const Planner: React.FC = () => {
 
     setStartTime(toLocalInput(event.startTime));
     setEndTime(toLocalInput(event.endTime));
+
+    if (event.reminderTime) {
+      const reminderDate = new Date(event.reminderTime).getTime();
+      const startDate = new Date(event.startTime).getTime();
+      const diffMinutes = Math.round((startDate - reminderDate) / 60000);
+
+      if (diffMinutes === 0) setReminderSchedule('at_start');
+      else if (diffMinutes === 15) setReminderSchedule('15m');
+      else if (diffMinutes === 30) setReminderSchedule('30m');
+      else if (diffMinutes === 60) setReminderSchedule('1h');
+      else {
+        setReminderSchedule('custom');
+        setCustomReminderDate(toLocalInput(event.reminderTime));
+      }
+    } else {
+      setReminderSchedule('none');
+      setCustomReminderDate('');
+    }
+
     setTimeRangeError(null);
   };
 
@@ -283,6 +328,7 @@ const Planner: React.FC = () => {
     !title.trim() ||
     !startTime ||
     !endTime ||
+    (reminderSchedule === 'custom' && !customReminderDate) ||
     !!timeRangeError ||
     submitting;
 
@@ -375,6 +421,32 @@ const Planner: React.FC = () => {
                         htmlInput: { min: startTime || undefined }
                       }}
                     />
+                    <TextField
+                      label="Email Reminder Schedule"
+                      select
+                      fullWidth
+                      value={reminderSchedule}
+                      onChange={(e) => setReminderSchedule(e.target.value as any)}
+                      slotProps={{ select: { native: true } }}
+                    >
+                      <option value="none">No Email Reminder</option>
+                      <option value="at_start">At Event Start Time</option>
+                      <option value="15m">15 Minutes Before Start</option>
+                      <option value="30m">30 Minutes Before Start</option>
+                      <option value="1h">1 Hour Before Start</option>
+                      <option value="custom">Custom Date & Time</option>
+                    </TextField>
+                    {reminderSchedule === 'custom' && (
+                      <TextField
+                        label="Custom Reminder Date & Time"
+                        type="datetime-local"
+                        required
+                        fullWidth
+                        value={customReminderDate}
+                        onChange={(e) => setCustomReminderDate(e.target.value)}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                      />
+                    )}
                     <Button
                       type="submit"
                       variant="contained"
@@ -474,6 +546,26 @@ const Planner: React.FC = () => {
                                         size="small"
                                         label={deadlineStatus.label}
                                         color={deadlineStatus.color}
+                                        variant="outlined"
+                                        sx={{ fontSize: '11px', height: '20px', fontWeight: 600 }}
+                                      />
+                                    </Tooltip>
+                                  )}
+
+                                  {e.reminderTime && (
+                                    <Tooltip
+                                      title={
+                                        e.reminderSent
+                                          ? `Reminder email dispatched`
+                                          : `Email reminder scheduled for ${formatDate(e.reminderTime)}`
+                                      }
+                                      arrow
+                                    >
+                                      <Chip
+                                        size="small"
+                                        icon={<NotificationsActiveIcon sx={{ fontSize: '12px !important' }} />}
+                                        label={e.reminderSent ? 'Reminded' : 'Reminder Set'}
+                                        color={e.reminderSent ? 'default' : 'secondary'}
                                         variant="outlined"
                                         sx={{ fontSize: '11px', height: '20px', fontWeight: 600 }}
                                       />

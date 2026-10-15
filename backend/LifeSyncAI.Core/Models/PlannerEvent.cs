@@ -13,6 +13,7 @@ namespace LifeSyncAI.Core.Models
         public DateTime? CompletedAt { get; set; }
         public bool ReminderSent { get; set; } = false;
         public DateTime? ReminderSentAt { get; set; }
+        public DateTime? ReminderTime { get; set; }
         public bool MissedDeadlinePenalized { get; set; } = false;
         public DateTime? PenaltyAppliedAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

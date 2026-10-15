@@ -105,7 +105,10 @@ namespace LifeSyncAI.Core.Services
 
                 var nowUtc = DateTime.UtcNow;
 
-                // 1. Process One-Hour Deadline Reminders
+                // 1. Process User-Scheduled Custom Reminders
+                await ProcessUserScheduledRemindersAsync(context, emailService, nowUtc, cancellationToken);
+
+                // 2. Process One-Hour Deadline Reminders
                 await ProcessDeadlineRemindersAsync(context, emailService, nowUtc, cancellationToken);
 
                 // 2. Process Overdue Missed-Deadline Penalty Recording
@@ -122,6 +125,109 @@ namespace LifeSyncAI.Core.Services
             {
                 _executionGate.Release();
             }
+        }
+
+        private async Task ProcessUserScheduledRemindersAsync(
+            ApplicationDbContext context,
+            IEmailService emailService,
+            DateTime nowUtc,
+            CancellationToken cancellationToken)
+        {
+            var dueTasks = await context.PlannerEvents
+                .Where(e => !e.IsCompleted &&
+                            !e.ReminderSent &&
+                            e.ReminderTime != null &&
+                            e.ReminderTime <= nowUtc)
+                .ToListAsync(cancellationToken);
+
+            if (!dueTasks.Any()) return;
+
+            var userIds = dueTasks.Select(t => t.UserId).Distinct().ToList();
+            var users = await context.Users
+                .Where(u => userIds.Contains(u.Id) && u.Status == UserStatus.Active)
+                .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+            string frontendBaseUrl = _configuration["FrontendUrl"] ?? "https://lifesync-ai.vercel.app";
+
+            foreach (var task in dueTasks)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                if (!users.TryGetValue(task.UserId, out var user) || string.IsNullOrWhiteSpace(user.Email)) continue;
+
+                bool alreadyDelivered = await context.UserNotificationLogs.AnyAsync(
+                    n => n.UserId == user.Id &&
+                         n.NotificationType == "ScheduledReminder" &&
+                         n.ReferenceId == task.Id.ToString() &&
+                         n.IsSuccess,
+                    cancellationToken);
+
+                if (alreadyDelivered)
+                {
+                    task.ReminderSent = true;
+                    task.ReminderSentAt = nowUtc;
+                    continue;
+                }
+
+                try
+                {
+                    string subject = $"Task Reminder: {task.Title}";
+                    string emailBody = $@"<!DOCTYPE html>
+<html>
+<head><meta charset=""utf-8""></head>
+<body style=""font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px;"">
+  <div style=""max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 10px; border-left: 6px solid #3b82f6; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);"">
+    <h2 style=""color: #1e293b; margin-top: 0;"">Scheduled Task Reminder</h2>
+    <p style=""color: #475569; font-size: 15px;"">Hello {user.FullName}, this is your scheduled reminder for your planned task:</p>
+    <div style=""background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 18px 0;"">
+      <h3 style=""margin: 0 0 8px 0; color: #0f172a;"">{task.Title}</h3>
+      {(string.IsNullOrWhiteSpace(task.Description) ? "" : $"<p style=\"color: #475569; margin: 0 0 10px 0;\">{task.Description}</p>")}
+      <p style=""color: #64748b; font-size: 13px; margin: 0;"">
+        <strong>Scheduled Time:</strong> {task.StartTime:yyyy-MM-dd hh:mm tt} - {task.EndTime:hh:mm tt}
+      </p>
+    </div>
+    <div style=""margin-top: 24px;"">
+      <a href=""{frontendBaseUrl}/planner"" style=""display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;"">Open Planner</a>
+    </div>
+    <p style=""color: #94a3b8; font-size: 12px; margin-top: 24px;"">LifeSync AI Personal Intelligence System</p>
+  </div>
+</body>
+</html>";
+
+                    await emailService.SendEmailAsync(user.Email, subject, emailBody);
+
+                    task.ReminderSent = true;
+                    task.ReminderSentAt = nowUtc;
+
+                    context.UserNotificationLogs.Add(new UserNotificationLog
+                    {
+                        UserId = user.Id,
+                        NotificationType = "ScheduledReminder",
+                        ReferenceId = task.Id.ToString(),
+                        SentAt = nowUtc,
+                        RecipientEmail = user.Email,
+                        IsSuccess = true,
+                        Details = "User-scheduled task reminder delivered successfully via Brevo."
+                    });
+
+                    _logger.LogInformation("[PlannerAutomation] Scheduled reminder dispatched for task '{Title}' to {Email}", task.Title, user.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[PlannerAutomation] Failed to send scheduled reminder for task '{Title}' to {Email}", task.Title, user.Email);
+                    context.UserNotificationLogs.Add(new UserNotificationLog
+                    {
+                        UserId = user.Id,
+                        NotificationType = "ScheduledReminder",
+                        ReferenceId = task.Id.ToString(),
+                        SentAt = nowUtc,
+                        RecipientEmail = user.Email,
+                        IsSuccess = false,
+                        Details = $"Dispatch failed: {ex.Message}"
+                    });
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         private async Task ProcessDeadlineRemindersAsync(

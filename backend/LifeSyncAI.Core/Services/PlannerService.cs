@@ -62,6 +62,7 @@ namespace LifeSyncAI.Core.Services
                     CompletedAt = e.CompletedAt,
                     MissedDeadlinePenalized = e.MissedDeadlinePenalized,
                     ReminderSent = e.ReminderSent,
+                    ReminderTime = e.ReminderTime,
                     UserId = e.UserId
                 }).ToList();
 
@@ -90,6 +91,7 @@ namespace LifeSyncAI.Core.Services
                     Description = dto.Description?.Trim(),
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
+                    ReminderTime = dto.ReminderTime,
                     IsCompleted = dto.IsCompleted,
                     CompletedAt = dto.IsCompleted ? nowUtc : null,
                     CreatedAt = nowUtc,
@@ -111,6 +113,7 @@ namespace LifeSyncAI.Core.Services
                     CompletedAt = plannerEvent.CompletedAt,
                     MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
                     ReminderSent = plannerEvent.ReminderSent,
+                    ReminderTime = plannerEvent.ReminderTime,
                     UserId = userId
                 };
 
@@ -145,6 +148,17 @@ namespace LifeSyncAI.Core.Services
                 {
                     plannerEvent.ReminderSent = false;
                     plannerEvent.ReminderSentAt = null;
+                }
+
+                // If user scheduled a new custom reminder time in future, allow sending again
+                if (dto.ReminderTime != plannerEvent.ReminderTime)
+                {
+                    plannerEvent.ReminderTime = dto.ReminderTime;
+                    if (dto.ReminderTime > nowUtc)
+                    {
+                        plannerEvent.ReminderSent = false;
+                        plannerEvent.ReminderSentAt = null;
+                    }
                 }
 
                 // Note: A deadline change cannot retroactively erase an already-recorded penalty.
@@ -190,6 +204,7 @@ namespace LifeSyncAI.Core.Services
                     CompletedAt = plannerEvent.CompletedAt,
                     MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
                     ReminderSent = plannerEvent.ReminderSent,
+                    ReminderTime = plannerEvent.ReminderTime,
                     UserId = plannerEvent.UserId
                 };
 

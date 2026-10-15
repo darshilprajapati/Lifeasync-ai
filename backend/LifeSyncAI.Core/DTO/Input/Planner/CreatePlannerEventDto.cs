@@ -17,6 +17,8 @@ namespace LifeSyncAI.Core.DTO.Input.Planner
         [Required(ErrorMessage = "End Time is required.")]
         public DateTime EndTime { get; set; }
 
+        public DateTime? ReminderTime { get; set; }
+
         public bool IsCompleted { get; set; } = false;
     }
 }
