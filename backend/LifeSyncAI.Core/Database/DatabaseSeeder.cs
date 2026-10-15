@@ -38,6 +38,7 @@ namespace LifeSyncAI.Core.Database
                 {
                     await context.Database.ExecuteSqlRawAsync(@"
                         ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""CompletedAt"" timestamp without time zone;
+                        ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""ReminderTime"" timestamp without time zone;
                         ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""ReminderSent"" boolean NOT NULL DEFAULT FALSE;
                         ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""ReminderSentAt"" timestamp without time zone;
                         ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""MissedDeadlinePenalized"" boolean NOT NULL DEFAULT FALSE;
@@ -75,6 +76,14 @@ namespace LifeSyncAI.Core.Database
                     try
                     {
                         await context.Users.AnyAsync();
+                        if (provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""PlannerEvents"" ADD COLUMN ""ReminderTime"" TEXT;");
+                            }
+                            catch { }
+                        }
                     }
                     catch
                     {

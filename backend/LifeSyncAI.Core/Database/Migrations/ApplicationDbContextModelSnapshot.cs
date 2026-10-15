@@ -153,6 +153,9 @@ namespace LifeSyncAI.Core.Database.Migrations
                     b.Property<DateTime?>("ReminderSentAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("ReminderTime")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp without time zone");
 

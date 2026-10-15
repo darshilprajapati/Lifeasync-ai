@@ -45,8 +45,24 @@ namespace LifeSyncAI.API.Controllers
         [HttpHead("ping")]
         [HttpGet("health")]
         [HttpHead("health")]
-        public IActionResult Ping()
+        public async Task<IActionResult> Ping()
         {
+            try
+            {
+                var provider = _context.Database.ProviderName ?? string.Empty;
+                if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
+                    provider.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""ReminderTime"" timestamp without time zone;
+                    ");
+                }
+            }
+            catch
+            {
+                // Non-blocking self-healing check
+            }
+
             return Ok(new
             {
                 status = "Healthy",
