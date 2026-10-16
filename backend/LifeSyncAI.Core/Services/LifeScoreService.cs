@@ -177,9 +177,40 @@ namespace LifeSyncAI.Core.Services
                 var result = new List<HistoricalLifeScoreDto>();
                 var baseDay = clientDate.Date;
 
+                // Determine user registration date (or earliest recorded activity date)
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                var startDate = user != null ? user.CreatedAt.Date : baseDay;
+
+                // If user has earlier activity (e.g. from tests or imported logs), honor that earliest date
+                var earliestEvent = await _context.PlannerEvents
+                    .Where(e => e.UserId == userId)
+                    .OrderBy(e => e.EndTime)
+                    .Select(e => (DateTime?)e.EndTime)
+                    .FirstOrDefaultAsync();
+
+                var earliestHealth = await _context.HealthLogs
+                    .Where(h => h.UserId == userId)
+                    .OrderBy(h => h.LogDate)
+                    .Select(h => (DateTime?)h.LogDate)
+                    .FirstOrDefaultAsync();
+
+                if (earliestEvent.HasValue && earliestEvent.Value.Date < startDate)
+                    startDate = earliestEvent.Value.Date;
+                if (earliestHealth.HasValue && earliestHealth.Value.Date < startDate)
+                    startDate = earliestHealth.Value.Date;
+
+                if (startDate > baseDay)
+                    startDate = baseDay;
+
                 for (int i = 0; i < days; i++)
                 {
                     var targetDay = baseDay.AddDays(-i);
+                    // Do not expose or compute historical days before the user joined/had activity
+                    if (targetDay < startDate)
+                    {
+                        break;
+                    }
+
                     var dayScoreResult = await GetDailyLifeScoreAsync(userId, targetDay);
 
                     if (dayScoreResult.IsSuccess && dayScoreResult.Data != null)

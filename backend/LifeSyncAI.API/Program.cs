@@ -307,7 +307,6 @@ namespace LifeSyncAI.API
                 app.MapMethods("/", probeMethods, healthProbe).AllowAnonymous();
                 app.MapMethods("/health", probeMethods, healthProbe).AllowAnonymous();
                 app.MapMethods("/ping", probeMethods, healthProbe).AllowAnonymous();
-                app.MapMethods("/api/health", probeMethods, healthProbe).AllowAnonymous();
                 app.MapMethods("/api/ping", probeMethods, healthProbe).AllowAnonymous();
 
                 app.MapControllers();

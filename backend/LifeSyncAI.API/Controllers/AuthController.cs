@@ -66,9 +66,24 @@ namespace LifeSyncAI.API.Controllers
             var expiredToken = Request.Cookies["accessToken"];
             var refreshToken = Request.Cookies["refreshToken"];
 
-            if (string.IsNullOrEmpty(expiredToken) || string.IsNullOrEmpty(refreshToken))
+            // Fallback: check headers if cookies are unavailable
+            if (string.IsNullOrEmpty(refreshToken) && Request.Headers.TryGetValue("X-Refresh-Token", out var headerRefresh))
             {
-                return Unauthorized(ApiResponse<bool>.Fail("Missing credentials in cookies."));
+                refreshToken = headerRefresh.ToString();
+            }
+
+            if (string.IsNullOrEmpty(expiredToken))
+            {
+                var authHeader = Request.Headers["Authorization"].ToString();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    expiredToken = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
+
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return Unauthorized(ApiResponse<bool>.Fail("Missing refresh token."));
             }
 
             var result = await _authService.RefreshTokenAsync(expiredToken, refreshToken);
@@ -220,12 +235,14 @@ namespace LifeSyncAI.API.Controllers
                 Expires = DateTime.UtcNow.AddDays(7) // Align with refresh token duration
             };
 
+            // Keep accessToken cookie alive across the active session so the expired JWT is preserved for rotation inspection;
+            // cryptographic expiration is strictly enforced by the JWT token payload (15 mins).
             var accessCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = secure,
                 SameSite = sameSite,
-                Expires = DateTime.UtcNow.AddMinutes(15) // Align with short-lived access token duration
+                Expires = DateTime.UtcNow.AddDays(7)
             };
 
             Response.Cookies.Append("accessToken", accessToken, accessCookieOptions);

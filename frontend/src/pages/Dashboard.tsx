@@ -25,6 +25,7 @@ import LocalDrinkIcon from '@mui/icons-material/LocalDrink';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HistoryIcon from '@mui/icons-material/History';
+import LockIcon from '@mui/icons-material/Lock';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
@@ -438,26 +439,51 @@ const Dashboard: React.FC = () => {
         {historicalScores.length > 0 && (
           <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <HistoryIcon sx={{ fontSize: 13, verticalAlign: 'middle', mr: 0.5 }} />
-                7-Day Score History
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <HistoryIcon sx={{ fontSize: 13, verticalAlign: 'middle', mr: 0.5 }} />
+                  7-Day Score History
+                </Typography>
+                {historicalScores.length < 7 && (
+                  <Chip
+                    size="small"
+                    label={`${historicalScores.length}/7 Unlocked`}
+                    sx={{
+                      height: '18px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      bgcolor: 'rgba(255, 99, 71, 0.12)',
+                      color: 'var(--accent-primary)',
+                      borderRadius: '6px'
+                    }}
+                  />
+                )}
+              </Stack>
               {selectedDate && (
                 <Button size="small" onClick={fetchDashboardData} sx={{ fontSize: '11px', textTransform: 'none', py: 0 }}>
                   Back to Today
                 </Button>
               )}
             </Stack>
+
+            {historicalScores.length <= 1 && (
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', display: 'block', mb: 1, fontStyle: 'italic' }}>
+                Score history unlocks day-by-day as you build consistency. Complete habits to unlock Day 2 tomorrow!
+              </Typography>
+            )}
+
             <Stack direction="row" spacing={0.8} sx={{ overflowX: 'auto', pb: 0.5 }}>
+              {/* Unlocked Days */}
               {historicalScores.map((h) => {
                 const isSelected = selectedDate === h.date || (!selectedDate && h.date === new Date().toISOString().split('T')[0]);
+                const isToday = h.date === new Date().toISOString().split('T')[0];
                 const dayLabel = h.date.slice(5); // e.g. "10-14"
 
                 return (
                   <Tooltip key={h.date} title={`${h.date}: Score ${Math.round(h.score)}/100 ${h.penaltyPoints > 0 ? `(-${h.penaltyPoints} penalty)` : ''}`} arrow>
                     <Chip
                       size="small"
-                      label={`${dayLabel}: ${Math.round(h.score)}`}
+                      label={`${dayLabel}: ${Math.round(h.score)}${isToday ? ' (Today)' : ''}`}
                       color={isSelected ? 'primary' : h.penaltyPoints > 0 ? 'error' : 'default'}
                       variant={isSelected ? 'filled' : 'outlined'}
                       onClick={() => handleSelectHistoryDate(h.date)}
@@ -467,6 +493,31 @@ const Dashboard: React.FC = () => {
                         fontSize: '11px',
                         height: '24px',
                         borderWidth: isSelected ? 2 : 1
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
+
+              {/* Locked Future Days for New Users */}
+              {Array.from({ length: Math.max(0, 7 - historicalScores.length) }).map((_, idx) => {
+                const dayNum = historicalScores.length + idx + 1;
+                return (
+                  <Tooltip key={`locked-${idx}`} title={`Day ${dayNum} unlocks automatically as you continue tracking habits daily`} arrow>
+                    <Chip
+                      size="small"
+                      icon={<LockIcon sx={{ fontSize: '11px !important', color: 'var(--text-secondary)' }} />}
+                      label={`Day ${dayNum}`}
+                      variant="outlined"
+                      disabled
+                      sx={{
+                        opacity: 0.45,
+                        fontSize: '10.5px',
+                        height: '24px',
+                        borderStyle: 'dashed',
+                        borderColor: 'rgba(150, 150, 150, 0.3)',
+                        cursor: 'not-allowed',
+                        '& .MuiChip-label': { color: 'var(--text-secondary)' }
                       }}
                     />
                   </Tooltip>

@@ -51,12 +51,10 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // Guard: Prevent intercepting Auth endpoints to avoid infinite refresh loops
-    // /api/auth/me indicates unauthenticated session on startup/check, so do not trigger refresh loop
     if (
       originalRequest.url?.includes('/api/auth/login') ||
       originalRequest.url?.includes('/api/auth/register') ||
-      originalRequest.url?.includes('/api/auth/refresh') ||
-      originalRequest.url?.includes('/api/auth/me')
+      originalRequest.url?.includes('/api/auth/refresh')
     ) {
       return Promise.reject(error);
     }
@@ -70,6 +68,7 @@ apiClient.interceptors.response.use(
             failedQueue.push({ resolve, reject });
           })
             .then(() => {
+              originalRequest._retry = true;
               return apiClient(originalRequest);
             })
             .catch((err) => {

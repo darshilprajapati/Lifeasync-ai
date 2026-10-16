@@ -242,26 +242,29 @@ namespace LifeSyncAI.Core.Services
             return ApiResponse<(UserDto, string, string)>.Success((userDto, accessToken, refreshToken), "Logged in successfully.");
         }
 
-        public async Task<ApiResponse<(string AccessToken, string RefreshToken)>> RefreshTokenAsync(string expiredToken, string refreshToken)
+        public async Task<ApiResponse<(string AccessToken, string RefreshToken)>> RefreshTokenAsync(string? expiredToken, string refreshToken)
         {
             var jwtSection = _configuration.GetSection("JwtSettings");
             var secret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
             
-            // Extract claims from the expired token
-            var principal = JwtHelper.GetPrincipalFromExpiredToken(expiredToken, secret);
-            if (principal == null)
+            User? user = null;
+
+            // 1. If expired access token is available, attempt to extract claims
+            if (!string.IsNullOrEmpty(expiredToken))
             {
-                return ApiResponse<(string, string)>.Fail("Invalid access token signature.");
+                var principal = JwtHelper.GetPrincipalFromExpiredToken(expiredToken, secret);
+                var emailClaim = principal?.FindFirst(ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(emailClaim))
+                {
+                    user = await _context.Users.FirstOrDefaultAsync(u => u.Email == emailClaim);
+                }
             }
 
-            var emailClaim = principal.FindFirst(ClaimTypes.Email)?.Value;
-            if (string.IsNullOrEmpty(emailClaim))
+            // 2. Fallback: If access token was expired/cleared by the browser, locate user directly by valid refresh token
+            if (user == null)
             {
-                return ApiResponse<(string, string)>.Fail("Access token missing email claim.");
+                user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
             }
-
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == emailClaim);
 
             if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {

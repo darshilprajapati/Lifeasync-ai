@@ -28,7 +28,7 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         /// <summary>
         /// Validates expired access tokens and active refresh tokens to issue a rotated token pair.
         /// </summary>
-        Task<ApiResponse<(string AccessToken, string RefreshToken)>> RefreshTokenAsync(string expiredToken, string refreshToken);
+        Task<ApiResponse<(string AccessToken, string RefreshToken)>> RefreshTokenAsync(string? expiredToken, string refreshToken);
 
         /// <summary>
         /// Revokes the active refresh token, signing the user out.

@@ -21,33 +21,10 @@ namespace LifeSyncAI.Core.Services
             _context = context;
         }
 
-        private async Task ResetOldLogsAsync(int userId, DateTime clientDate)
-        {
-            try
-            {
-                var clientToday = clientDate.Date;
-                var oldLogs = await _context.HealthLogs
-                    .Where(l => l.UserId == userId && l.LogDate < clientToday)
-                    .ToListAsync();
-                
-                if (oldLogs.Any())
-                {
-                    _context.HealthLogs.RemoveRange(oldLogs);
-                    await _context.SaveChangesAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error resetting old health logs: {ex.Message}");
-            }
-        }
-
         public async Task<ApiResponse<List<HealthLogDto>>> GetLogsAsync(int userId, DateTime clientDate)
         {
             try
             {
-                await ResetOldLogsAsync(userId, clientDate);
-
                 var logs = await _context.HealthLogs
                     .Where(l => l.UserId == userId)
                     .ToListAsync();
@@ -74,8 +51,6 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                await ResetOldLogsAsync(userId, clientDate);
-
                 var clientToday = clientDate.Date;
                 var currentSum = await _context.HealthLogs
                     .Where(l => l.UserId == userId && l.LogDate >= clientToday && l.LogType == dto.LogType)
