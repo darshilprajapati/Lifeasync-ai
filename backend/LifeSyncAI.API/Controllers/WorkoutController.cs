@@ -55,12 +55,44 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("days/{dayId}")]
+        public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> GetDay(int dayId, [FromQuery] DateTime? sessionDate)
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
+            var result = await _workoutService.GetWorkoutDayAsync(userId, dayId, sessionDate);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpPut("days/{dayId}")]
         public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> UpdateDay(int dayId, [FromBody] UpdateWorkoutDayDto dto)
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
             var result = await _workoutService.UpdateDayAsync(userId, dayId, dto);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("exercises/{workoutDayExerciseId}/complete")]
+        public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> CompleteExercise(int workoutDayExerciseId, [FromQuery] DateTime? sessionDate)
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
+            var date = sessionDate ?? DateTime.UtcNow.Date;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("exercises/{workoutDayExerciseId}/undo")]
+        public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> UndoExercise(int workoutDayExerciseId, [FromQuery] DateTime? sessionDate)
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
+            var date = sessionDate ?? DateTime.UtcNow.Date;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, false);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

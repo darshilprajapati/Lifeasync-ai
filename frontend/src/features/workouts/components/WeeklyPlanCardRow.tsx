@@ -19,7 +19,7 @@ interface WeeklyPlanCardRowProps {
   plan: UserWorkoutPlan;
   selectedDate: Date;
   onDateChange: (date: Date) => void;
-  onToggleComplete: (day: WorkoutDay, date: Date) => void;
+  onOpenDetail: (day: WorkoutDay, date: Date) => void;
   onEditDay: (day: WorkoutDay) => void;
   onOpenAiGenerator: () => void;
   onSyncPlanner?: () => void;
@@ -30,7 +30,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   plan,
   selectedDate,
   onDateChange,
-  onToggleComplete,
+  onOpenDetail,
   onEditDay,
   onOpenAiGenerator,
   onSyncPlanner,
@@ -223,7 +223,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
               day={day}
               calendarDate={cardDate}
               isToday={isToday}
-              onToggleComplete={onToggleComplete}
+              onOpenDetail={onOpenDetail}
               onEdit={onEditDay}
             />
           );

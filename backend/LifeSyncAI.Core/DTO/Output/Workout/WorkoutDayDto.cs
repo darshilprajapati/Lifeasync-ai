@@ -21,5 +21,10 @@ namespace LifeSyncAI.Core.DTO.Output.Workout
         public int? ActualDurationMinutes { get; set; }
         public int? EstimatedCaloriesBurned { get; set; }
         public int? SessionLogId { get; set; }
+        public int CompletedExercisesCount => Exercises?.Count(e => e.IsCompleted) ?? 0;
+        public int TotalExercisesCount => Exercises?.Count ?? 0;
+        public string? TargetMuscleGroups => Exercises?.Any() == true 
+            ? string.Join(", ", Exercises.Select(e => e.Category).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct()) 
+            : null;
     }
 }

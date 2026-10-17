@@ -8,22 +8,25 @@ import {
   Button,
   IconButton,
   Chip,
-  Tooltip
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import HotelIcon from '@mui/icons-material/Hotel';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import type { WorkoutDay } from '../types/workout';
 
 interface WorkoutDayCardProps {
   day: WorkoutDay;
   calendarDate: Date;
   isToday: boolean;
-  onToggleComplete: (day: WorkoutDay, date: Date) => void;
+  onOpenDetail: (day: WorkoutDay, date: Date) => void;
   onEdit: (day: WorkoutDay) => void;
 }
 
@@ -31,28 +34,46 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
   day,
   calendarDate,
   isToday,
-  onToggleComplete,
-  onEdit,
+  onOpenDetail,
+  onEdit
 }) => {
-  const isCompleted = day.isCompletedForDate;
+  const today = new Date();
+  const isPast = calendarDate < new Date(today.setHours(0, 0, 0, 0));
+  const isFuture = calendarDate > new Date(today.setHours(23, 59, 59, 999));
+
+  const totalExercises = day.exercises?.length ?? 0;
+  const completedExercises = day.exercises?.filter((e) => e.isCompleted).length ?? 0;
+  const isFullyCompleted = day.isCompletedForDate || (totalExercises > 0 && completedExercises === totalExercises);
+  const isPartiallyCompleted = !isFullyCompleted && completedExercises > 0;
+  const progressPercent = totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
+
   const dayNameShort = calendarDate.toLocaleDateString('en-US', { weekday: 'short' });
   const dateFormatted = calendarDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  // Border & Glow styling
+  let cardBorder = '1px solid rgba(0, 0, 0, 0.08)';
+  let cardShadow = 'var(--shadow-soft, 0 4px 12px rgba(0,0,0,0.05))';
+
+  if (isToday) {
+    cardBorder = '2px solid var(--accent-primary, #6366f1)';
+    cardShadow = '0 8px 24px rgba(99, 102, 241, 0.16)';
+  } else if (isFullyCompleted) {
+    cardBorder = '2px solid #10b981';
+  } else if (isPartiallyCompleted) {
+    cardBorder = '1.5px solid #f59e0b';
+  }
 
   return (
     <Card
       sx={{
         borderRadius: '16px',
         bgcolor: 'var(--bg-card, #ffffff)',
-        border: isToday
-          ? '2px solid var(--accent-primary, #6366f1)'
-          : isCompleted
-          ? '2px solid #10b981'
-          : '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: isToday ? '0 8px 24px rgba(99, 102, 241, 0.15)' : 'var(--shadow-soft, 0 4px 12px rgba(0,0,0,0.05))',
+        border: cardBorder,
+        boxShadow: cardShadow,
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        minWidth: 200,
+        minWidth: 210,
         flex: '1 1 0',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         '&:hover': {
@@ -61,7 +82,7 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
         }
       }}
     >
-      {/* Today Pill */}
+      {/* Top Status Pill */}
       {isToday && (
         <Box
           sx={{
@@ -77,10 +98,34 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
             px: 1,
             py: 0.2,
             borderRadius: '10px',
-            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)'
+            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)',
+            zIndex: 1
           }}
         >
           Today
+        </Box>
+      )}
+
+      {isFullyCompleted && !isToday && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -10,
+            right: 12,
+            bgcolor: '#10b981',
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            px: 1,
+            py: 0.2,
+            borderRadius: '10px',
+            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)',
+            zIndex: 1
+          }}
+        >
+          Completed
         </Box>
       )}
 
@@ -91,11 +136,22 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary, #6b7280)', textTransform: 'uppercase' }}>
               {dayNameShort} · {dateFormatted}
             </Typography>
-            <Tooltip title="Customize Day Routine">
-              <IconButton size="small" onClick={() => onEdit(day)} sx={{ color: 'var(--text-secondary, #8D8D8D)', p: 0.5 }}>
-                <EditOutlinedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
+
+            {isPast ? (
+              <Tooltip title="Past workouts are immutable and cannot be modified">
+                <Box component="span">
+                  <IconButton size="small" disabled sx={{ p: 0.5, opacity: 0.4 }}>
+                    <LockOutlinedIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Box>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Customize Day Routine">
+                <IconButton size="small" onClick={() => onEdit(day)} sx={{ color: 'var(--text-secondary, #8D8D8D)', p: 0.5 }}>
+                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
 
           <Typography
@@ -131,7 +187,7 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
               Rest & Recovery
             </Typography>
             <Typography variant="caption" sx={{ color: 'var(--text-secondary, #6b7280)', fontSize: '11px', display: 'block', mt: 0.5 }}>
-              {day.restDayNotes || 'Light stretching & recovery sleep'}
+              {day.restDayNotes || 'Active rest, walking & sleep'}
             </Typography>
           </Box>
         ) : (
@@ -152,7 +208,7 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
               />
               <Chip
                 icon={<LocalFireDepartmentIcon sx={{ fontSize: '13px !important', color: '#f97316 !important' }} />}
-                label={day.estimatedCaloriesBurned ? `Est. ${day.estimatedCaloriesBurned} kcal` : `${day.exercises.length * 45} kcal`}
+                label={day.estimatedCaloriesBurned ? `${day.estimatedCaloriesBurned} kcal` : `${totalExercises * 45} kcal`}
                 size="small"
                 sx={{
                   bgcolor: 'rgba(249, 115, 22, 0.08)',
@@ -168,13 +224,18 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
             <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               {day.exercises.slice(0, 3).map((ex) => (
                 <Stack key={ex.id || ex.exerciseId} direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
-                  <FitnessCenterIcon sx={{ fontSize: 13, color: 'var(--text-secondary, #9ca3af)' }} />
+                  {ex.isCompleted ? (
+                    <CheckCircleIcon sx={{ fontSize: 13, color: '#10b981' }} />
+                  ) : (
+                    <FitnessCenterIcon sx={{ fontSize: 13, color: 'var(--text-secondary, #9ca3af)' }} />
+                  )}
                   <Typography
                     variant="caption"
                     sx={{
                       fontSize: '11px',
-                      color: 'var(--text-primary, #374151)',
-                      fontWeight: 500,
+                      color: ex.isCompleted ? '#10b981' : 'var(--text-primary, #374151)',
+                      fontWeight: ex.isCompleted ? 600 : 500,
+                      textDecoration: ex.isCompleted ? 'line-through' : 'none',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
@@ -184,21 +245,50 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
                   </Typography>
                 </Stack>
               ))}
-              {day.exercises.length > 3 && (
+
+              {totalExercises > 3 && (
                 <Typography variant="caption" sx={{ color: 'var(--text-secondary, #6b7280)', fontSize: '10px' }}>
-                  +{day.exercises.length - 3} more exercises
+                  +{totalExercises - 3} more exercises
                 </Typography>
               )}
-              {day.exercises.length === 0 && (
+
+              {totalExercises === 0 && (
                 <Typography variant="caption" sx={{ color: 'var(--text-secondary, #9ca3af)', fontStyle: 'italic', fontSize: '11px' }}>
                   No exercises added
                 </Typography>
               )}
             </Box>
+
+            {/* Completion Progress Bar */}
+            {totalExercises > 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.4 }}>
+                  <Typography variant="caption" sx={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    {isFullyCompleted ? 'All exercises done' : `${completedExercises}/${totalExercises} done`}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 700, color: isFullyCompleted ? '#10b981' : 'var(--accent-primary)' }}>
+                    {progressPercent}%
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant="determinate"
+                  value={progressPercent}
+                  sx={{
+                    height: 5,
+                    borderRadius: 3,
+                    bgcolor: 'rgba(0,0,0,0.06)',
+                    '& .MuiLinearProgress-bar': {
+                      bgcolor: isFullyCompleted ? '#10b981' : 'var(--accent-primary)',
+                      borderRadius: 3
+                    }
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         )}
 
-        {/* Action Button: Mark Done / Completed */}
+        {/* Action Button: Opens Day Workout Detail Modal */}
         <Box sx={{ mt: 2 }}>
           {day.isRestDay ? (
             <Button
@@ -221,31 +311,41 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
             <Button
               fullWidth
               size="small"
-              variant={isCompleted ? 'contained' : 'outlined'}
-              onClick={() => onToggleComplete(day, calendarDate)}
+              variant={isToday ? 'contained' : 'outlined'}
+              onClick={() => onOpenDetail(day, calendarDate)}
               startIcon={
-                isCompleted ? (
-                  <CheckCircleIcon sx={{ fontSize: '16px !important', color: '#ffffff' }} />
+                isToday ? (
+                  <PlayArrowIcon sx={{ fontSize: '16px !important' }} />
                 ) : (
-                  <RadioButtonUncheckedIcon sx={{ fontSize: '16px !important' }} />
+                  <VisibilityOutlinedIcon sx={{ fontSize: '16px !important' }} />
                 )
               }
               sx={{
                 borderRadius: '10px',
                 py: 0.6,
                 fontSize: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: 'none',
-                bgcolor: isCompleted ? '#10b981' : 'transparent',
-                borderColor: isCompleted ? '#10b981' : 'rgba(0, 0, 0, 0.15)',
-                color: isCompleted ? '#ffffff' : 'var(--text-primary, #111827)',
+                bgcolor: isToday ? 'var(--accent-primary, #6366f1)' : 'transparent',
+                borderColor: isToday ? 'var(--accent-primary, #6366f1)' : 'rgba(0, 0, 0, 0.15)',
+                color: isToday ? '#ffffff' : 'var(--text-primary, #111827)',
                 '&:hover': {
-                  bgcolor: isCompleted ? '#059669' : 'rgba(99, 102, 241, 0.08)',
-                  borderColor: isCompleted ? '#059669' : 'var(--accent-primary, #6366f1)'
+                  bgcolor: isToday ? '#4f46e5' : 'rgba(99, 102, 241, 0.08)',
+                  borderColor: isToday ? '#4f46e5' : 'var(--accent-primary, #6366f1)'
                 }
               }}
             >
-              {isCompleted ? 'Completed' : 'Mark Done'}
+              {isToday
+                ? isFullyCompleted
+                  ? 'Review Workout'
+                  : completedExercises > 0
+                  ? 'Continue Workout'
+                  : 'Start Workout'
+                : isPast
+                ? 'View History'
+                : isFuture
+                ? 'Scheduled Workout'
+                : 'View Workout'}
             </Button>
           )}
         </Box>

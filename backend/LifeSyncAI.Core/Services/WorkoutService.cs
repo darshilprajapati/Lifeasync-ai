@@ -111,7 +111,11 @@ namespace LifeSyncAI.Core.Services
                     .Where(l => l.UserId == userId && l.SessionDate >= weekStart && l.SessionDate < weekEnd)
                     .ToListAsync();
 
-                var planDto = MapPlanToDto(plan, weekStart, sessionLogs);
+                var exerciseCompletions = await _context.WorkoutExerciseCompletions
+                    .Where(c => c.UserId == userId && c.SessionDate >= weekStart && c.SessionDate < weekEnd)
+                    .ToListAsync();
+
+                var planDto = MapPlanToDto(plan, weekStart, sessionLogs, exerciseCompletions);
                 return ApiResponse<UserWorkoutPlanDto>.Success(planDto, "Active workout plan retrieved successfully.");
             }
             catch (Exception ex)
@@ -221,6 +225,12 @@ namespace LifeSyncAI.Core.Services
                 if (plan == null)
                 {
                     return ApiResponse<WorkoutDayDto>.Fail("Unauthorized: Workout day does not belong to active user.");
+                }
+
+                // Past-day immutability: past workouts cannot be modified
+                if (dto.TargetDate.HasValue && dto.TargetDate.Value.Date < DateTime.UtcNow.Date)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Past workouts are immutable and cannot be modified.");
                 }
 
                 day.FocusTitle = dto.FocusTitle;
@@ -513,6 +523,208 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
+        public async Task<ApiResponse<WorkoutDayDto>> ToggleExerciseCompletionAsync(
+            int userId,
+            int workoutDayExerciseId,
+            DateTime sessionDate,
+            bool isCompleted)
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+                if (sessionDate.Date != today)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Workout exercises can only be completed for today's scheduled date.");
+                }
+
+                var dayExercise = await _context.WorkoutDayExercises
+                    .Include(de => de.Exercise)
+                    .FirstOrDefaultAsync(de => de.Id == workoutDayExerciseId);
+
+                if (dayExercise == null)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Workout exercise not found.");
+                }
+
+                var workoutDay = await _context.WorkoutDays
+                    .Include(d => d.Exercises)
+                        .ThenInclude(e => e.Exercise)
+                    .FirstOrDefaultAsync(d => d.Id == dayExercise.WorkoutDayId);
+
+                if (workoutDay == null)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Workout day not found.");
+                }
+
+                var plan = await _context.UserWorkoutPlans
+                    .FirstOrDefaultAsync(p => p.Id == workoutDay.WorkoutPlanId && p.UserId == userId);
+                if (plan == null)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Unauthorized: Exercise does not belong to active user's plan.");
+                }
+
+                var existingCompletion = await _context.WorkoutExerciseCompletions
+                    .FirstOrDefaultAsync(c => c.UserId == userId && c.WorkoutDayExerciseId == workoutDayExerciseId && c.SessionDate == today);
+
+                if (isCompleted)
+                {
+                    if (existingCompletion == null)
+                    {
+                        var completion = new WorkoutExerciseCompletion
+                        {
+                            UserId = userId,
+                            WorkoutPlanId = workoutDay.WorkoutPlanId,
+                            WorkoutDayId = dayExercise.WorkoutDayId,
+                            WorkoutDayExerciseId = workoutDayExerciseId,
+                            ExerciseId = dayExercise.ExerciseId,
+                            SessionDate = today,
+                            CompletedAt = DateTime.UtcNow
+                        };
+                        await _context.WorkoutExerciseCompletions.AddAsync(completion);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    if (existingCompletion != null)
+                    {
+                        _context.WorkoutExerciseCompletions.Remove(existingCompletion);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                // Check all exercises for this day
+                var allExerciseIds = workoutDay.Exercises.Select(e => e.Id).ToList();
+                var todayCompletions = await _context.WorkoutExerciseCompletions
+                    .Where(c => c.UserId == userId && c.WorkoutDayId == dayExercise.WorkoutDayId && c.SessionDate == today)
+                    .ToListAsync();
+
+                bool allDone = allExerciseIds.Any() && allExerciseIds.All(id => todayCompletions.Any(c => c.WorkoutDayExerciseId == id));
+
+                // Reconcile WorkoutSessionLog and HealthLog
+                float avgMet = workoutDay.Exercises.Any() ? workoutDay.Exercises.Average(e => e.Exercise?.EstimatedMetValue ?? 5.0f) : 5.0f;
+                int duration = Math.Clamp(workoutDay.TargetDurationMinutes > 0 ? workoutDay.TargetDurationMinutes : 30, 5, 360);
+                int estimatedCalories = (int)Math.Round((avgMet * 3.5f * 70.0f / 200.0f) * duration);
+
+                var existingLog = await _context.WorkoutSessionLogs
+                    .FirstOrDefaultAsync(l => l.UserId == userId && l.WorkoutDayId == dayExercise.WorkoutDayId && l.SessionDate == today);
+
+                if (allDone)
+                {
+                    if (existingLog != null)
+                    {
+                        existingLog.IsCompleted = true;
+                        existingLog.CompletedAt = DateTime.UtcNow;
+                        existingLog.ActualDurationMinutes = duration;
+                        existingLog.EstimatedCaloriesBurned = estimatedCalories;
+
+                        if (existingLog.HealthLogId.HasValue)
+                        {
+                            var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
+                            if (hl != null)
+                            {
+                                hl.LogValue = duration;
+                                hl.Details = $"Workout session - {workoutDay.FocusTitle} ({estimatedCalories} kcal estimated)";
+                            }
+                        }
+                        else
+                        {
+                            var hl = new HealthLog
+                            {
+                                UserId = userId,
+                                LogType = "Workout",
+                                LogValue = duration,
+                                LogDate = today,
+                                Details = $"Workout session - {workoutDay.FocusTitle} ({estimatedCalories} kcal estimated)"
+                            };
+                            await _context.HealthLogs.AddAsync(hl);
+                            await _context.SaveChangesAsync();
+                            existingLog.HealthLogId = hl.Id;
+                        }
+                    }
+                    else
+                    {
+                        var hl = new HealthLog
+                        {
+                            UserId = userId,
+                            LogType = "Workout",
+                            LogValue = duration,
+                            LogDate = today,
+                            Details = $"Workout session - {workoutDay.FocusTitle} ({estimatedCalories} kcal estimated)"
+                        };
+                        await _context.HealthLogs.AddAsync(hl);
+                        await _context.SaveChangesAsync();
+
+                        existingLog = new WorkoutSessionLog
+                        {
+                            UserId = userId,
+                            WorkoutPlanId = workoutDay.WorkoutPlanId,
+                            WorkoutDayId = dayExercise.WorkoutDayId,
+                            SessionDate = today,
+                            IsCompleted = true,
+                            CompletedAt = DateTime.UtcNow,
+                            ActualDurationMinutes = duration,
+                            EstimatedCaloriesBurned = estimatedCalories,
+                            HealthLogId = hl.Id
+                        };
+                        await _context.WorkoutSessionLogs.AddAsync(existingLog);
+                    }
+                }
+                else
+                {
+                    if (existingLog != null)
+                    {
+                        existingLog.IsCompleted = false;
+                        if (existingLog.HealthLogId.HasValue)
+                        {
+                            var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
+                            if (hl != null)
+                            {
+                                _context.HealthLogs.Remove(hl);
+                            }
+                            existingLog.HealthLogId = null;
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                var dayDto = MapDayToDto(workoutDay, existingLog, todayCompletions);
+                return ApiResponse<WorkoutDayDto>.Success(dayDto, "Exercise completion updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<WorkoutDayDto>.Fail($"Failed to update exercise completion: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<WorkoutDayDto>> GetWorkoutDayAsync(int userId, int dayId, DateTime? sessionDate = null)
+        {
+            try
+            {
+                var date = sessionDate?.Date ?? DateTime.UtcNow.Date;
+                var day = await _context.WorkoutDays
+                    .Include(d => d.Exercises)
+                        .ThenInclude(e => e.Exercise)
+                    .FirstOrDefaultAsync(d => d.Id == dayId);
+
+                if (day == null) return ApiResponse<WorkoutDayDto>.Fail("Workout day not found.");
+
+                var plan = await _context.UserWorkoutPlans.FirstOrDefaultAsync(p => p.Id == day.WorkoutPlanId && p.UserId == userId);
+                if (plan == null) return ApiResponse<WorkoutDayDto>.Fail("Unauthorized: Workout day does not belong to active user.");
+
+                var log = await _context.WorkoutSessionLogs.FirstOrDefaultAsync(l => l.UserId == userId && l.WorkoutDayId == day.Id && l.SessionDate == date);
+                var completions = await _context.WorkoutExerciseCompletions.Where(c => c.UserId == userId && c.WorkoutDayId == day.Id && c.SessionDate == date).ToListAsync();
+
+                var dto = MapDayToDto(day, log, completions);
+                return ApiResponse<WorkoutDayDto>.Success(dto, "Workout day retrieved successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<WorkoutDayDto>.Fail($"Failed to load workout day: {ex.Message}");
+            }
+        }
+
         // ==================== Private Helpers ====================
 
         private async Task<UserWorkoutPlan> CreateDefaultStarterPlanAsync(int userId)
@@ -680,7 +892,11 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        private static UserWorkoutPlanDto MapPlanToDto(UserWorkoutPlan plan, DateTime weekStart, List<WorkoutSessionLog> weekLogs)
+        private static UserWorkoutPlanDto MapPlanToDto(
+            UserWorkoutPlan plan,
+            DateTime weekStart,
+            List<WorkoutSessionLog> weekLogs,
+            List<WorkoutExerciseCompletion>? weekCompletions = null)
         {
             var dto = new UserWorkoutPlanDto
             {
@@ -706,24 +922,22 @@ namespace LifeSyncAI.Core.Services
                 var dayCalendarDate = weekStart.AddDays(offset);
 
                 var log = weekLogs.FirstOrDefault(l => l.WorkoutDayId == day.Id && l.SessionDate.Date == dayCalendarDate);
-                dto.Days.Add(MapDayToDto(day, log));
+                var dayCompletions = weekCompletions?.Where(c => c.WorkoutDayId == day.Id && c.SessionDate.Date == dayCalendarDate).ToList();
+                dto.Days.Add(MapDayToDto(day, log, dayCompletions));
             }
 
             return dto;
         }
 
-        private static WorkoutDayDto MapDayToDto(WorkoutDay day, WorkoutSessionLog? log)
+        private static WorkoutDayDto MapDayToDto(
+            WorkoutDay day,
+            WorkoutSessionLog? log,
+            List<WorkoutExerciseCompletion>? completions = null)
         {
-            return new WorkoutDayDto
+            var exerciseDtos = day.Exercises.OrderBy(e => e.OrderIndex).Select(e =>
             {
-                Id = day.Id,
-                WorkoutPlanId = day.WorkoutPlanId,
-                DayOfWeek = day.DayOfWeek,
-                FocusTitle = day.FocusTitle,
-                IsRestDay = day.IsRestDay,
-                TargetDurationMinutes = day.TargetDurationMinutes,
-                RestDayNotes = day.RestDayNotes,
-                Exercises = day.Exercises.OrderBy(e => e.OrderIndex).Select(e => new WorkoutDayExerciseDto
+                var completion = completions?.FirstOrDefault(c => c.WorkoutDayExerciseId == e.Id);
+                return new WorkoutDayExerciseDto
                 {
                     Id = e.Id,
                     WorkoutDayId = e.WorkoutDayId,
@@ -738,10 +952,27 @@ namespace LifeSyncAI.Core.Services
                     RestSeconds = e.RestSeconds,
                     OrderIndex = e.OrderIndex,
                     EstimatedMetValue = e.Exercise?.EstimatedMetValue ?? 5.0f,
-                    Instructions = e.Exercise?.Instructions
-                }).ToList(),
-                IsCompletedForDate = log?.IsCompleted ?? false,
-                CompletedAt = log?.CompletedAt,
+                    Instructions = e.Exercise?.Instructions,
+                    IsCompleted = completion != null,
+                    CompletedAt = completion?.CompletedAt
+                };
+            }).ToList();
+
+            bool isAllExercisesCompleted = exerciseDtos.Any() && exerciseDtos.All(ex => ex.IsCompleted);
+            bool isCompleted = !day.IsRestDay && ((log?.IsCompleted ?? false) || isAllExercisesCompleted);
+
+            return new WorkoutDayDto
+            {
+                Id = day.Id,
+                WorkoutPlanId = day.WorkoutPlanId,
+                DayOfWeek = day.DayOfWeek,
+                FocusTitle = day.FocusTitle,
+                IsRestDay = day.IsRestDay,
+                TargetDurationMinutes = day.TargetDurationMinutes,
+                RestDayNotes = day.RestDayNotes,
+                Exercises = exerciseDtos,
+                IsCompletedForDate = isCompleted,
+                CompletedAt = log?.CompletedAt ?? completions?.OrderByDescending(c => c.CompletedAt).Select(c => (DateTime?)c.CompletedAt).FirstOrDefault(),
                 ActualDurationMinutes = log?.ActualDurationMinutes,
                 EstimatedCaloriesBurned = log?.EstimatedCaloriesBurned,
                 SessionLogId = log?.Id

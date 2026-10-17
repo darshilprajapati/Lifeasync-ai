@@ -31,6 +31,7 @@ namespace LifeSyncAI.Core.Database
         public DbSet<WorkoutDay> WorkoutDays { get; set; }
         public DbSet<WorkoutDayExercise> WorkoutDayExercises { get; set; }
         public DbSet<WorkoutSessionLog> WorkoutSessionLogs { get; set; }
+        public DbSet<WorkoutExerciseCompletion> WorkoutExerciseCompletions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,7 @@ namespace LifeSyncAI.Core.Database
             modelBuilder.Entity<WorkoutDay>().HasQueryFilter(d => !d.IsDeleted);
             modelBuilder.Entity<WorkoutDayExercise>().HasQueryFilter(de => !de.IsDeleted);
             modelBuilder.Entity<WorkoutSessionLog>().HasQueryFilter(s => !s.IsDeleted);
+            modelBuilder.Entity<WorkoutExerciseCompletion>().HasQueryFilter(wec => !wec.IsDeleted);
 
             // Unique index on Email for quick lookup and data integrity
             modelBuilder.Entity<User>()
@@ -160,6 +162,34 @@ namespace LifeSyncAI.Core.Database
 
             modelBuilder.Entity<WorkoutSessionLog>()
                 .HasIndex(s => new { s.UserId, s.WorkoutDayId, s.SessionDate });
+
+            modelBuilder.Entity<WorkoutExerciseCompletion>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkoutExerciseCompletion>()
+                .HasOne<WorkoutDay>()
+                .WithMany()
+                .HasForeignKey(c => c.WorkoutDayId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkoutExerciseCompletion>()
+                .HasOne<WorkoutDayExercise>()
+                .WithMany()
+                .HasForeignKey(c => c.WorkoutDayExerciseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkoutExerciseCompletion>()
+                .HasOne<Exercise>()
+                .WithMany()
+                .HasForeignKey(c => c.ExerciseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkoutExerciseCompletion>()
+                .HasIndex(c => new { c.UserId, c.WorkoutDayExerciseId, c.SessionDate })
+                .IsUnique();
         }
 
         public override int SaveChanges()

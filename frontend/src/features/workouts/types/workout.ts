@@ -30,6 +30,8 @@ export interface WorkoutDayExercise {
   orderIndex: number;
   estimatedMetValue: number;
   instructions?: string;
+  isCompleted?: boolean;
+  completedAt?: string;
 }
 
 export interface WorkoutDay {
@@ -47,6 +49,9 @@ export interface WorkoutDay {
   actualDurationMinutes?: number;
   estimatedCaloriesBurned?: number;
   sessionLogId?: number;
+  completedExercisesCount?: number;
+  totalExercisesCount?: number;
+  targetMuscleGroups?: string;
 }
 
 export interface UserWorkoutPlan {
@@ -103,6 +108,7 @@ export interface GenerateAiWorkoutPlanRequest {
   fitnessLevel: string;
   daysPerWeek: number;
   preferredDurationMinutes: number;
+  workoutMode?: string;
   hasEquipment: boolean;
   availableEquipment: string[];
   focusAreas: string[];
@@ -122,5 +128,6 @@ export interface UpdateWorkoutDayInput {
   isRestDay: boolean;
   targetDurationMinutes: number;
   restDayNotes?: string;
+  targetDate?: string;
   exercises: WorkoutDayExerciseInput[];
 }

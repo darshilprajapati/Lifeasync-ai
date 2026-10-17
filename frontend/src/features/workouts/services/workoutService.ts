@@ -90,5 +90,23 @@ export const workoutService = {
     const query = weekStartDate ? `?weekStartDate=${encodeURIComponent(weekStartDate)}` : '';
     const res = await apiClient.post(`/api/workout/sync-planner${query}`);
     return res.data?.data ?? 0;
+  },
+
+  getDay: async (dayId: number, sessionDate?: string): Promise<WorkoutDay> => {
+    const query = sessionDate ? `?sessionDate=${encodeURIComponent(sessionDate)}` : '';
+    const res = await apiClient.get(`/api/workout/days/${dayId}${query}`);
+    return res.data?.data;
+  },
+
+  completeExercise: async (workoutDayExerciseId: number, sessionDate?: string): Promise<WorkoutDay> => {
+    const query = sessionDate ? `?sessionDate=${encodeURIComponent(sessionDate)}` : '';
+    const res = await apiClient.post(`/api/workout/exercises/${workoutDayExerciseId}/complete${query}`);
+    return res.data?.data;
+  },
+
+  undoExercise: async (workoutDayExerciseId: number, sessionDate?: string): Promise<WorkoutDay> => {
+    const query = sessionDate ? `?sessionDate=${encodeURIComponent(sessionDate)}` : '';
+    const res = await apiClient.post(`/api/workout/exercises/${workoutDayExerciseId}/undo${query}`);
+    return res.data?.data;
   }
 };

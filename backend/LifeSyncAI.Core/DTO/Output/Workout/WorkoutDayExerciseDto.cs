@@ -18,5 +18,7 @@ namespace LifeSyncAI.Core.DTO.Output.Workout
         public int OrderIndex { get; set; }
         public float EstimatedMetValue { get; set; }
         public string? Instructions { get; set; }
+        public bool IsCompleted { get; set; }
+        public DateTime? CompletedAt { get; set; }
     }
 }

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  CircularProgress,
   Alert,
   Grid,
   Dialog,
@@ -17,9 +16,10 @@ import { WeeklyPlanCardRow } from './components/WeeklyPlanCardRow';
 import { WorkoutProgressWidget } from './components/WorkoutProgressWidget';
 import { BodyFocusBalanceWidget } from './components/BodyFocusBalanceWidget';
 import { WeeklyTipsWidget } from './components/WeeklyTipsWidget';
-import { ExerciseLibrarySection } from './components/ExerciseLibrarySection';
 import { EditWorkoutDayModal } from './components/EditWorkoutDayModal';
+import { WorkoutDayDetailModal } from './components/WorkoutDayDetailModal';
 import { AiPlanGeneratorWidget } from './components/AiPlanGeneratorWidget';
+import LogoLoader from '../../components/LogoLoader';
 import { trackAction } from '../../utils/analytics';
 
 export const WorkoutPlannerDashboard: React.FC = () => {
@@ -29,30 +29,14 @@ export const WorkoutPlannerDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal states
+  // Modals
   const [editingDay, setEditingDay] = useState<WorkoutDay | null>(null);
+  const [detailModalDay, setDetailModalDay] = useState<{ day: WorkoutDay; date: Date } | null>(null);
   const [aiGeneratorOpen, setAiGeneratorOpen] = useState<boolean>(false);
   const [syncingPlanner, setSyncingPlanner] = useState<boolean>(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
-  const handleSyncPlanner = async () => {
-    setSyncingPlanner(true);
-    setSyncSuccessMsg(null);
-    try {
-      const count = await workoutService.syncPlanner(selectedDate.toISOString());
-      setSyncSuccessMsg(`Successfully synced ${count} workout sessions to your Planner!`);
-      trackAction('workout_synced_to_planner', { module: 'workout', synced_count: count });
-    } catch (err: any) {
-      console.error('Failed to sync to planner:', err);
-      setError(err?.response?.data?.message || 'Failed to sync workouts to planner.');
-    } finally {
-      setSyncingPlanner(false);
-    }
-  };
-
   const loadData = async (date: Date) => {
-    setLoading(true);
-    setError(null);
     try {
       const dateIso = date.toISOString();
       const [loadedPlan, loadedSummary] = await Promise.all([
@@ -70,6 +54,7 @@ export const WorkoutPlannerDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     loadData(selectedDate);
   }, [selectedDate]);
 
@@ -77,35 +62,18 @@ export const WorkoutPlannerDashboard: React.FC = () => {
     setSelectedDate(newDate);
   };
 
-  const handleToggleComplete = async (day: WorkoutDay, date: Date) => {
-    if (day.isRestDay) return;
-
+  const handleSyncPlanner = async () => {
+    setSyncingPlanner(true);
+    setSyncSuccessMsg(null);
     try {
-      if (day.isCompletedForDate && day.sessionLogId) {
-        // Un-complete session
-        await workoutService.deleteSessionLog(day.sessionLogId);
-        trackAction('workout_session_uncompleted', { module: 'workout', day_id: day.id });
-      } else {
-        // Complete session
-        const sessionDateStr = date.toISOString().split('T')[0];
-        await workoutService.logSession({
-          workoutDayId: day.id,
-          sessionDate: sessionDateStr,
-          isCompleted: true,
-          actualDurationMinutes: day.targetDurationMinutes || 30
-        });
-        trackAction('workout_session_completed', {
-          module: 'workout',
-          day_id: day.id,
-          duration: day.targetDurationMinutes
-        });
-      }
-
-      // Reload fresh data
-      await loadData(selectedDate);
+      const count = await workoutService.syncPlanner(selectedDate.toISOString());
+      setSyncSuccessMsg(`Successfully synced ${count} workout sessions to your Planner!`);
+      trackAction('workout_synced_to_planner', { module: 'workout', synced_count: count });
     } catch (err: any) {
-      console.error('Failed to toggle workout completion:', err);
-      setError(err?.response?.data?.message || 'Failed to update workout status.');
+      console.error('Failed to sync to planner:', err);
+      setError(err?.response?.data?.message || 'Failed to sync workouts to planner.');
+    } finally {
+      setSyncingPlanner(false);
     }
   };
 
@@ -118,6 +86,13 @@ export const WorkoutPlannerDashboard: React.FC = () => {
     loadData(selectedDate);
   };
 
+  const handleDayDetailUpdated = (updatedDay: WorkoutDay) => {
+    if (detailModalDay) {
+      setDetailModalDay({ ...detailModalDay, day: updatedDay });
+    }
+    handleDaySaved(updatedDay);
+  };
+
   const handlePlanApplied = (newPlan: UserWorkoutPlan) => {
     setPlan(newPlan);
     setAiGeneratorOpen(false);
@@ -127,14 +102,14 @@ export const WorkoutPlannerDashboard: React.FC = () => {
 
   if (loading && !plan) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
-        <CircularProgress size={36} sx={{ color: 'var(--accent-primary)' }} />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 12 }}>
+        <LogoLoader />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, pb: 4 }}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ borderRadius: '12px' }}>
           {error}
@@ -147,13 +122,15 @@ export const WorkoutPlannerDashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* 1. 7-Day Horizontal Weekly Plan Row */}
+      {/* ========================================================
+          PANEL 1: WEEKLY WORKOUT PLANNER (Mon - Sun Schedule)
+          ======================================================== */}
       {plan && (
         <WeeklyPlanCardRow
           plan={plan}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          onToggleComplete={handleToggleComplete}
+          onOpenDetail={(day, date) => setDetailModalDay({ day, date })}
           onEditDay={(day) => setEditingDay(day)}
           onOpenAiGenerator={() => setAiGeneratorOpen(true)}
           onSyncPlanner={handleSyncPlanner}
@@ -161,27 +138,41 @@ export const WorkoutPlannerDashboard: React.FC = () => {
         />
       )}
 
-      {/* 2. Middle Row: Progress, Body Focus & AI Tips */}
-      <Grid container spacing={2.5}>
+      {/* ========================================================
+          PANELS 2, 3, 4:
+          2. Weekly Progress & Adherence
+          3. Body Focus & Balance
+          4. AI Coaching & Recovery Tips
+          ======================================================== */}
+      <Grid container spacing={3}>
+        {/* PANEL 2: Weekly Progress & Adherence */}
         <Grid size={{ xs: 12, md: 4 }}>
           <WorkoutProgressWidget summary={summary} />
         </Grid>
+
+        {/* PANEL 3: Body Focus & Balance */}
         <Grid size={{ xs: 12, md: 4 }}>
           <BodyFocusBalanceWidget
             distribution={summary?.muscleGroupFocusPercentages || {}}
           />
         </Grid>
+
+        {/* PANEL 4: AI Coaching & Recovery Tips */}
         <Grid size={{ xs: 12, md: 4 }}>
           <WeeklyTipsWidget />
         </Grid>
       </Grid>
 
-      {/* 3. Full Exercise Library with Dual Equipment Mode */}
-      <Box sx={{ mt: 2 }}>
-        <ExerciseLibrarySection
-          actionLabel="View Details"
+      {/* Workout Day Detail Modal with Exercise-by-Exercise Completion */}
+      {detailModalDay && (
+        <WorkoutDayDetailModal
+          open={Boolean(detailModalDay)}
+          day={detailModalDay.day}
+          calendarDate={detailModalDay.date}
+          onClose={() => setDetailModalDay(null)}
+          onDayUpdated={handleDayDetailUpdated}
         />
-      </Box>
+      )}
 
       {/* Customize Day Modal */}
       <EditWorkoutDayModal
@@ -195,12 +186,12 @@ export const WorkoutPlannerDashboard: React.FC = () => {
       <Dialog
         open={aiGeneratorOpen}
         onClose={() => setAiGeneratorOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
-        slotProps={{ paper: { sx: { borderRadius: '16px' } } }}
+        slotProps={{ paper: { sx: { borderRadius: '20px', p: 1 } } }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Generate Custom Weekly Routine
           </Typography>
           <IconButton onClick={() => setAiGeneratorOpen(false)} size="small">

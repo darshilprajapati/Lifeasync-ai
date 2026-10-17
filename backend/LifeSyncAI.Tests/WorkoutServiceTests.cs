@@ -812,6 +812,210 @@ namespace LifeSyncAI.Tests
             }
         }
 
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(5)]
+        [InlineData(7)]
+        public async Task GenerateAiPlan_Supports1To7DaysPerWeek(int days)
+        {
+            var req = new GenerateAiWorkoutPlanRequestDto
+            {
+                Goal = "Build Muscle",
+                FitnessLevel = "Intermediate",
+                DaysPerWeek = days,
+                PreferredDurationMinutes = 45,
+                WorkoutMode = "Without Equipment"
+            };
+
+            var result = await _workoutService.GenerateAiPlanAsync(_testUser.Id, req);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(days, result.Data.DaysPerWeek);
+            Assert.Equal(7, result.Data.SuggestedDays.Count);
+            int nonRestDays = result.Data.SuggestedDays.Count(d => !d.IsRestDay);
+            Assert.Equal(days, nonRestDays);
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(30)]
+        [InlineData(120)]
+        public async Task GenerateAiPlan_DurationLimitsAreRespected(int durationMinutes)
+        {
+            var req = new GenerateAiWorkoutPlanRequestDto
+            {
+                Goal = "Stay Fit",
+                FitnessLevel = "Beginner",
+                DaysPerWeek = 3,
+                PreferredDurationMinutes = durationMinutes,
+                WorkoutMode = "Without Equipment"
+            };
+
+            var result = await _workoutService.GenerateAiPlanAsync(_testUser.Id, req);
+
+            Assert.True(result.IsSuccess);
+            var activeDays = result.Data.SuggestedDays.Where(d => !d.IsRestDay).ToList();
+            Assert.All(activeDays, d =>
+            {
+                Assert.InRange(d.TargetDurationMinutes, 1, 150);
+                Assert.NotEmpty(d.Exercises);
+            });
+        }
+
+        [Fact]
+        public async Task GenerateAiPlan_HybridModeCombinesEquipmentAndBodyweight()
+        {
+            var req = new GenerateAiWorkoutPlanRequestDto
+            {
+                Goal = "Build Muscle",
+                FitnessLevel = "Intermediate",
+                DaysPerWeek = 4,
+                PreferredDurationMinutes = 45,
+                WorkoutMode = "Hybrid",
+                HasEquipment = true,
+                AvailableEquipment = new List<string> { "Dumbbells", "Pull Up Bar" },
+                FocusAreas = new List<string> { "Chest", "Back" }
+            };
+
+            var result = await _workoutService.GenerateAiPlanAsync(_testUser.Id, req);
+
+            Assert.True(result.IsSuccess);
+            var allExercises = result.Data.SuggestedDays
+                .Where(d => !d.IsRestDay)
+                .SelectMany(d => d.Exercises)
+                .ToList();
+
+            Assert.Contains(allExercises, e => !e.RequiresEquipment);
+            Assert.Contains(allExercises, e => e.RequiresEquipment);
+        }
+
+        [Fact]
+        public async Task GenerateAiPlan_ProducesVariationAcrossRepeatedRequests()
+        {
+            var exercises = await _context.Exercises.ToListAsync();
+            var req = new GenerateAiWorkoutPlanRequestDto
+            {
+                Goal = "Build Muscle",
+                FitnessLevel = "Intermediate",
+                DaysPerWeek = 4,
+                PreferredDurationMinutes = 45,
+                WorkoutMode = "Without Equipment"
+            };
+
+            var plan1 = DeterministicWorkoutGenerator.GeneratePlan(req, exercises, randomSeed: 101);
+            var plan2 = DeterministicWorkoutGenerator.GeneratePlan(req, exercises, randomSeed: 999);
+
+            var exNames1 = plan1.SuggestedDays.Where(d => !d.IsRestDay).SelectMany(d => d.Exercises.Select(e => e.ExerciseName)).ToList();
+            var exNames2 = plan2.SuggestedDays.Where(d => !d.IsRestDay).SelectMany(d => d.Exercises.Select(e => e.ExerciseName)).ToList();
+
+            // Distinct seeds produce varied exercise sequences when alternatives exist
+            bool areIdentical = exNames1.SequenceEqual(exNames2);
+            Assert.False(areIdentical);
+        }
+
+        [Fact]
+        public async Task ToggleExerciseCompletion_TodayOnly_PersistsAndAllowsUndo()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+
+            var today = DateTime.UtcNow.Date;
+
+            // Act 1: Complete today's exercise
+            var completeResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, today, true);
+
+            // Assert 1
+            Assert.True(completeResult.IsSuccess);
+            Assert.True(completeResult.Data.Exercises.First(e => e.Id == exercise.Id).IsCompleted);
+
+            // Act 2: Undo completion
+            var undoResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, today, false);
+
+            // Assert 2
+            Assert.True(undoResult.IsSuccess);
+            Assert.False(undoResult.Data.Exercises.First(e => e.Id == exercise.Id).IsCompleted);
+        }
+
+        [Fact]
+        public async Task ToggleExerciseCompletion_PastOrFutureDate_IsRejected()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+
+            var yesterday = DateTime.UtcNow.Date.AddDays(-1);
+            var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+
+            // Act & Assert
+            var pastResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, yesterday, true);
+            Assert.False(pastResult.IsSuccess);
+
+            var futureResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, tomorrow, true);
+            Assert.False(futureResult.IsSuccess);
+        }
+
+        [Fact]
+        public async Task ToggleExerciseCompletion_CompletingAllExercises_MarksDayAndBridgesHealthLog()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var today = DateTime.UtcNow.Date;
+
+            // Act: Mark every exercise complete
+            foreach (var ex in activeDay.Exercises)
+            {
+                var stepResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, ex.Id, today, true);
+                Assert.True(stepResult.IsSuccess);
+            }
+
+            // Assert: Day is completed
+            var updatedDay = await _workoutService.GetWorkoutDayAsync(_testUser.Id, activeDay.Id, today);
+            Assert.True(updatedDay.IsSuccess);
+            Assert.True(updatedDay.Data.IsCompletedForDate);
+            Assert.Equal(activeDay.Exercises.Count, updatedDay.Data.CompletedExercisesCount);
+
+            // Assert: HealthLog was bridged for this user
+            var healthLogs = await _context.HealthLogs.Where(h => h.UserId == _testUser.Id && h.LogType == "Workout").ToListAsync();
+            Assert.NotEmpty(healthLogs);
+        }
+
+        [Fact]
+        public async Task UpdateDayAsync_PastDate_IsRejected()
+        {
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay);
+
+            var pastUpdateDto = new UpdateWorkoutDayDto
+            {
+                FocusTitle = "Attempted Past Modification",
+                TargetDate = DateTime.UtcNow.Date.AddDays(-2)
+            };
+
+            var result = await _workoutService.UpdateDayAsync(_testUser.Id, activeDay.Id, pastUpdateDto);
+            Assert.False(result.IsSuccess);
+            Assert.Contains("immutable", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task ExerciseCompletion_UserIsolation_RejectsCrossUserCompletion()
+        {
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var exercise = planResult.Data.Days.First(d => !d.IsRestDay).Exercises.First();
+
+            var otherUser = new User { FullName = "Other User", Email = "other@example.com", PasswordHash = "hash" };
+            _context.Users.Add(otherUser);
+            await _context.SaveChangesAsync();
+
+            var result = await _workoutService.ToggleExerciseCompletionAsync(otherUser.Id, exercise.Id, DateTime.UtcNow.Date, true);
+            Assert.False(result.IsSuccess);
+            Assert.Contains("Unauthorized", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static void SetControllerUser(ControllerBase controller, int userId)
         {
             var claims = new List<Claim>

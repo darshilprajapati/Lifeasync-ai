@@ -10,6 +10,7 @@ namespace LifeSyncAI.Core.DTO.Input.Workout
         public bool IsRestDay { get; set; }
         public int TargetDurationMinutes { get; set; } = 25;
         public string? RestDayNotes { get; set; }
+        public DateTime? TargetDate { get; set; }
         public List<WorkoutDayExerciseInputDto> Exercises { get; set; } = new();
     }
 }
