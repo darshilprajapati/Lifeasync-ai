@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 /* ------------------------------------------------------------------ */
 /* Physics-driven Interactive Three.js Lamp with Genuine Pull Cord    */
-/* Proportions matched to reference standing lamp (no clipping/rings) */
+/* Proportions reduced by ~30%, no clipping, no decorative rings      */
 /* ------------------------------------------------------------------ */
 
 interface LampSceneCanvasProps {
@@ -29,6 +29,10 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   const cordMeshRef = useRef<THREE.Mesh>(null);
   const handleGroupRef = useRef<THREE.Group>(null);
 
+  // Hover & Drag state for visual feedback
+  const [isHandleHovered, setIsHandleHovered] = useState(false);
+  const [isHandleGrabbed, setIsHandleGrabbed] = useState(false);
+
   // Target lighting state lerp
   const targetLight = useRef(isOn ? 1 : 0);
   useEffect(() => {
@@ -40,11 +44,18 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   const startScreenY = useRef(0);
   const startScreenX = useRef(0);
   const pointerDownTime = useRef(0);
-  const pullDistance = useRef(0); // 0 to 0.45 units
+  const pullDistance = useRef(0); // 0 to 0.42 units
   const pullSwing = useRef(0); // -0.15 to 0.15 units
   const pullVelY = useRef(0);
   const pullVelX = useRef(0);
   const hasTriggeredToggle = useRef(false);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* Materials: High-fidelity matte gunmetal, brass, & glowing fabric   */
@@ -67,6 +78,18 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
         roughness: 0.16,
       }),
     []
+  );
+
+  const handleBrassMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(isHandleGrabbed ? '#FFE28A' : isHandleHovered ? '#F0C265' : '#DFB052'),
+        emissive: new THREE.Color('#E5B869'),
+        emissiveIntensity: isHandleGrabbed ? 0.6 : isHandleHovered ? 0.35 : 0.08,
+        metalness: 0.92,
+        roughness: 0.14,
+      }),
+    [isHandleHovered, isHandleGrabbed]
   );
 
   const shadeOuterMat = useMemo(
@@ -121,7 +144,7 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#FFA845'),
         transparent: true,
-        opacity: isOn ? 0.38 : 0,
+        opacity: isOn ? 0.36 : 0,
         depthWrite: false,
       }),
     [isOn]
@@ -130,7 +153,7 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   /* ------------------------------------------------------------------ */
   /* Cord Geometry & Curve Definition                                   */
   /* ------------------------------------------------------------------ */
-  // The cord attaches to the switch socket beneath the shade rim
+  // Cord attaches neatly under the shade rim on the right side
   const cordAttachX = 0.22;
   const cordAttachY = 2.36;
   const cordAttachZ = 0.12;
@@ -208,15 +231,15 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
     if (floorPoolMat) {
       floorPoolMat.opacity = THREE.MathUtils.lerp(
         floorPoolMat.opacity,
-        t * 0.38,
+        t * 0.36,
         delta * lightLerpSpeed
       );
     }
 
     // 2. Damped Spring Physics for Pull Cord
     if (!isDragging.current) {
-      const k = 185; // Spring stiffness
-      const c = 13;  // Damping coefficient
+      const k = 195; // Spring stiffness
+      const c = 14;  // Damping coefficient
 
       // Vertical spring
       const forceY = -k * pullDistance.current - c * pullVelY.current;
@@ -285,58 +308,84 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   /* ------------------------------------------------------------------ */
   /* Pointer Drag Handlers on the 3D Pull Cord Handle                   */
   /* ------------------------------------------------------------------ */
-  const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
+  const onHandlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    setIsHandleHovered(true);
+    if (!isDragging.current) {
+      document.body.style.cursor = 'grab';
+    }
+  };
+
+  const onHandlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    setIsHandleHovered(false);
+    if (!isDragging.current) {
+      document.body.style.cursor = 'auto';
+    }
+  };
+
+  const onHandlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     isDragging.current = true;
+    setIsHandleGrabbed(true);
+    document.body.style.cursor = 'grabbing';
+
     startScreenY.current = e.clientY;
     startScreenX.current = e.clientX;
     pointerDownTime.current = performance.now();
     hasTriggeredToggle.current = false;
 
+    // Pointer move listener
     const onPointerMove = (evt: PointerEvent) => {
       if (!isDragging.current) return;
       const dy = evt.clientY - startScreenY.current;
       const dx = evt.clientX - startScreenX.current;
 
       if (dy > 0) {
-        // Dragging downward
-        const dist = Math.min(0.48, dy * 0.005);
+        // Dragging downward in lamp local coordinates
+        const dist = Math.min(0.42, dy * 0.005);
         pullDistance.current = dist;
-        pullSwing.current = THREE.MathUtils.clamp(dx * 0.0025, -0.15, 0.15);
+        pullSwing.current = THREE.MathUtils.clamp(dx * 0.0025, -0.14, 0.14);
 
-        // Activation threshold: 0.20 units (~40px drag)
-        if (dist >= 0.20 && !hasTriggeredToggle.current) {
+        // Activation threshold: 0.16 units (~35-40px downward pull)
+        if (dist >= 0.16 && !hasTriggeredToggle.current) {
           hasTriggeredToggle.current = true;
           onToggle();
         }
       } else {
-        pullDistance.current = 0;
-        pullSwing.current = THREE.MathUtils.clamp(dx * 0.002, -0.06, 0.06);
+        // Slight resistance when moving above rest point
+        pullDistance.current = Math.max(-0.04, dy * 0.001);
+        pullSwing.current = THREE.MathUtils.clamp(dx * 0.002, -0.05, 0.05);
       }
     };
 
-    const onPointerUp = () => {
+    // Pointer up listener
+    const onPointerUp = (evt: PointerEvent) => {
       if (!isDragging.current) return;
       isDragging.current = false;
+      setIsHandleGrabbed(false);
+      document.body.style.cursor = 'auto';
 
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
 
       const elapsed = performance.now() - pointerDownTime.current;
-      // If quick intentional tap or click without crossing drag threshold, trigger deliberate toggle!
-      if (!hasTriggeredToggle.current && elapsed < 280) {
-        pullDistance.current = 0.32;
+      const dy = Math.max(0, evt.clientY - startScreenY.current);
+
+      // If user made a quick intentional flick/tug downward (> 12px within 300ms) without crossing threshold yet:
+      if (!hasTriggeredToggle.current && elapsed < 300 && dy > 10) {
+        pullDistance.current = 0.28;
         hasTriggeredToggle.current = true;
         onToggle();
       }
 
-      // Initial release recoil velocity
+      // Initial release recoil velocity for damped harmonic return
       pullVelY.current = -pullDistance.current * 18;
       pullVelX.current = -pullSwing.current * 14;
     };
 
-    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerUp);
   };
@@ -347,13 +396,14 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   }, []);
 
   return (
-    <group ref={groupRef} position={[0, -1.55, 0]}>
+    /* Lamp assembly scaled down by ~30% and centered vertically */
+    <group ref={groupRef} position={[0, -1.05, 0]} scale={[0.70, 0.70, 0.70]}>
       {/* ------------------------------------------------------------- */}
       {/* 1. BASE: Heavy cast stepped circular base with brass trim     */}
       {/* ------------------------------------------------------------- */}
       <group>
         {/* Main stepped cast dark gunmetal base disc */}
-        <mesh position={[0, 0.035, 0]} material={darkGunmetalMat} castShadow receiveShadow>
+        <mesh position={[0, 0.035, 0]} material={darkGunmetalMat} castShadow>
           <cylinderGeometry args={[0.68, 0.74, 0.07, 48]} />
         </mesh>
 
@@ -463,24 +513,26 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       <group
         ref={handleGroupRef}
         position={[cordAttachX, cordRestBottomY, cordAttachZ]}
-        onPointerDown={onPointerDown}
+        onPointerOver={onHandlePointerOver}
+        onPointerOut={onHandlePointerOut}
+        onPointerDown={onHandlePointerDown}
       >
         {/* Top connector bead */}
-        <mesh material={polishedBrassMat} castShadow>
+        <mesh material={handleBrassMat} castShadow>
           <sphereGeometry args={[0.034, 16, 16]} />
         </mesh>
         {/* Turned ribbed handle cylinder */}
-        <mesh position={[0, -0.08, 0]} material={polishedBrassMat} castShadow>
+        <mesh position={[0, -0.08, 0]} material={handleBrassMat} castShadow>
           <cylinderGeometry args={[0.028, 0.034, 0.14, 20]} />
         </mesh>
         {/* Lower finial droplet */}
-        <mesh position={[0, -0.17, 0]} material={polishedBrassMat} castShadow>
+        <mesh position={[0, -0.17, 0]} material={handleBrassMat} castShadow>
           <coneGeometry args={[0.034, 0.08, 20]} />
         </mesh>
 
         {/* Generous invisible grab target for effortless pointer and touch dragging */}
         <mesh position={[0, -0.08, 0]}>
-          <cylinderGeometry args={[0.22, 0.22, 0.40, 8]} />
+          <cylinderGeometry args={[0.26, 0.26, 0.45, 12]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </group>
@@ -494,7 +546,7 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
         position={[0, -0.01, 0]}
         material={floorPoolMat}
       >
-        <circleGeometry args={[2.2, 48]} />
+        <circleGeometry args={[2.0, 48]} />
       </mesh>
     </group>
   );
@@ -515,7 +567,7 @@ function FloorSurface({ isOn }: { isOn: boolean }) {
   );
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.56, 0]} material={floorMat}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.06, 0]} material={floorMat}>
       <planeGeometry args={[35, 35]} />
     </mesh>
   );
@@ -528,12 +580,12 @@ function LightMotes({ isOn }: { isOn: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
 
   const { posArray } = useMemo(() => {
-    const count = 65;
+    const count = 55;
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 4.0;
-      arr[i * 3 + 1] = Math.random() * 4.5 - 1.2;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 3.0;
+      arr[i * 3] = (Math.random() - 0.5) * 3.5;
+      arr[i * 3 + 1] = Math.random() * 3.5 - 0.8;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 2.5;
     }
     return { posArray: arr };
   }, []);
@@ -549,8 +601,8 @@ function LightMotes({ isOn }: { isOn: boolean }) {
       const arr = posAttr.array as Float32Array;
       for (let i = 0; i < arr.length / 3; i++) {
         arr[i * 3 + 1] += delta * 0.05;
-        if (arr[i * 3 + 1] > 3.2) {
-          arr[i * 3 + 1] = -1.2;
+        if (arr[i * 3 + 1] > 2.5) {
+          arr[i * 3 + 1] = -0.8;
         }
       }
       posAttr.needsUpdate = true;
@@ -563,7 +615,7 @@ function LightMotes({ isOn }: { isOn: boolean }) {
         <bufferAttribute attach="attributes-position" args={[posArray, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.03}
+        size={0.026}
         color="#FFE5B4"
         transparent
         opacity={0}
@@ -592,8 +644,7 @@ const LampSceneCanvas: React.FC<LampSceneCanvasProps> = ({ isOn, onToggle }) => 
   return (
     <Canvas
       dpr={dpr}
-      shadows={{ type: THREE.PCFShadowMap }}
-      camera={{ position: [0, 0.05, 6.2], fov: 38, near: 0.1, far: 50 }}
+      camera={{ position: [0, 0.05, 5.8], fov: 38, near: 0.1, far: 50 }}
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,

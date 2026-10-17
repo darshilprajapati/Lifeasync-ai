@@ -1,9 +1,8 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { getSharedLampState, subscribeLampState, toggleGlobalLamp } from './lampState';
+import LampSceneCanvas from './LampSceneCanvas';
 import './LampScene.css';
-
-const LampSceneCanvas = lazy(() => import('./LampSceneCanvas'));
 
 /* ------------------------------------------------------------------ */
 /* Check for WebGL capability safely                                  */
@@ -77,19 +76,11 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
         {/* 3D Lamp Scene Container: Mounts once and persists across route navigation */}
         <div className="lamp-visual-container">
           {hasWebGL ? (
-            <Suspense
-              fallback={
-                <div className="lamp-loading-placeholder" aria-label="Loading 3D lamp visual...">
-                  <div className="lamp-pulse-ring" />
-                </div>
-              }
-            >
-              <LampSceneCanvas
-                isOn={lampIsOn}
-                onToggle={handleToggle}
-                lampState={lampState}
-              />
-            </Suspense>
+            <LampSceneCanvas
+              isOn={lampIsOn}
+              onToggle={handleToggle}
+              lampState={lampState}
+            />
           ) : (
             <div className="lamp-fallback-graphic" aria-label="LifeSync wellness illustration">
               <div className="lamp-fallback-glow" />
