@@ -35,6 +35,7 @@ import { workoutService } from '../services/workoutService';
 import type { UserWorkoutPlan, WorkoutDay, Exercise } from '../types/workout';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { trackAction } from '../../../utils/analytics';
+import { useNotification } from '../../../context/NotificationContext';
 
 const GOALS = ['Stay Fit', 'Build Muscle', 'Fat Loss', 'Endurance'];
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
@@ -58,6 +59,7 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
   onPlanApplied,
   onClose
 }) => {
+  const { notify } = useNotification();
   // Step 1: Config states
   const [goal, setGoal] = useState<string>('Stay Fit');
   const [level, setLevel] = useState<string>('Beginner');
@@ -134,8 +136,11 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
         duration,
         mode: workoutMode
       });
+      notify.success('AI Workout Routine generated! Review and customize your split.', 'Plan Generated');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to generate AI workout plan.');
+      const errMsg = err?.response?.data?.message || 'Failed to generate AI workout plan.';
+      setError(errMsg);
+      notify.error(errMsg, 'Generation Failed');
     } finally {
       setLoading(false);
     }
@@ -279,8 +284,11 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
         plan_title: planTitle,
         days_count: daysPerWeek
       });
+      notify.success('Workout plan successfully applied and activated!', 'Plan Activated');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to save customized workout plan.');
+      const errMsg = err?.response?.data?.message || 'Failed to save customized workout plan.';
+      setError(errMsg);
+      notify.error(errMsg, 'Save Plan Failed');
     } finally {
       setSaving(false);
     }
@@ -303,7 +311,7 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
   const totalExercises = Object.values(muscleCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ borderRadius: '12px' }}>
           {error}
@@ -314,10 +322,18 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
       {viewStep === 'config' && (
         <Stack spacing={2.5}>
           {/* Goal & Level */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 0.5 }}>
             <FormControl fullWidth size="small">
-              <InputLabel>Primary Goal</InputLabel>
-              <Select value={goal} label="Primary Goal" onChange={(e) => setGoal(e.target.value)}>
+              <InputLabel id="primary-goal-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
+                Primary Goal
+              </InputLabel>
+              <Select
+                labelId="primary-goal-label"
+                id="primary-goal-select"
+                value={goal}
+                label="Primary Goal"
+                onChange={(e) => setGoal(e.target.value)}
+              >
                 {GOALS.map((g) => (
                   <MenuItem key={g} value={g}>
                     {g}
@@ -327,8 +343,16 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
             </FormControl>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Fitness Level</InputLabel>
-              <Select value={level} label="Fitness Level" onChange={(e) => setLevel(e.target.value)}>
+              <InputLabel id="fitness-level-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
+                Fitness Level
+              </InputLabel>
+              <Select
+                labelId="fitness-level-label"
+                id="fitness-level-select"
+                value={level}
+                label="Fitness Level"
+                onChange={(e) => setLevel(e.target.value)}
+              >
                 {LEVELS.map((l) => (
                   <MenuItem key={l} value={l}>
                     {l}

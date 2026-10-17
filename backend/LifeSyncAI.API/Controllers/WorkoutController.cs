@@ -80,8 +80,10 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
-            var date = sessionDate ?? DateTime.UtcNow.Date;
-            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true);
+            var clientDateStr = Request.Headers["X-Client-Date"].ToString();
+            var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
+            var date = sessionDate ?? clientDate.Date;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true, clientDate);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -91,8 +93,10 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
-            var date = sessionDate ?? DateTime.UtcNow.Date;
-            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, false);
+            var clientDateStr = Request.Headers["X-Client-Date"].ToString();
+            var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
+            var date = sessionDate ?? clientDate.Date;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, false, clientDate);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

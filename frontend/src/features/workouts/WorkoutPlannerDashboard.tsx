@@ -21,8 +21,11 @@ import { WorkoutDayDetailModal } from './components/WorkoutDayDetailModal';
 import { AiPlanGeneratorWidget } from './components/AiPlanGeneratorWidget';
 import LogoLoader from '../../components/LogoLoader';
 import { trackAction } from '../../utils/analytics';
+import { formatLocalDate } from './utils/workoutDateUtils';
+import { useNotification } from '../../context/NotificationContext';
 
 export const WorkoutPlannerDashboard: React.FC = () => {
+  const { notify } = useNotification();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [plan, setPlan] = useState<UserWorkoutPlan | null>(null);
   const [summary, setSummary] = useState<WorkoutWeekSummary | null>(null);
@@ -38,16 +41,18 @@ export const WorkoutPlannerDashboard: React.FC = () => {
 
   const loadData = async (date: Date) => {
     try {
-      const dateIso = date.toISOString();
+      const dateStr = formatLocalDate(date);
       const [loadedPlan, loadedSummary] = await Promise.all([
-        workoutService.getActivePlan(dateIso),
-        workoutService.getWeekSummary(dateIso)
+        workoutService.getActivePlan(dateStr),
+        workoutService.getWeekSummary(dateStr)
       ]);
       setPlan(loadedPlan);
       setSummary(loadedSummary);
     } catch (err: any) {
       console.error('Failed to load workout data:', err);
-      setError(err?.response?.data?.message || 'Failed to load workout routine.');
+      const errMsg = err?.response?.data?.message || 'Failed to load workout routine.';
+      setError(errMsg);
+      notify.error(errMsg, 'Load Error');
     } finally {
       setLoading(false);
     }
@@ -66,12 +71,17 @@ export const WorkoutPlannerDashboard: React.FC = () => {
     setSyncingPlanner(true);
     setSyncSuccessMsg(null);
     try {
-      const count = await workoutService.syncPlanner(selectedDate.toISOString());
-      setSyncSuccessMsg(`Successfully synced ${count} workout sessions to your Planner!`);
+      const dateStr = formatLocalDate(selectedDate);
+      const count = await workoutService.syncPlanner(dateStr);
+      const msg = `Successfully synced ${count} workout session${count === 1 ? '' : 's'} to your Planner!`;
+      setSyncSuccessMsg(msg);
+      notify.success(msg, 'Planner Synchronized');
       trackAction('workout_synced_to_planner', { module: 'workout', synced_count: count });
     } catch (err: any) {
       console.error('Failed to sync to planner:', err);
-      setError(err?.response?.data?.message || 'Failed to sync workouts to planner.');
+      const errMsg = err?.response?.data?.message || 'Failed to sync workouts to planner.';
+      setError(errMsg);
+      notify.error(errMsg, 'Sync Failed');
     } finally {
       setSyncingPlanner(false);
     }
@@ -154,12 +164,17 @@ export const WorkoutPlannerDashboard: React.FC = () => {
         <Grid size={{ xs: 12, md: 4 }}>
           <BodyFocusBalanceWidget
             distribution={summary?.muscleGroupFocusPercentages || {}}
+            completedDistribution={summary?.completedMuscleGroupFocusPercentages || {}}
           />
         </Grid>
 
         {/* PANEL 4: AI Coaching & Recovery Tips */}
         <Grid size={{ xs: 12, md: 4 }}>
-          <WeeklyTipsWidget />
+          <WeeklyTipsWidget
+            tips={summary?.personalizedCoachingTips || []}
+            goal={plan?.goal}
+            fitnessLevel={plan?.fitnessLevel}
+          />
         </Grid>
       </Grid>
 
@@ -198,7 +213,7 @@ export const WorkoutPlannerDashboard: React.FC = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 2.5 }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, pt: '14px !important', overflowY: 'auto' }}>
           <AiPlanGeneratorWidget
             onPlanApplied={handlePlanApplied}
             onClose={() => setAiGeneratorOpen(false)}

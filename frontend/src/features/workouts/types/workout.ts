@@ -86,10 +86,14 @@ export interface WorkoutWeekSummary {
   weekEndDate: string;
   totalPlannedWorkouts: number;
   completedWorkouts: number;
+  totalScheduledExercises?: number;
+  completedExercises?: number;
   totalMinutesExercised: number;
   totalEstimatedCaloriesBurned: number;
   adherenceRatePercentage: number;
   muscleGroupFocusPercentages: Record<string, number>;
+  completedMuscleGroupFocusPercentages?: Record<string, number>;
+  personalizedCoachingTips?: string[];
 }
 
 export interface AiWorkoutPlanResponse {

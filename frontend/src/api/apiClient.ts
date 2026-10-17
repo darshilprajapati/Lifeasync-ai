@@ -105,6 +105,18 @@ apiClient.interceptors.response.use(
       }
     }
 
+    if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+      window.dispatchEvent(
+        new CustomEvent('lifesync:notify', {
+          detail: {
+            type: 'error',
+            message: 'Unable to connect to LifeSync AI servers. Please verify your connection.',
+            title: 'Network Disconnected'
+          }
+        })
+      );
+    }
+
     return Promise.reject(error);
   }
 );

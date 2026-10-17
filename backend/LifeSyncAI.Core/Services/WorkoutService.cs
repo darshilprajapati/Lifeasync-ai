@@ -452,20 +452,28 @@ namespace LifeSyncAI.Core.Services
                     .Where(l => l.UserId == userId && l.SessionDate >= start && l.SessionDate < end && l.IsCompleted)
                     .ToListAsync();
 
+                var exerciseCompletions = await _context.WorkoutExerciseCompletions
+                    .Where(c => c.UserId == userId && c.SessionDate >= start && c.SessionDate < end)
+                    .ToListAsync();
+
                 var activePlan = await _context.UserWorkoutPlans
                     .Include(p => p.Days)
                         .ThenInclude(d => d.Exercises)
                             .ThenInclude(e => e.Exercise)
                     .FirstOrDefaultAsync(p => p.UserId == userId && p.IsActive);
 
-                int plannedWorkouts = activePlan?.Days.Count(d => !d.IsRestDay) ?? 4;
+                int plannedWorkouts = activePlan?.Days.Count(d => !d.IsRestDay) ?? 0;
                 int completed = logs.Count;
                 int totalMinutes = logs.Sum(l => l.ActualDurationMinutes);
                 int totalCalories = logs.Sum(l => l.EstimatedCaloriesBurned);
+
+                int totalScheduledExercises = activePlan?.Days.Where(d => !d.IsRestDay).Sum(d => d.Exercises.Count) ?? 0;
+                int completedExercises = exerciseCompletions.Count;
+
                 float adherence = plannedWorkouts > 0 ? (float)Math.Round((completed / (float)plannedWorkouts) * 100.0f, 1) : 0f;
 
-                // Compute muscle group focus balance
-                var muscleCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                // Compute planned muscle group focus balance
+                var plannedMuscleCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 if (activePlan != null)
                 {
                     var activeDays = activePlan.Days.Where(d => !d.IsRestDay).ToList();
@@ -474,20 +482,48 @@ namespace LifeSyncAI.Core.Services
                         foreach (var ex in d.Exercises)
                         {
                             var cat = ex.Exercise?.Category ?? "Other";
-                            muscleCounts[cat] = muscleCounts.GetValueOrDefault(cat, 0) + 1;
+                            plannedMuscleCounts[cat] = plannedMuscleCounts.GetValueOrDefault(cat, 0) + 1;
                         }
                     }
                 }
 
-                int totalExerciseOccurrences = muscleCounts.Values.Sum();
-                var percentages = new Dictionary<string, int>();
-                if (totalExerciseOccurrences > 0)
+                int totalPlannedExerciseOccurrences = plannedMuscleCounts.Values.Sum();
+                var plannedPercentages = new Dictionary<string, int>();
+                if (totalPlannedExerciseOccurrences > 0)
                 {
-                    foreach (var kvp in muscleCounts)
+                    foreach (var kvp in plannedMuscleCounts)
                     {
-                        percentages[kvp.Key] = (int)Math.Round((kvp.Value / (float)totalExerciseOccurrences) * 100.0f);
+                        plannedPercentages[kvp.Key] = (int)Math.Round((kvp.Value / (float)totalPlannedExerciseOccurrences) * 100.0f);
                     }
                 }
+
+                // Compute completed muscle group volume
+                var completedMuscleCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                if (exerciseCompletions.Any())
+                {
+                    var completedExerciseIds = exerciseCompletions.Select(c => c.ExerciseId).Distinct().ToList();
+                    var exerciseMap = await _context.Exercises
+                        .Where(e => completedExerciseIds.Contains(e.Id))
+                        .ToDictionaryAsync(e => e.Id, e => e.Category);
+
+                    foreach (var c in exerciseCompletions)
+                    {
+                        var cat = exerciseMap.GetValueOrDefault(c.ExerciseId, "Other");
+                        completedMuscleCounts[cat] = completedMuscleCounts.GetValueOrDefault(cat, 0) + 1;
+                    }
+                }
+
+                int totalCompletedExerciseOccurrences = completedMuscleCounts.Values.Sum();
+                var completedPercentages = new Dictionary<string, int>();
+                if (totalCompletedExerciseOccurrences > 0)
+                {
+                    foreach (var kvp in completedMuscleCounts)
+                    {
+                        completedPercentages[kvp.Key] = (int)Math.Round((kvp.Value / (float)totalCompletedExerciseOccurrences) * 100.0f);
+                    }
+                }
+
+                var tips = GeneratePersonalizedTips(activePlan, completed, plannedWorkouts, completedExercises, totalScheduledExercises);
 
                 var summary = new WorkoutWeekSummaryDto
                 {
@@ -495,10 +531,14 @@ namespace LifeSyncAI.Core.Services
                     WeekEndDate = end.AddDays(-1),
                     TotalPlannedWorkouts = plannedWorkouts,
                     CompletedWorkouts = completed,
+                    TotalScheduledExercises = totalScheduledExercises,
+                    CompletedExercises = completedExercises,
                     TotalMinutesExercised = totalMinutes,
                     TotalEstimatedCaloriesBurned = totalCalories,
                     AdherenceRatePercentage = adherence,
-                    MuscleGroupFocusPercentages = percentages
+                    MuscleGroupFocusPercentages = plannedPercentages,
+                    CompletedMuscleGroupFocusPercentages = completedPercentages,
+                    PersonalizedCoachingTips = tips
                 };
 
                 return ApiResponse<WorkoutWeekSummaryDto>.Success(summary, "Week summary calculated successfully.");
@@ -527,14 +567,22 @@ namespace LifeSyncAI.Core.Services
             int userId,
             int workoutDayExerciseId,
             DateTime sessionDate,
-            bool isCompleted)
+            bool isCompleted,
+            DateTime? clientReferenceDate = null)
         {
             try
             {
-                var today = DateTime.UtcNow.Date;
-                if (sessionDate.Date != today)
+                var today = (clientReferenceDate ?? DateTime.UtcNow).Date;
+                var targetDate = sessionDate.Date;
+
+                // Validate date: exercises can only be completed for today's session in the active user's local day
+                if (targetDate < today)
                 {
-                    return ApiResponse<WorkoutDayDto>.Fail("Workout exercises can only be completed for today's scheduled date.");
+                    return ApiResponse<WorkoutDayDto>.Fail("Past workouts are view-only and cannot be modified.");
+                }
+                if (targetDate > today)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Future workouts cannot be completed early.");
                 }
 
                 var dayExercise = await _context.WorkoutDayExercises
@@ -564,7 +612,7 @@ namespace LifeSyncAI.Core.Services
                 }
 
                 var existingCompletion = await _context.WorkoutExerciseCompletions
-                    .FirstOrDefaultAsync(c => c.UserId == userId && c.WorkoutDayExerciseId == workoutDayExerciseId && c.SessionDate == today);
+                    .FirstOrDefaultAsync(c => c.UserId == userId && c.WorkoutDayExerciseId == workoutDayExerciseId && c.SessionDate == targetDate);
 
                 if (isCompleted)
                 {
@@ -577,7 +625,7 @@ namespace LifeSyncAI.Core.Services
                             WorkoutDayId = dayExercise.WorkoutDayId,
                             WorkoutDayExerciseId = workoutDayExerciseId,
                             ExerciseId = dayExercise.ExerciseId,
-                            SessionDate = today,
+                            SessionDate = targetDate,
                             CompletedAt = DateTime.UtcNow
                         };
                         await _context.WorkoutExerciseCompletions.AddAsync(completion);
@@ -593,10 +641,10 @@ namespace LifeSyncAI.Core.Services
                     }
                 }
 
-                // Check all exercises for this day
+                // Check all exercises for this day on targetDate
                 var allExerciseIds = workoutDay.Exercises.Select(e => e.Id).ToList();
                 var todayCompletions = await _context.WorkoutExerciseCompletions
-                    .Where(c => c.UserId == userId && c.WorkoutDayId == dayExercise.WorkoutDayId && c.SessionDate == today)
+                    .Where(c => c.UserId == userId && c.WorkoutDayId == dayExercise.WorkoutDayId && c.SessionDate == targetDate)
                     .ToListAsync();
 
                 bool allDone = allExerciseIds.Any() && allExerciseIds.All(id => todayCompletions.Any(c => c.WorkoutDayExerciseId == id));
@@ -607,7 +655,7 @@ namespace LifeSyncAI.Core.Services
                 int estimatedCalories = (int)Math.Round((avgMet * 3.5f * 70.0f / 200.0f) * duration);
 
                 var existingLog = await _context.WorkoutSessionLogs
-                    .FirstOrDefaultAsync(l => l.UserId == userId && l.WorkoutDayId == dayExercise.WorkoutDayId && l.SessionDate == today);
+                    .FirstOrDefaultAsync(l => l.UserId == userId && l.WorkoutDayId == dayExercise.WorkoutDayId && l.SessionDate == targetDate);
 
                 if (allDone)
                 {
@@ -634,7 +682,7 @@ namespace LifeSyncAI.Core.Services
                                 UserId = userId,
                                 LogType = "Workout",
                                 LogValue = duration,
-                                LogDate = today,
+                                LogDate = targetDate,
                                 Details = $"Workout session - {workoutDay.FocusTitle} ({estimatedCalories} kcal estimated)"
                             };
                             await _context.HealthLogs.AddAsync(hl);
@@ -649,7 +697,7 @@ namespace LifeSyncAI.Core.Services
                             UserId = userId,
                             LogType = "Workout",
                             LogValue = duration,
-                            LogDate = today,
+                            LogDate = targetDate,
                             Details = $"Workout session - {workoutDay.FocusTitle} ({estimatedCalories} kcal estimated)"
                         };
                         await _context.HealthLogs.AddAsync(hl);
@@ -660,7 +708,7 @@ namespace LifeSyncAI.Core.Services
                             UserId = userId,
                             WorkoutPlanId = workoutDay.WorkoutPlanId,
                             WorkoutDayId = dayExercise.WorkoutDayId,
-                            SessionDate = today,
+                            SessionDate = targetDate,
                             IsCompleted = true,
                             CompletedAt = DateTime.UtcNow,
                             ActualDurationMinutes = duration,
@@ -675,6 +723,7 @@ namespace LifeSyncAI.Core.Services
                     if (existingLog != null)
                     {
                         existingLog.IsCompleted = false;
+
                         if (existingLog.HealthLogId.HasValue)
                         {
                             var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
@@ -696,6 +745,66 @@ namespace LifeSyncAI.Core.Services
             {
                 return ApiResponse<WorkoutDayDto>.Fail($"Failed to update exercise completion: {ex.Message}");
             }
+        }
+
+        private static List<string> GeneratePersonalizedTips(
+            UserWorkoutPlan? plan,
+            int completedWorkouts,
+            int plannedWorkouts,
+            int completedExercises,
+            int scheduledExercises)
+        {
+            var tips = new List<string>();
+            var goal = plan?.Goal ?? "Stay Fit";
+            var level = plan?.FitnessLevel ?? "Beginner";
+            var daysPerWeek = plan?.DaysPerWeek ?? 4;
+
+            // Tip 1: Progression rule based on Goal and Level
+            if (goal.Equals("Build Muscle", StringComparison.OrdinalIgnoreCase))
+            {
+                tips.Add(level.Equals("Beginner", StringComparison.OrdinalIgnoreCase)
+                    ? "Hypertrophy Adaptation: Focus on 2-3s controlled eccentric lowering on compound lifts. Once you hit your rep ceiling with strict form, progress weight by 2.5-5%."
+                    : "Mechanical Tension Focus: Target 1-2 reps in reserve (RIR) on primary compound lifts to stimulate myofibrillar protein synthesis without inducing central fatigue.");
+            }
+            else if (goal.Equals("Fat Loss", StringComparison.OrdinalIgnoreCase))
+            {
+                tips.Add("Metabolic Density: Keep inter-set rest intervals between 45-60s to maintain elevated cardiac output and maximize post-exercise oxygen consumption (EPOC).");
+            }
+            else if (goal.Equals("Endurance", StringComparison.OrdinalIgnoreCase))
+            {
+                tips.Add("Aerobic Base Calibration: Maintain steady rhythmic pacing across multi-joint movements and hydrate with electrolyte-rich fluids during longer sessions.");
+            }
+            else
+            {
+                tips.Add("Functional Consistency: Prioritize clean range of motion and core bracing over speed. Consistency across scheduled training days drives cellular adaptation.");
+            }
+
+            // Tip 2: Recovery / Hydration guidance
+            if (daysPerWeek >= 5)
+            {
+                tips.Add("High-Frequency Recovery: With a 5+ day training split, ensure 48 hours between intense sessions for the same muscle group to avoid tendon strain.");
+            }
+            else
+            {
+                tips.Add("Intra-Workout Hydration: Consume 200-250ml water every 15-20 minutes of training to preserve intracellular fluid volume and avoid muscular cramps.");
+            }
+
+            // Tip 3: Adherence feedback
+            if (completedWorkouts == 0)
+            {
+                tips.Add("Activation Momentum: Your calendar week has active workouts scheduled. Starting with today's warm-up and first exercise sets the tone for weekly consistency.");
+            }
+            else if (completedWorkouts >= plannedWorkouts && plannedWorkouts > 0)
+            {
+                tips.Add($"Target Achieved: Outstanding dedication! You completed all {plannedWorkouts} scheduled workouts. Prioritize sleep and active mobility before the next cycle.");
+            }
+            else
+            {
+                int remaining = plannedWorkouts - completedWorkouts;
+                tips.Add($"Mid-Week Calibration: {completedWorkouts} of {plannedWorkouts} workouts completed ({completedExercises}/{scheduledExercises} exercises). {remaining} training session{(remaining > 1 ? "s" : "")} remaining this week.");
+            }
+
+            return tips;
         }
 
         public async Task<ApiResponse<WorkoutDayDto>> GetWorkoutDayAsync(int userId, int dayId, DateTime? sessionDate = null)

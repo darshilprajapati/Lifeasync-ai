@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
 import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { trackNavigation } from './utils/analytics';
 import { setupNoonKeepAliveScheduler } from './utils/keepAlive';
 
@@ -337,9 +338,11 @@ function App() {
         <CssBaseline />
         <CustomCursor />
         <AuthProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
+          <NotificationProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </NotificationProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

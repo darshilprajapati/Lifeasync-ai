@@ -73,8 +73,9 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        minWidth: 210,
-        flex: '1 1 0',
+        minWidth: 0,
+        width: '100%',
+        height: '100%',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         '&:hover': {
           transform: 'translateY(-3px)',
@@ -129,45 +130,48 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
         </Box>
       )}
 
-      <CardContent sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <CardContent sx={{ p: { xs: 2, lg: 1.25, xl: 1.5 }, pb: '14px !important', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         {/* Day Header */}
-        <Box sx={{ mb: 1.5 }}>
+        <Box sx={{ mb: 1 }}>
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary, #6b7280)', textTransform: 'uppercase' }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary, #6b7280)', textTransform: 'uppercase', fontSize: { xs: '11px', lg: '10px', xl: '11px' } }}>
               {dayNameShort} · {dateFormatted}
             </Typography>
 
             {isPast ? (
               <Tooltip title="Past workouts are immutable and cannot be modified">
                 <Box component="span">
-                  <IconButton size="small" disabled sx={{ p: 0.5, opacity: 0.4 }}>
-                    <LockOutlinedIcon sx={{ fontSize: 15 }} />
+                  <IconButton size="small" disabled sx={{ p: 0.3, opacity: 0.4 }}>
+                    <LockOutlinedIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Box>
               </Tooltip>
             ) : (
               <Tooltip title="Customize Day Routine">
-                <IconButton size="small" onClick={() => onEdit(day)} sx={{ color: 'var(--text-secondary, #8D8D8D)', p: 0.5 }}>
-                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                <IconButton size="small" onClick={() => onEdit(day)} sx={{ color: 'var(--text-secondary, #8D8D8D)', p: 0.3 }}>
+                  <EditOutlinedIcon sx={{ fontSize: 15 }} />
                 </IconButton>
               </Tooltip>
             )}
           </Stack>
 
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 700,
-              color: day.isRestDay ? '#8B5CF6' : 'var(--text-primary, #111827)',
-              fontSize: '15px',
-              mt: 0.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}
-          >
-            {day.focusTitle}
-          </Typography>
+          <Tooltip title={day.focusTitle} arrow>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 700,
+                color: day.isRestDay ? '#8B5CF6' : 'var(--text-primary, #111827)',
+                fontSize: { xs: '14.5px', lg: '12.5px', xl: '14px' },
+                mt: 0.3,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                cursor: 'default'
+              }}
+            >
+              {day.focusTitle}
+            </Typography>
+          </Tooltip>
         </Box>
 
         {/* Card Body */}
@@ -221,28 +225,33 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
             </Stack>
 
             {/* Exercise List preview */}
-            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box sx={{ mt: 0.8, display: 'flex', flexDirection: 'column', gap: 0.4 }}>
               {day.exercises.slice(0, 3).map((ex) => (
-                <Stack key={ex.id || ex.exerciseId} direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                <Stack key={ex.id || ex.exerciseId} direction="row" spacing={0.6} sx={{ alignItems: 'center', minWidth: 0 }}>
                   {ex.isCompleted ? (
-                    <CheckCircleIcon sx={{ fontSize: 13, color: '#10b981' }} />
+                    <CheckCircleIcon sx={{ fontSize: 13, color: '#10b981', flexShrink: 0 }} />
                   ) : (
-                    <FitnessCenterIcon sx={{ fontSize: 13, color: 'var(--text-secondary, #9ca3af)' }} />
+                    <FitnessCenterIcon sx={{ fontSize: 13, color: 'var(--text-secondary, #9ca3af)', flexShrink: 0 }} />
                   )}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: '11px',
-                      color: ex.isCompleted ? '#10b981' : 'var(--text-primary, #374151)',
-                      fontWeight: ex.isCompleted ? 600 : 500,
-                      textDecoration: ex.isCompleted ? 'line-through' : 'none',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    {ex.exerciseName} ({ex.sets}x{ex.reps})
-                  </Typography>
+                  <Tooltip title={`${ex.exerciseName} (${ex.sets}x${ex.reps})`} arrow>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: { xs: '11px', lg: '10px', xl: '11px' },
+                        color: ex.isCompleted ? '#10b981' : 'var(--text-primary, #374151)',
+                        fontWeight: ex.isCompleted ? 600 : 500,
+                        textDecoration: ex.isCompleted ? 'line-through' : 'none',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        cursor: 'default',
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                    >
+                      {ex.exerciseName} ({ex.sets}x{ex.reps})
+                    </Typography>
+                  </Tooltip>
                 </Stack>
               ))}
 
@@ -298,8 +307,8 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
               disabled
               sx={{
                 borderRadius: '10px',
-                py: 0.6,
-                fontSize: '11px',
+                py: { xs: 0.6, lg: 0.5, xl: 0.6 },
+                fontSize: { xs: '11px', lg: '10px', xl: '11px' },
                 textTransform: 'none',
                 borderColor: 'rgba(139, 92, 246, 0.2)',
                 color: '#8B5CF6'
@@ -315,15 +324,15 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
               onClick={() => onOpenDetail(day, calendarDate)}
               startIcon={
                 isToday ? (
-                  <PlayArrowIcon sx={{ fontSize: '16px !important' }} />
+                  <PlayArrowIcon sx={{ fontSize: '15px !important' }} />
                 ) : (
-                  <VisibilityOutlinedIcon sx={{ fontSize: '16px !important' }} />
+                  <VisibilityOutlinedIcon sx={{ fontSize: '15px !important' }} />
                 )
               }
               sx={{
                 borderRadius: '10px',
-                py: 0.6,
-                fontSize: '12px',
+                py: { xs: 0.6, lg: 0.5, xl: 0.6 },
+                fontSize: { xs: '12px', lg: '10.5px', xl: '11.5px' },
                 fontWeight: 700,
                 textTransform: 'none',
                 bgcolor: isToday ? 'var(--accent-primary, #6366f1)' : 'transparent',

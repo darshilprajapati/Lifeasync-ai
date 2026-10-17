@@ -194,22 +194,21 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
         </Stack>
       </Stack>
 
-      {/* 7-Card Horizontal Row */}
+      {/* 7-Card Responsive Desktop Grid / Tablet / Mobile */}
       <Box
         sx={{
-          display: 'flex',
-          gap: 2,
-          overflowX: 'auto',
-          pb: 1.5,
-          pt: 1,
-          px: 0.5,
-          '&::-webkit-scrollbar': {
-            height: 6
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(3, minmax(0, 1fr))',
+            lg: 'repeat(7, minmax(0, 1fr))'
           },
-          '&::-webkit-scrollbar-thumb': {
-            bgcolor: 'rgba(0,0,0,0.1)',
-            borderRadius: 3
-          }
+          gap: { xs: 1.5, sm: 1.5, md: 1.5, lg: 1, xl: 1.5 },
+          width: '100%',
+          overflowX: 'visible',
+          pb: 1,
+          pt: 0.5
         }}
       >
         {orderedDays.map((day, idx) => {

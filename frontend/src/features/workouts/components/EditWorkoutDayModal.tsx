@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add';
 import type { WorkoutDay, Exercise, WorkoutDayExercise } from '../types/workout';
 import { workoutService } from '../services/workoutService';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
+import { useNotification } from '../../../context/NotificationContext';
 
 interface EditWorkoutDayModalProps {
   open: boolean;
@@ -39,6 +40,7 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
   onClose,
   onSaveSuccess
 }) => {
+  const { notify } = useNotification();
   const [focusTitle, setFocusTitle] = useState('');
   const [isRestDay, setIsRestDay] = useState(false);
   const [targetDuration, setTargetDuration] = useState(30);
@@ -172,9 +174,12 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
       });
 
       onSaveSuccess(updatedDay);
+      notify.success(`Updated routine for ${focusTitle || 'workout day'}!`, 'Workout Day Saved');
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to update day routine.');
+      const errMsg = err?.response?.data?.message || 'Failed to update day routine.';
+      setError(errMsg);
+      notify.error(errMsg, 'Update Failed');
     } finally {
       setSaving(false);
     }

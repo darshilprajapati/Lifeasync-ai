@@ -86,8 +86,13 @@ export const WorkoutProgressWidget: React.FC<WorkoutProgressWidgetProps> = ({ su
                     Workouts
                   </Typography>
                 </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#047857' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#047857', lineHeight: 1.2 }}>
                   {summary.completedWorkouts} <Typography component="span" variant="caption" sx={{ color: '#6b7280' }}>/ {summary.totalPlannedWorkouts}</Typography>
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '10px', color: '#059669', fontWeight: 500 }}>
+                  {summary.completedExercises !== undefined && summary.totalScheduledExercises !== undefined
+                    ? `${summary.completedExercises}/${summary.totalScheduledExercises} exercises`
+                    : `${summary.completedWorkouts} days completed`}
                 </Typography>
               </Box>
             </Grid>

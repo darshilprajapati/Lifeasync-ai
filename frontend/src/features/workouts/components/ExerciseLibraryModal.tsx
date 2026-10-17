@@ -197,8 +197,12 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
 
           <Stack direction="row" spacing={1.5} sx={{ width: { xs: '100%', md: 'auto' }, flexWrap: 'wrap' }}>
             <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Category</InputLabel>
+              <InputLabel id="library-category-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
+                Category
+              </InputLabel>
               <Select
+                labelId="library-category-label"
+                id="library-category-select"
                 value={selectedCategory}
                 label="Category"
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -212,8 +216,12 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
             </FormControl>
 
             <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Difficulty</InputLabel>
+              <InputLabel id="library-difficulty-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
+                Difficulty
+              </InputLabel>
               <Select
+                labelId="library-difficulty-label"
+                id="library-difficulty-select"
                 value={difficultyFilter}
                 label="Difficulty"
                 onChange={(e) => setDifficultyFilter(e.target.value)}

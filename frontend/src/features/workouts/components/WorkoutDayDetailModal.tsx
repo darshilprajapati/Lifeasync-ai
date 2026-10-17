@@ -25,6 +25,8 @@ import type { WorkoutDay, WorkoutDayExercise } from '../types/workout';
 import { workoutService } from '../services/workoutService';
 import { ExerciseDemonstrationMedia } from './ExerciseDemonstrationMedia';
 import { trackAction } from '../../../utils/analytics';
+import { formatLocalDate, isDateToday } from '../utils/workoutDateUtils';
+import { useNotification } from '../../../context/NotificationContext';
 
 interface WorkoutDayDetailModalProps {
   open: boolean;
@@ -41,6 +43,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   onClose,
   onDayUpdated
 }) => {
+  const { notify } = useNotification();
   const [activeDay, setActiveDay] = useState<WorkoutDay | null>(day);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -54,10 +57,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   if (!activeDay) return null;
 
   const today = new Date();
-  const isToday =
-    calendarDate.getDate() === today.getDate() &&
-    calendarDate.getMonth() === today.getMonth() &&
-    calendarDate.getFullYear() === today.getFullYear();
+  const isToday = isDateToday(calendarDate);
 
   const isPast = calendarDate < new Date(today.setHours(0, 0, 0, 0));
   const isFuture = calendarDate > new Date(today.setHours(23, 59, 59, 999));
@@ -76,8 +76,12 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   });
 
   const handleToggleExercise = async (ex: WorkoutDayExercise) => {
+    if (togglingId !== null) return; // Prevent duplicate concurrent requests
+
     if (!isToday) {
-      setErrorMsg('Workout exercises can only be completed on today’s scheduled date.');
+      const msg = 'Workout exercises can only be completed for today’s scheduled date.';
+      setErrorMsg(msg);
+      notify.warning(msg, 'Restricted Action');
       return;
     }
 
@@ -85,7 +89,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const sessionDateStr = calendarDate.toISOString().split('T')[0];
+      const sessionDateStr = formatLocalDate(calendarDate);
       let updatedDay: WorkoutDay;
 
       if (ex.isCompleted) {
@@ -96,6 +100,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
           exercise_id: ex.exerciseId,
           day_id: activeDay.id
         });
+        notify.info(`Reverted completion for ${ex.exerciseName}.`, 'Exercise Status Updated');
       } else {
         // Mark complete
         updatedDay = await workoutService.completeExercise(ex.id, sessionDateStr);
@@ -104,13 +109,16 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
           exercise_id: ex.exerciseId,
           day_id: activeDay.id
         });
+        notify.success(`Completed ${ex.exerciseName}! Great work.`, 'Exercise Completed');
       }
 
       setActiveDay(updatedDay);
       onDayUpdated(updatedDay);
     } catch (err: any) {
       console.error('Failed to toggle exercise completion:', err);
-      setErrorMsg(err?.response?.data?.message || 'Failed to update exercise status.');
+      const errMsg = err?.response?.data?.message || 'Failed to update exercise status.';
+      setErrorMsg(errMsg);
+      notify.error(errMsg, 'Update Failed');
     } finally {
       setTogglingId(null);
     }
