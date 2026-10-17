@@ -13,7 +13,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import type { UserWorkoutPlan, WorkoutDay, WorkoutWeekSummary } from './types/workout';
 import { workoutService } from './services/workoutService';
 import { WeeklyPlanCardRow } from './components/WeeklyPlanCardRow';
-import { WorkoutProgressWidget } from './components/WorkoutProgressWidget';
 import { BodyFocusBalanceWidget } from './components/BodyFocusBalanceWidget';
 import { WeeklyTipsWidget } from './components/WeeklyTipsWidget';
 import { EditWorkoutDayModal } from './components/EditWorkoutDayModal';
@@ -149,27 +148,20 @@ export const WorkoutPlannerDashboard: React.FC = () => {
       )}
 
       {/* ========================================================
-          PANELS 2, 3, 4:
-          2. Weekly Progress & Adherence
-          3. Body Focus & Balance
-          4. AI Coaching & Recovery Tips
+          PANELS:
+          1. Body Focus & Balance
+          2. AI Coaching & Recovery Tips
           ======================================================== */}
       <Grid container spacing={3}>
-        {/* PANEL 2: Weekly Progress & Adherence */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <WorkoutProgressWidget summary={summary} />
-        </Grid>
-
-        {/* PANEL 3: Body Focus & Balance */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        {/* PANEL: Body Focus & Balance */}
+        <Grid size={{ xs: 12, md: 6 }}>
           <BodyFocusBalanceWidget
-            distribution={summary?.muscleGroupFocusPercentages || {}}
             completedDistribution={summary?.completedMuscleGroupFocusPercentages || {}}
           />
         </Grid>
 
-        {/* PANEL 4: AI Coaching & Recovery Tips */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        {/* PANEL: AI Coaching & Recovery Tips */}
+        <Grid size={{ xs: 12, md: 6 }}>
           <WeeklyTipsWidget
             tips={summary?.personalizedCoachingTips || []}
             goal={plan?.goal}

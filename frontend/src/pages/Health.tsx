@@ -37,8 +37,15 @@ import { WorkoutPlannerDashboard } from '../features/workouts/WorkoutPlannerDash
 
 const parseDateSafe = (dateStr: string) => {
   if (!dateStr) return new Date();
-  if (!dateStr.endsWith('Z') && !dateStr.includes('+') && dateStr.includes('T')) {
-    return new Date(dateStr + 'Z');
+  const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+  const parts = datePart.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m, d);
+    }
   }
   return new Date(dateStr);
 };

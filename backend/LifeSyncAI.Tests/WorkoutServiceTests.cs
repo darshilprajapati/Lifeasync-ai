@@ -1140,6 +1140,163 @@ namespace LifeSyncAI.Tests
             });
         }
 
+        [Fact]
+        public async Task CompletingSingleExercise_ProducesExactlyOneCompletedExercise_IdempotentOnRepeatedCalls()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+            var monday = new DateTime(2026, 10, 19);
+
+            // Act 1: Complete 1 exercise
+            var res1 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(res1.IsSuccess, res1.Message);
+
+            // Verify week summary
+            var summary1 = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+            Assert.True(summary1.IsSuccess, summary1.Message);
+            Assert.Equal(1, summary1.Data.CompletedExercises);
+
+            // Act 2: Repeated completion call (idempotency check)
+            var res2 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(res2.IsSuccess, res2.Message);
+
+            var summary2 = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+            Assert.True(summary2.IsSuccess, summary2.Message);
+            Assert.Equal(1, summary2.Data.CompletedExercises);
+
+            // Act 3: Undo completion
+            var undoRes = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, monday, false, clientReferenceDate: monday);
+            Assert.True(undoRes.IsSuccess, undoRes.Message);
+
+            var summaryUndo = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+            Assert.True(summaryUndo.IsSuccess, summaryUndo.Message);
+            Assert.Equal(0, summaryUndo.Data.CompletedExercises);
+        }
+
+        [Fact]
+        public async Task PlannedExercises_ContributeNothingToCompletedWorkMetrics_AndAllMuscleGroupsZeroWhenEmpty()
+        {
+            // Arrange: User with active plan, 0 completions
+            var monday = new DateTime(2026, 10, 19);
+
+            // Act
+            var summary = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+
+            // Assert
+            Assert.True(summary.IsSuccess, summary.Message);
+            Assert.Equal(0, summary.Data.CompletedExercises);
+            Assert.Equal(0, summary.Data.CompletedWorkouts);
+            Assert.Equal(0, summary.Data.TotalMinutesExercised);
+            Assert.Equal(0, summary.Data.TotalEstimatedCaloriesBurned);
+
+            // All standard muscle groups must be exactly 0%
+            var completedDist = summary.Data.CompletedMuscleGroupFocusPercentages;
+            Assert.NotNull(completedDist);
+            var standardGroups = new[] { "Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Cardio" };
+            foreach (var group in standardGroups)
+            {
+                Assert.True(completedDist.ContainsKey(group));
+                Assert.Equal(0, completedDist[group]);
+            }
+
+            // Coaching tips should provide foundational beginner advice when 0 exercises are completed
+            Assert.NotEmpty(summary.Data.PersonalizedCoachingTips);
+            Assert.Contains(summary.Data.PersonalizedCoachingTips, t => t.Contains("Personalized Insights"));
+        }
+
+        [Fact]
+        public async Task CompletedExercise_UpdatesOnlyRelevantMuscleGroup_CalculatesActualDurationAndCalories()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+            var monday = new DateTime(2026, 10, 19);
+
+            // Act: Complete exercise
+            var res = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(res.IsSuccess, res.Message);
+
+            // Assert
+            var summary = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+            Assert.True(summary.IsSuccess, summary.Message);
+            Assert.Equal(1, summary.Data.CompletedExercises);
+
+            // Verify actual duration is based on completed exercise (~4-5 mins), not full planned 30 mins
+            Assert.True(summary.Data.TotalMinutesExercised > 0);
+            Assert.True(summary.Data.TotalMinutesExercised < activeDay.TargetDurationMinutes);
+
+            // Verify calories are based on completed exercise (~20-40 kcal), not full planned 270 kcal
+            Assert.True(summary.Data.TotalEstimatedCaloriesBurned > 0);
+            Assert.True(summary.Data.TotalEstimatedCaloriesBurned < 200);
+
+            // Muscle group focus: the targeted category must be > 0 and others 0
+            var exCat = exercise.Category;
+            if (summary.Data.CompletedMuscleGroupFocusPercentages.ContainsKey(exCat))
+            {
+                Assert.Equal(100, summary.Data.CompletedMuscleGroupFocusPercentages[exCat]);
+            }
+
+            // Check HealthLog consistency
+            var healthLogs = await _context.HealthLogs
+                .Where(h => h.UserId == _testUser.Id && h.LogType == "Workout" && h.LogDate.Date == monday.Date)
+                .ToListAsync();
+            Assert.Single(healthLogs);
+            Assert.Equal(summary.Data.TotalMinutesExercised, healthLogs[0].LogValue);
+
+            // Act 2: Undo exercise reverses everything
+            var undoRes = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, monday, false, clientReferenceDate: monday);
+            Assert.True(undoRes.IsSuccess, undoRes.Message);
+
+            var postUndoSummary = await _workoutService.GetWeekSummaryAsync(_testUser.Id, monday);
+            Assert.Equal(0, postUndoSummary.Data.CompletedExercises);
+            Assert.Equal(0, postUndoSummary.Data.TotalMinutesExercised);
+            Assert.Equal(0, postUndoSummary.Data.TotalEstimatedCaloriesBurned);
+
+            var remainingHealthLogs = await _context.HealthLogs
+                .Where(h => h.UserId == _testUser.Id && h.LogType == "Workout" && h.LogDate.Date == monday.Date)
+                .ToListAsync();
+            Assert.Empty(remainingHealthLogs);
+        }
+
+        [Fact]
+        public async Task MultiUserIsolation_WorkoutMetricsIsolatedPerAuthenticatedUser()
+        {
+            // Arrange: create a second user
+            var user2 = new User
+            {
+                FullName = "Other User",
+                Email = "other@example.com",
+                PasswordHash = "hash456"
+            };
+            _context.Users.Add(user2);
+            await _context.SaveChangesAsync();
+
+            var monday = new DateTime(2026, 10, 19);
+            var planResult1 = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay1 = planResult1.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise1 = activeDay1.Exercises.First();
+
+            // Act: user 1 completes an exercise
+            await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday);
+
+            // User 2 gets active plan and summary
+            await _workoutService.GetActivePlanAsync(user2.Id);
+            var summary2 = await _workoutService.GetWeekSummaryAsync(user2.Id, monday);
+
+            // Assert: User 2 has 0 completed exercises, 0 mins, 0 calories, all 0% muscle distribution
+            Assert.True(summary2.IsSuccess, summary2.Message);
+            Assert.Equal(0, summary2.Data.CompletedExercises);
+            Assert.Equal(0, summary2.Data.TotalMinutesExercised);
+            Assert.Equal(0, summary2.Data.TotalEstimatedCaloriesBurned);
+            foreach (var kvp in summary2.Data.CompletedMuscleGroupFocusPercentages)
+            {
+                Assert.Equal(0, kvp.Value);
+            }
+        }
+
         private static void SetControllerUser(ControllerBase controller, int userId)
         {
             var claims = new List<Claim>

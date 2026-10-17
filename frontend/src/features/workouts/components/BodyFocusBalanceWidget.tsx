@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -6,37 +6,34 @@ import {
   Box,
   Stack,
   LinearProgress,
-  ToggleButton,
-  ToggleButtonGroup
+  Alert
 } from '@mui/material';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 
 interface BodyFocusBalanceWidgetProps {
-  distribution: Record<string, number>;
+  distribution?: Record<string, number>;
   completedDistribution?: Record<string, number>;
 }
 
+const MUSCLE_GROUPS = ['Back', 'Chest', 'Shoulders', 'Legs', 'Cardio', 'Core', 'Arms'];
+
 const MUSCLE_COLORS: Record<string, string> = {
-  Chest: '#ef4444',
   Back: '#3b82f6',
-  Legs: '#10b981',
+  Chest: '#ef4444',
   Shoulders: '#f59e0b',
-  Arms: '#8b5cf6',
-  Core: '#ec4899',
+  Legs: '#10b981',
   Cardio: '#06b6d4',
-  'Full Body': '#6366f1'
+  Core: '#ec4899',
+  Arms: '#8b5cf6'
 };
 
 export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
   distribution,
-  completedDistribution = {}
+  completedDistribution
 }) => {
-  const [viewMode, setViewMode] = useState<'planned' | 'completed'>('planned');
-
-  const hasCompletedData = Object.keys(completedDistribution).length > 0;
-  const activeData = viewMode === 'completed' && hasCompletedData ? completedDistribution : distribution;
-
-  const groups = Object.keys(activeData).length > 0 ? activeData : {};
+  const data = completedDistribution || distribution || {};
+  const totalVolume = Object.values(data).reduce((acc, v) => acc + (v || 0), 0);
+  const isEmpty = totalVolume === 0;
 
   return (
     <Card
@@ -50,85 +47,70 @@ export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
     >
       <CardContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
         <Box>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <AccessibilityNewIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                Body Focus & Balance
-              </Typography>
-            </Stack>
-
-            {hasCompletedData && (
-              <ToggleButtonGroup
-                value={viewMode}
-                exclusive
-                onChange={(_, next) => next && setViewMode(next)}
-                size="small"
-                sx={{
-                  height: 24,
-                  '& .MuiToggleButton-root': {
-                    fontSize: '10px',
-                    px: 1,
-                    py: 0,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                  }
-                }}
-              >
-                <ToggleButton value="planned">Planned</ToggleButton>
-                <ToggleButton value="completed">Done</ToggleButton>
-              </ToggleButtonGroup>
-            )}
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+            <AccessibilityNewIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+              Body Focus & Balance
+            </Typography>
           </Stack>
 
           <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 2 }}>
-            {viewMode === 'completed'
-              ? 'Realized muscle training volume from completed exercises'
-              : 'Kinematic muscle group load distribution across routine'}
+            Realized muscle training volume from completed exercises
           </Typography>
 
-          {Object.keys(groups).length === 0 ? (
-            <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'rgba(0,0,0,0.02)', borderRadius: '12px' }}>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                {viewMode === 'completed'
-                  ? 'No completed exercises yet this week.'
-                  : 'No active workout routine loaded.'}
-              </Typography>
-            </Box>
-          ) : (
-            <Stack spacing={1.6}>
-              {Object.entries(groups).map(([muscle, pct]) => {
-                const color = MUSCLE_COLORS[muscle] || 'var(--accent-primary)';
-                return (
-                  <Box key={muscle}>
-                    <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.4 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {muscle}
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color }}>
-                        {pct}%
-                      </Typography>
-                    </Stack>
-                    <LinearProgress
-                      variant="determinate"
-                      value={pct}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: 'rgba(0,0,0,0.05)',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: color,
-                          borderRadius: 3
-                        }
-                      }}
-                    />
-                  </Box>
-                );
-              })}
-            </Stack>
+          {isEmpty && (
+            <Alert
+              severity="info"
+              icon={false}
+              sx={{
+                mb: 2,
+                py: 0.5,
+                px: 1.5,
+                fontSize: '12px',
+                borderRadius: '8px',
+                bgcolor: 'rgba(235, 94, 40, 0.08)',
+                color: 'var(--text-primary)',
+                border: '1px dashed rgba(235, 94, 40, 0.3)'
+              }}
+            >
+              Complete an exercise to see your training balance.
+            </Alert>
           )}
+
+          <Stack spacing={1.6}>
+            {MUSCLE_GROUPS.map((muscle) => {
+              const pct = data[muscle] ?? 0;
+              const color = MUSCLE_COLORS[muscle] || 'var(--accent-primary)';
+              return (
+                <Box key={muscle}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.4 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {muscle}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: pct > 0 ? color : 'var(--text-secondary)' }}>
+                      {pct}%
+                    </Typography>
+                  </Stack>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: 'rgba(0,0,0,0.05)',
+                      '& .MuiLinearProgress-bar': {
+                        bgcolor: color,
+                        borderRadius: 3
+                      }
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </Stack>
         </Box>
       </CardContent>
     </Card>
   );
 };
+

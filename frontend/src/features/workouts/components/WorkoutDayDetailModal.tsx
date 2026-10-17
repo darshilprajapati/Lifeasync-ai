@@ -215,16 +215,24 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
             <Stack direction="row" spacing={1.5} sx={{ mt: 1, alignItems: 'center' }}>
               <Chip
                 icon={<AccessTimeIcon sx={{ fontSize: '14px !important' }} />}
-                label={`${activeDay.targetDurationMinutes} mins planned`}
+                label={
+                  completedCount > 0 && activeDay.actualDurationMinutes != null
+                    ? `${activeDay.actualDurationMinutes} mins actual (${activeDay.targetDurationMinutes}m planned)`
+                    : `${activeDay.targetDurationMinutes} mins planned`
+                }
                 size="small"
-                sx={{ bgcolor: 'rgba(99, 102, 241, 0.08)', color: 'var(--accent-primary)', fontWeight: 600 }}
+                sx={{
+                  bgcolor: completedCount > 0 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                  color: completedCount > 0 ? '#059669' : 'var(--accent-primary)',
+                  fontWeight: 600
+                }}
               />
               <Chip
                 icon={<LocalFireDepartmentIcon sx={{ fontSize: '14px !important', color: '#f97316 !important' }} />}
                 label={
-                  activeDay.estimatedCaloriesBurned
-                    ? `${activeDay.estimatedCaloriesBurned} kcal burned`
-                    : `Est. ${totalCount * 45} kcal`
+                  completedCount > 0 && activeDay.estimatedCaloriesBurned != null
+                    ? `${activeDay.estimatedCaloriesBurned} kcal burned (est.)`
+                    : `0 kcal (est. ${totalCount * 45} kcal total)`
                 }
                 size="small"
                 sx={{ bgcolor: 'rgba(249, 115, 22, 0.08)', color: '#ea580c', fontWeight: 600 }}

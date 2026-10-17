@@ -196,32 +196,40 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
           </Box>
         ) : (
           <Box sx={{ my: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Target Duration & Calories */}
+            {/* Duration & Calories: Clear Distinction Between Planned and Actual */}
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-              <Chip
-                icon={<AccessTimeIcon sx={{ fontSize: '13px !important' }} />}
-                label={`${day.targetDurationMinutes} min`}
-                size="small"
-                sx={{
-                  bgcolor: 'rgba(99, 102, 241, 0.08)',
-                  color: 'var(--accent-primary, #6366f1)',
-                  fontWeight: 600,
-                  fontSize: '11px',
-                  height: 22
-                }}
-              />
-              <Chip
-                icon={<LocalFireDepartmentIcon sx={{ fontSize: '13px !important', color: '#f97316 !important' }} />}
-                label={day.estimatedCaloriesBurned ? `${day.estimatedCaloriesBurned} kcal` : `${totalExercises * 45} kcal`}
-                size="small"
-                sx={{
-                  bgcolor: 'rgba(249, 115, 22, 0.08)',
-                  color: '#ea580c',
-                  fontWeight: 600,
-                  fontSize: '11px',
-                  height: 22
-                }}
-              />
+              <Tooltip title={completedExercises > 0 ? "Actual completed workout duration" : "Target planned duration"}>
+                <Chip
+                  icon={<AccessTimeIcon sx={{ fontSize: '13px !important' }} />}
+                  label={completedExercises > 0 && day.actualDurationMinutes != null
+                    ? `${day.actualDurationMinutes} min`
+                    : `Plan: ${day.targetDurationMinutes} min`}
+                  size="small"
+                  sx={{
+                    bgcolor: completedExercises > 0 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                    color: completedExercises > 0 ? '#059669' : 'var(--accent-primary, #6366f1)',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    height: 22
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title={completedExercises > 0 ? "Estimated calories burned from completed exercises" : "Estimated calories upon completing full session"}>
+                <Chip
+                  icon={<LocalFireDepartmentIcon sx={{ fontSize: '13px !important', color: '#f97316 !important' }} />}
+                  label={completedExercises > 0 && day.estimatedCaloriesBurned != null
+                    ? `${day.estimatedCaloriesBurned} kcal est.`
+                    : `0 kcal (${totalExercises * 45} est.)`}
+                  size="small"
+                  sx={{
+                    bgcolor: 'rgba(249, 115, 22, 0.08)',
+                    color: '#ea580c',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    height: 22
+                  }}
+                />
+              </Tooltip>
             </Stack>
 
             {/* Exercise List preview */}
