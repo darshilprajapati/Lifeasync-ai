@@ -82,12 +82,19 @@ namespace LifeSyncAI.Core.Database.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            var isSuccessFilter = migrationBuilder.ActiveProvider switch
+            {
+                "Microsoft.EntityFrameworkCore.SqlServer" => "[IsSuccess] = 1",
+                "Microsoft.EntityFrameworkCore.Sqlite" => "\"IsSuccess\" = 1",
+                _ => "\"IsSuccess\" = true"
+            };
+
             migrationBuilder.CreateIndex(
                 name: "IX_UserNotificationLogs_UserId_NotificationType_ReferenceId",
                 table: "UserNotificationLogs",
                 columns: new[] { "UserId", "NotificationType", "ReferenceId" },
                 unique: true,
-                filter: "\"IsSuccess\" = true");
+                filter: isSuccessFilter);
         }
 
         /// <inheritdoc />

@@ -29,8 +29,11 @@ import {
   InputLabel as MuiInputLabel,
   Select as MuiSelect,
   MenuItem as MuiMenuItem,
-  Slider as MuiSlider
+  Slider as MuiSlider,
+  ToggleButton as MuiToggleButton,
+  ToggleButtonGroup as MuiToggleButtonGroup
 } from '@mui/material';
+import { WorkoutPlannerDashboard } from '../features/workouts/WorkoutPlannerDashboard';
 
 const parseDateSafe = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -60,6 +63,7 @@ const Health: React.FC = () => {
   const [logs, setLogs] = useState<HealthLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mainTab, setMainTab] = useState<'metrics' | 'workouts'>('workouts');
 
   // Targets
   const waterTarget = 2000;    // 2000 ml
@@ -324,7 +328,7 @@ const Health: React.FC = () => {
 
   return (
     <PageWrapper>
-      <MuiBox sx={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <MuiBox sx={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         {/* Header */}
         <MuiStack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
           <MuiStack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
@@ -338,9 +342,64 @@ const Health: React.FC = () => {
             <ReportExporter module="Health" />
           </MuiStack>
         </MuiStack>
-        <MuiTypography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 4 }}>
-          Track hydration levels, sleep hours, step counts, calorie intakes, and cardio workouts inside a single, premium health space.
+        <MuiTypography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
+          Track hydration, sleep, steps, and calories or plan science-backed periodized AI workouts inside a single, unified health space.
         </MuiTypography>
+
+        {/* Module Sub-navigation Tabs */}
+        <MuiStack direction="row" spacing={1} sx={{ mb: 3 }}>
+          <MuiToggleButtonGroup
+            value={mainTab}
+            exclusive
+            onChange={(_, val) => val && setMainTab(val)}
+            size="small"
+            sx={{
+              bgcolor: 'var(--bg-card, #ffffff)',
+              borderRadius: '12px',
+              p: 0.4,
+              boxShadow: 'var(--shadow-soft)'
+            }}
+          >
+            <MuiToggleButton
+              value="workouts"
+              sx={{
+                borderRadius: '10px !important',
+                textTransform: 'none',
+                px: 2,
+                py: 0.8,
+                fontSize: '13px',
+                fontWeight: 700,
+                gap: 1,
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(99, 102, 241, 0.15) !important',
+                  color: 'var(--accent-primary) !important'
+                }
+              }}
+            >
+              <FitnessCenterIcon sx={{ fontSize: 18 }} />
+              AI Weekly Workout Planner 🏋️
+            </MuiToggleButton>
+            <MuiToggleButton
+              value="metrics"
+              sx={{
+                borderRadius: '10px !important',
+                textTransform: 'none',
+                px: 2,
+                py: 0.8,
+                fontSize: '13px',
+                fontWeight: 700,
+                gap: 1,
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(99, 102, 241, 0.15) !important',
+                  color: 'var(--accent-primary) !important'
+                }
+              }}
+            >
+              <DirectionsWalkIcon sx={{ fontSize: 18 }} />
+              Overview & Daily Logs
+            </MuiToggleButton>
+          </MuiToggleButtonGroup>
+        </MuiStack>
 
         {error && (
           <MuiAlert severity="error" onClose={() => setError(null)} sx={{ mb: 3, borderRadius: '12px' }}>
@@ -348,8 +407,12 @@ const Health: React.FC = () => {
           </MuiAlert>
         )}
 
-        {/* 5 Health Metrics Dashboard Row */}
-        <MuiGrid container spacing={2.5} sx={{ mb: 4, alignItems: 'stretch' }}>
+        {mainTab === 'workouts' ? (
+          <WorkoutPlannerDashboard />
+        ) : (
+          <>
+            {/* 5 Health Metrics Dashboard Row */}
+            <MuiGrid container spacing={2.5} sx={{ mb: 4, alignItems: 'stretch' }}>
           {/* Hydration progress card */}
           <MuiGrid size={{ xs: 12, sm: 6, md: 2.4 }} sx={{ display: 'flex' }}>
             <MuiCard sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '4px solid #2196F3', width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -833,6 +896,8 @@ const Health: React.FC = () => {
             </MuiCard>
           </MuiGrid>
         </MuiGrid>
+          </>
+        )}
       </MuiBox>
     </PageWrapper>
   );

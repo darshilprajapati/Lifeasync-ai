@@ -146,7 +146,7 @@ namespace LifeSyncAI.Core.Services
                 await AppendFinanceSectionAsync(userId, cutoff, context, sb);
             }
 
-            if (module.Equals("Health", StringComparison.OrdinalIgnoreCase) || module.Equals("All", StringComparison.OrdinalIgnoreCase))
+            if (module.Equals("Health", StringComparison.OrdinalIgnoreCase) || module.Equals("Workout", StringComparison.OrdinalIgnoreCase) || module.Equals("All", StringComparison.OrdinalIgnoreCase))
             {
                 await AppendHealthSectionAsync(userId, cutoff, context, sb);
             }
@@ -255,11 +255,23 @@ namespace LifeSyncAI.Core.Services
             var stepsCount = logs.Where(l => l.LogType == "Steps").Sum(l => l.LogValue);
             var caloriesCount = logs.Where(l => l.LogType == "Calories").Sum(l => l.LogValue);
 
+            var workoutSessions = await context.WorkoutSessionLogs
+                .Where(s => s.UserId == userId && s.CompletedAt >= cutoff && s.IsCompleted)
+                .ToListAsync();
+
+            var completedSessionCount = workoutSessions.Count;
+            var workoutCaloriesBurned = workoutSessions.Sum(s => s.EstimatedCaloriesBurned);
+
             sb.AppendLine("---------------------------------------------------------------------------------");
             sb.AppendLine("                             HEALTH & HYDRATION SECTION                         ");
             sb.AppendLine("---------------------------------------------------------------------------------");
             sb.AppendLine($"Total Hydration Intake:  {waterSum} ml");
             sb.AppendLine($"Total Workout Duration:  {workoutMins} minutes");
+            if (completedSessionCount > 0)
+            {
+                sb.AppendLine($"Workout Plans Completed: {completedSessionCount} sessions");
+                sb.AppendLine($"Est. Energy Burned:      {workoutCaloriesBurned} kcal (Active Burn)");
+            }
             sb.AppendLine($"Total Sleep Duration:    {sleepHours} hours");
             sb.AppendLine($"Total Steps Count:       {stepsCount} steps");
             sb.AppendLine($"Total Calories Consumed: {caloriesCount} kcal");

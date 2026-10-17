@@ -48,7 +48,80 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AiRecommendations");
+                    b.ToTable("AiRecommendations", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.Exercise", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnimationUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DefaultReps")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DefaultRestSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DefaultSets")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DifficultyLevel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EquipmentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<float>("EstimatedMetValue")
+                        .HasColumnType("real");
+
+                    b.Property<string>("Instructions")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("RequiresEquipment")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TargetMuscles")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Exercises", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.HealthLog", b =>
@@ -79,7 +152,7 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("HealthLogs");
+                    b.ToTable("HealthLogs", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.JobApplication", b =>
@@ -115,7 +188,7 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("JobApplications");
+                    b.ToTable("JobApplications", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.PlannerEvent", b =>
@@ -173,7 +246,7 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PlannerEvents");
+                    b.ToTable("PlannerEvents", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.RecurringItem", b =>
@@ -213,7 +286,7 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RecurringItems");
+                    b.ToTable("RecurringItems", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.Transaction", b =>
@@ -250,7 +323,7 @@ namespace LifeSyncAI.Core.Database.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Transactions");
+                    b.ToTable("Transactions", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.User", b =>
@@ -315,33 +388,7 @@ namespace LifeSyncAI.Core.Database.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("LifeSyncAI.Core.Models.VaultItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("EncryptedContent")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("VaultItems");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.UserNotificationLog", b =>
@@ -381,7 +428,253 @@ namespace LifeSyncAI.Core.Database.Migrations
                         .IsUnique()
                         .HasFilter("\"IsSuccess\" = true");
 
-                    b.ToTable("UserNotificationLogs");
+                    b.ToTable("UserNotificationLogs", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.UserWorkoutPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DaysPerWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EffectiveStartDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("FitnessLevel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserWorkoutPlans", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.VaultItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EncryptedContent")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("VaultItems", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FocusTitle")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRestDay")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RestDayNotes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TargetDurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("WorkoutPlanId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkoutPlanId");
+
+                    b.ToTable("WorkoutDays", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutDayExercise", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ExerciseId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Reps")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RestSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Sets")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("WorkoutDayId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("WorkoutDayId");
+
+                    b.ToTable("WorkoutDayExercises", (string)null);
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutSessionLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActualDurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EstimatedCaloriesBurned")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HealthLogId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SessionDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorkoutDayId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorkoutPlanId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "WorkoutDayId", "SessionDate");
+
+                    b.ToTable("WorkoutSessionLogs", (string)null);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.AiRecommendation", b =>
@@ -447,6 +740,15 @@ namespace LifeSyncAI.Core.Database.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LifeSyncAI.Core.Models.UserWorkoutPlan", b =>
+                {
+                    b.HasOne("LifeSyncAI.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LifeSyncAI.Core.Models.VaultItem", b =>
                 {
                     b.HasOne("LifeSyncAI.Core.Models.User", null)
@@ -454,6 +756,51 @@ namespace LifeSyncAI.Core.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutDay", b =>
+                {
+                    b.HasOne("LifeSyncAI.Core.Models.UserWorkoutPlan", null)
+                        .WithMany("Days")
+                        .HasForeignKey("WorkoutPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutDayExercise", b =>
+                {
+                    b.HasOne("LifeSyncAI.Core.Models.Exercise", "Exercise")
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LifeSyncAI.Core.Models.WorkoutDay", null)
+                        .WithMany("Exercises")
+                        .HasForeignKey("WorkoutDayId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutSessionLog", b =>
+                {
+                    b.HasOne("LifeSyncAI.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.UserWorkoutPlan", b =>
+                {
+                    b.Navigation("Days");
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.WorkoutDay", b =>
+                {
+                    b.Navigation("Exercises");
                 });
 #pragma warning restore 612, 618
         }

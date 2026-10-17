@@ -103,6 +103,7 @@ namespace LifeSyncAI.API
                 builder.Services.AddScoped<IPlannerService, PlannerService>();
                 builder.Services.AddScoped<IFinanceService, FinanceService>();
                 builder.Services.AddScoped<IHealthService, HealthService>();
+                builder.Services.AddScoped<IWorkoutService, WorkoutService>();
                 builder.Services.AddScoped<ICareerService, CareerService>();
                 builder.Services.AddScoped<IVaultService, VaultService>();
                 builder.Services.AddScoped<IAiInsightsService, AiInsightsService>();

@@ -80,10 +80,14 @@ namespace LifeSyncAI.Tests
             _connection.Dispose();
         }
 
-        private SystemController CreateController(string? authHeader = null)
+        private SystemController CreateController(string? authHeader = null, bool forceEmail = true)
         {
             var controller = new SystemController(_context, _configuration, _environment, _emailService);
             var httpContext = new DefaultHttpContext();
+            if (forceEmail)
+            {
+                httpContext.Request.QueryString = new QueryString("?forceEmail=true");
+            }
             if (!string.IsNullOrEmpty(authHeader))
             {
                 httpContext.Request.Headers["Authorization"] = authHeader;
