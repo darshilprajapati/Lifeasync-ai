@@ -1,10 +1,43 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './LampScene.css';
 
 const LampSceneCanvas = lazy(() => import('./LampSceneCanvas'));
 
 /* ------------------------------------------------------------------ */
-/* Check for WebGL capability with safe try-catch                     */
+/* Global In-Memory Lamp State Store (Preserved across Route Changes) */
+/* ------------------------------------------------------------------ */
+let sharedLampIsOn = true;
+let sharedLampState: 'off' | 'turningOn' | 'on' | 'turningOff' = 'on';
+const stateListeners = new Set<(state: 'off' | 'turningOn' | 'on' | 'turningOff', isOn: boolean) => void>();
+
+function notifyListeners() {
+  stateListeners.forEach((fn) => fn(sharedLampState, sharedLampIsOn));
+}
+
+export function toggleGlobalLamp() {
+  if (sharedLampIsOn) {
+    sharedLampIsOn = false;
+    sharedLampState = 'turningOff';
+    notifyListeners();
+
+    setTimeout(() => {
+      sharedLampState = 'off';
+      notifyListeners();
+    }, 450);
+  } else {
+    sharedLampIsOn = true;
+    sharedLampState = 'turningOn';
+    notifyListeners();
+
+    setTimeout(() => {
+      sharedLampState = 'on';
+      notifyListeners();
+    }, 450);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Check for WebGL capability safely                                  */
 /* ------------------------------------------------------------------ */
 function checkWebGLSupport(): boolean {
   if (typeof window === 'undefined') return false;
@@ -20,22 +53,42 @@ function checkWebGLSupport(): boolean {
 }
 
 interface LampAuthLayoutProps {
-  children: (lampIsOn: boolean) => React.ReactNode;
+  children: (isFormActive: boolean, lampState: 'off' | 'turningOn' | 'on' | 'turningOff') => React.ReactNode;
   activeRoute?: 'login' | 'register' | 'forgot-password';
 }
 
 const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
-  const [lampIsOn, setLampIsOn] = useState(true);
+  const [lampIsOn, setLampIsOn] = useState(sharedLampIsOn);
+  const [lampState, setLampState] = useState(sharedLampState);
   const [hasWebGL] = useState(checkWebGLSupport);
 
-  const toggleLamp = () => setLampIsOn((prev) => !prev);
+  useEffect(() => {
+    const listener = (newState: 'off' | 'turningOn' | 'on' | 'turningOff', newIsOn: boolean) => {
+      setLampState(newState);
+      setLampIsOn(newIsOn);
+    };
+    stateListeners.add(listener);
+    return () => {
+      stateListeners.delete(listener);
+    };
+  }, []);
+
+  const handleToggle = () => {
+    toggleGlobalLamp();
+  };
+
+  const isFormActive = lampState === 'on' || lampState === 'turningOn';
+  const isDarkRoom = !lampIsOn || lampState === 'off' || lampState === 'turningOff';
 
   return (
-    <div className="lamp-auth-page-root" aria-label="LifeSync AI Authentication">
+    <div
+      className={`lamp-auth-page-root ${isDarkRoom ? 'state-dark-room' : 'state-light-room'}`}
+      aria-label="LifeSync AI Authentication Experience"
+    >
       {/* ========================================================= */}
-      {/* LEFT SECTION (52% Desktop): Warm Coral-Red Brand & 3D Scene */}
+      {/* LEFT SECTION (52% Desktop): 3D Lamp Environment           */}
       {/* ========================================================= */}
-      <section className="lamp-left-panel" aria-label="Interactive Experience">
+      <section className="lamp-left-panel" aria-label="Interactive Lamp Experience">
         {/* Brand Header */}
         <header className="lamp-brand-header">
           <div className="lamp-brand-badge">
@@ -43,8 +96,8 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
               src="/logo.jpg"
               alt="LifeSync AI logo"
               className="lamp-brand-avatar"
-              width={42}
-              height={42}
+              width={40}
+              height={40}
             />
             <div className="lamp-brand-titles">
               <span className="lamp-brand-title">LIFESYNC AI</span>
@@ -53,53 +106,64 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        {/* Central Visual: Interactive Three.js Scene OR Accessible Fallback */}
+        {/* 3D Lamp Scene Container */}
         <div className="lamp-visual-container">
           {hasWebGL ? (
             <Suspense
               fallback={
-                <div className="lamp-loading-placeholder" aria-label="Loading interactive 3D visual...">
+                <div className="lamp-loading-placeholder" aria-label="Loading 3D lamp visual...">
                   <div className="lamp-pulse-ring" />
                 </div>
               }
             >
-              <LampSceneCanvas isOn={lampIsOn} onToggle={toggleLamp} />
+              <LampSceneCanvas
+                isOn={lampIsOn}
+                onToggle={handleToggle}
+                lampState={lampState}
+              />
             </Suspense>
           ) : (
             <div className="lamp-fallback-graphic" aria-label="LifeSync wellness illustration">
-              {/* Wellness-themed central illustration with lightning & wellness symbols */}
               <div className="lamp-fallback-glow" />
               <div className="lamp-fallback-ring">
                 <div className="lamp-fallback-center-symbol" title="LifeSync AI Core">
                   ⚡
                 </div>
-                <div className="lamp-fallback-node node-health" title="Health & Wellness">❤️</div>
-                <div className="lamp-fallback-node node-productivity" title="Focus & Productivity">🎯</div>
-                <div className="lamp-fallback-node node-security" title="Security & Privacy">🛡️</div>
-                <div className="lamp-fallback-node node-schedule" title="Adaptive Scheduling">📅</div>
-                <div className="lamp-fallback-node node-finance" title="Financial Discipline">💳</div>
+                <div className="lamp-fallback-node node-health">❤️</div>
+                <div className="lamp-fallback-node node-productivity">🎯</div>
+                <div className="lamp-fallback-node node-security">🛡️</div>
+                <div className="lamp-fallback-node node-schedule">📅</div>
+                <div className="lamp-fallback-node node-finance">💳</div>
               </div>
             </div>
           )}
+
+          {/* Interactive Floating Cord Label Callout matching the reference */}
+          <div className="lamp-cord-indicator" onClick={handleToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggle(); }}>
+            <span className="lamp-cord-line" />
+            <span className="lamp-cord-label">
+              {lampIsOn ? 'PULL AGAIN FOR DARK' : 'PULL THE CORD'}
+            </span>
+          </div>
         </div>
 
-        {/* Interactive Lighting Toggle Pill */}
+        {/* Accessible Lamp Light Toggle Pill (Always usable in ON and OFF states) */}
         <div className="lamp-interactive-bar">
           <button
             type="button"
             className="lamp-toggle-pill"
-            onClick={toggleLamp}
+            onClick={handleToggle}
             aria-pressed={lampIsOn}
-            aria-label={`Toggle ambient lamp lighting. Currently ${lampIsOn ? 'on' : 'off'}.`}
+            aria-label={`Toggle lamp illumination. Currently ${lampIsOn ? 'Illuminated' : 'Dark'}. Press to toggle.`}
           >
             <span className={`lamp-toggle-indicator ${lampIsOn ? 'is-active' : ''}`} />
             <span className="lamp-toggle-text">
-              {lampIsOn ? 'Warm Illumination Active' : 'Illumination Dimmed'} (Click to toggle)
+              {lampIsOn ? 'Illumination ON' : 'Illumination OFF'} — Click cord or toggle
             </span>
           </button>
         </div>
 
-        {/* Bottom Feature Highlights */}
+        {/* Bottom Feature Badges */}
         <footer className="lamp-features-footer">
           <div className="lamp-feature-item">
             <span className="lamp-feature-bullet">✦</span>
@@ -117,14 +181,35 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
       </section>
 
       {/* ========================================================= */}
-      {/* RIGHT SECTION (48% Desktop): Warm Off-White Auth Card     */}
+      {/* RIGHT SECTION (48% Desktop): Light-Controlled Auth Panel  */}
       {/* ========================================================= */}
-      <section className="lamp-right-panel" aria-label="Authentication Form">
-        <main className="lamp-card-wrapper">
-          <div className="lamp-auth-card">
-            {children(lampIsOn)}
+      <section
+        className={`lamp-right-panel ${isDarkRoom ? 'panel-dark' : 'panel-illuminated'}`}
+        aria-label="Authentication Form"
+      >
+        <div className="lamp-card-wrapper">
+          {/* Form Card: Controlled by Lamp Lighting State */}
+          <div
+            className={`lamp-auth-card ${isFormActive ? 'card-revealed' : 'card-hidden'}`}
+            aria-hidden={!isFormActive}
+            style={{
+              visibility: lampState === 'off' ? 'hidden' : 'visible',
+              pointerEvents: isFormActive ? 'auto' : 'none',
+            }}
+          >
+            <fieldset
+              disabled={!isFormActive}
+              style={{
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                width: '100%',
+              }}
+            >
+              {children(isFormActive, lampState)}
+            </fieldset>
           </div>
-        </main>
+        </div>
       </section>
     </div>
   );

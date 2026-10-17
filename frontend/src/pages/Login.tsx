@@ -22,8 +22,9 @@ const Login: React.FC = () => {
 
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, isFormActive: boolean) => {
     e.preventDefault();
+    if (!isFormActive || submitting) return;
     setErrorMessage(null);
 
     if (!email) {
@@ -60,7 +61,7 @@ const Login: React.FC = () => {
 
   return (
     <LampAuthLayout activeRoute="login">
-      {() => (
+      {(isFormActive) => (
         <>
           <h1 className="lamp-card-title">Welcome Back</h1>
           <p className="lamp-card-subtitle">
@@ -76,7 +77,7 @@ const Login: React.FC = () => {
             </div>
           )}
 
-          <form className="lamp-form" onSubmit={handleSubmit} noValidate>
+          <form className="lamp-form" onSubmit={(e) => handleSubmit(e, isFormActive)} noValidate>
             {/* Email Field */}
             <div className="lamp-field-group">
               <label htmlFor="login-email" className="lamp-field-label">
@@ -96,6 +97,7 @@ const Login: React.FC = () => {
                   placeholder="name@example.com"
                   autoComplete="email"
                   required
+                  disabled={!isFormActive}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => setTouched((p) => ({ ...p, email: true }))}
@@ -128,6 +130,7 @@ const Login: React.FC = () => {
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
+                  disabled={!isFormActive}
                   style={{ paddingRight: '46px' }}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -138,7 +141,8 @@ const Login: React.FC = () => {
                   className="lamp-eye-button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={0}
+                  tabIndex={isFormActive ? 0 : -1}
+                  disabled={!isFormActive}
                 >
                   {showPassword ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -160,7 +164,7 @@ const Login: React.FC = () => {
 
             {/* Forgot Password Link */}
             <div className="lamp-actions-row">
-              <Link to="/forgot-password" className="lamp-link-accent">
+              <Link to="/forgot-password" className="lamp-link-accent" tabIndex={isFormActive ? 0 : -1}>
                 Forgot Password?
               </Link>
             </div>
@@ -170,7 +174,8 @@ const Login: React.FC = () => {
               id="login-submit-btn"
               type="submit"
               className="lamp-primary-button"
-              disabled={submitting}
+              disabled={submitting || !isFormActive}
+              tabIndex={isFormActive ? 0 : -1}
             >
               {submitting ? (
                 <>
@@ -188,7 +193,7 @@ const Login: React.FC = () => {
           {/* Switch to Signup */}
           <div className="lamp-switch-text">
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="lamp-switch-link">
+            <Link to="/register" className="lamp-switch-link" tabIndex={isFormActive ? 0 : -1}>
               Sign Up
             </Link>
           </div>

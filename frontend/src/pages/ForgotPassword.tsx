@@ -122,7 +122,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <LampAuthLayout activeRoute="forgot-password">
-      {() => (
+      {(isFormActive) => (
         <>
           <h1 className="lamp-card-title">Reset Password</h1>
           <p className="lamp-card-subtitle">
@@ -168,7 +168,7 @@ const ForgotPassword: React.FC = () => {
 
           {/* STEP 0: REQUEST OTP */}
           {activeStep === 0 && (
-            <form className="lamp-form" onSubmit={handleRequestOtp}>
+            <form className="lamp-form" onSubmit={(e) => isFormActive && handleRequestOtp(e)}>
               <div className="lamp-field-group">
                 <label htmlFor="forgot-email" className="lamp-field-label">
                   Email Address
@@ -187,6 +187,7 @@ const ForgotPassword: React.FC = () => {
                     placeholder="name@example.com"
                     autoComplete="email"
                     required
+                    disabled={!isFormActive}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -196,7 +197,8 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="submit"
                 className="lamp-primary-button"
-                disabled={submitting}
+                disabled={submitting || !isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
               >
                 {submitting ? 'Sending Request…' : 'Send Verification OTP'}
               </button>
@@ -205,7 +207,7 @@ const ForgotPassword: React.FC = () => {
 
           {/* STEP 1: VERIFY OTP */}
           {activeStep === 1 && (
-            <form className="lamp-form" onSubmit={handleVerifyOtp}>
+            <form className="lamp-form" onSubmit={(e) => isFormActive && handleVerifyOtp(e)}>
               <div className="lamp-field-group">
                 <label htmlFor="forgot-otp" className="lamp-field-label">
                   Enter 6-Digit OTP
@@ -226,6 +228,7 @@ const ForgotPassword: React.FC = () => {
                     placeholder="123456"
                     maxLength={6}
                     required
+                    disabled={!isFormActive}
                     style={{ letterSpacing: '0.25em', fontWeight: 600 }}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
@@ -236,7 +239,8 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="submit"
                 className="lamp-primary-button"
-                disabled={submitting || otp.length !== 6}
+                disabled={submitting || !isFormActive || otp.length !== 6}
+                tabIndex={isFormActive ? 0 : -1}
               >
                 {submitting ? 'Verifying OTP…' : 'Verify Code'}
               </button>
@@ -245,7 +249,8 @@ const ForgotPassword: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleRequestOtp(undefined, true)}
-                  disabled={resendCooldown > 0 || submitting}
+                  disabled={resendCooldown > 0 || submitting || !isFormActive}
+                  tabIndex={isFormActive ? 0 : -1}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -264,7 +269,7 @@ const ForgotPassword: React.FC = () => {
 
           {/* STEP 2: ENTER NEW PASSWORD */}
           {activeStep === 2 && (
-            <form className="lamp-form" onSubmit={handleResetPassword}>
+            <form className="lamp-form" onSubmit={(e) => isFormActive && handleResetPassword(e)}>
               <div className="lamp-field-group">
                 <label htmlFor="new-password" className="lamp-field-label">
                   New Password
@@ -282,6 +287,7 @@ const ForgotPassword: React.FC = () => {
                     className="lamp-input-field"
                     placeholder="Minimum 6 characters"
                     required
+                    disabled={!isFormActive}
                     style={{ paddingRight: '46px' }}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -291,6 +297,8 @@ const ForgotPassword: React.FC = () => {
                     className="lamp-eye-button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={isFormActive ? 0 : -1}
+                    disabled={!isFormActive}
                   >
                     {showNewPassword ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -324,6 +332,7 @@ const ForgotPassword: React.FC = () => {
                     className="lamp-input-field"
                     placeholder="Confirm new password"
                     required
+                    disabled={!isFormActive}
                     style={{ paddingRight: '46px' }}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -333,6 +342,8 @@ const ForgotPassword: React.FC = () => {
                     className="lamp-eye-button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={isFormActive ? 0 : -1}
+                    disabled={!isFormActive}
                   >
                     {showConfirmPassword ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -352,7 +363,8 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="submit"
                 className="lamp-primary-button"
-                disabled={submitting}
+                disabled={submitting || !isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
               >
                 {submitting ? 'Resetting Password…' : 'Reset Password'}
               </button>
@@ -362,7 +374,7 @@ const ForgotPassword: React.FC = () => {
           {/* Back to Sign In Link */}
           <div className="lamp-switch-text">
             Remembered your credentials?{' '}
-            <Link to="/login" className="lamp-switch-link">
+            <Link to="/login" className="lamp-switch-link" tabIndex={isFormActive ? 0 : -1}>
               Back to Sign In
             </Link>
           </div>

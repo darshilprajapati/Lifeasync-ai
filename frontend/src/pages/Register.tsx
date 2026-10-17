@@ -29,8 +29,9 @@ const Register: React.FC = () => {
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const passwordsMatch = password === confirmPassword;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, isFormActive: boolean) => {
     e.preventDefault();
+    if (!isFormActive || submitting) return;
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -78,7 +79,7 @@ const Register: React.FC = () => {
 
   return (
     <LampAuthLayout activeRoute="register">
-      {() => (
+      {(isFormActive) => (
         <>
           <h1 className="lamp-card-title">Create Account</h1>
           <p className="lamp-card-subtitle">
@@ -103,7 +104,7 @@ const Register: React.FC = () => {
             </div>
           )}
 
-          <form className="lamp-form" onSubmit={handleSubmit} noValidate>
+          <form className="lamp-form" onSubmit={(e) => handleSubmit(e, isFormActive)} noValidate>
             {/* Full Name */}
             <div className="lamp-field-group">
               <label htmlFor="register-name" className="lamp-field-label">
@@ -123,6 +124,7 @@ const Register: React.FC = () => {
                   placeholder="John Doe"
                   autoComplete="name"
                   required
+                  disabled={!isFormActive}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   onBlur={() => setTouched((p) => ({ ...p, fullName: true }))}
@@ -152,6 +154,7 @@ const Register: React.FC = () => {
                   placeholder="name@example.com"
                   autoComplete="email"
                   required
+                  disabled={!isFormActive}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => setTouched((p) => ({ ...p, email: true }))}
@@ -184,6 +187,7 @@ const Register: React.FC = () => {
                   placeholder="Minimum 6 characters"
                   autoComplete="new-password"
                   required
+                  disabled={!isFormActive}
                   style={{ paddingRight: '46px' }}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -194,7 +198,8 @@ const Register: React.FC = () => {
                   className="lamp-eye-button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={0}
+                  tabIndex={isFormActive ? 0 : -1}
+                  disabled={!isFormActive}
                 >
                   {showPassword ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -236,6 +241,7 @@ const Register: React.FC = () => {
                   placeholder="Re-enter your password"
                   autoComplete="new-password"
                   required
+                  disabled={!isFormActive}
                   style={{ paddingRight: '46px' }}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -246,7 +252,8 @@ const Register: React.FC = () => {
                   className="lamp-eye-button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                  tabIndex={0}
+                  tabIndex={isFormActive ? 0 : -1}
+                  disabled={!isFormActive}
                 >
                   {showConfirmPassword ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -274,7 +281,8 @@ const Register: React.FC = () => {
               id="register-submit-btn"
               type="submit"
               className="lamp-primary-button"
-              disabled={submitting}
+              disabled={submitting || !isFormActive}
+              tabIndex={isFormActive ? 0 : -1}
             >
               {submitting ? (
                 <>
@@ -292,7 +300,7 @@ const Register: React.FC = () => {
           {/* Switch to Login */}
           <div className="lamp-switch-text">
             Already have an account?{' '}
-            <Link to="/login" className="lamp-switch-link">
+            <Link to="/login" className="lamp-switch-link" tabIndex={isFormActive ? 0 : -1}>
               Sign In
             </Link>
           </div>
