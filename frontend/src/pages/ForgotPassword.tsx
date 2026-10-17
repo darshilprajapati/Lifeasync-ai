@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
-import LampAuthLayout from '../components/LampScene/LampAuthLayout';
+import { useLampAuthContext } from '../components/LampScene';
 
 const steps = ['Enter Email', 'Verify OTP', 'New Password'];
 
 const ForgotPassword: React.FC = () => {
+  const { isFormActive } = useLampAuthContext();
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
 
@@ -121,10 +122,8 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <LampAuthLayout activeRoute="forgot-password">
-      {(isFormActive) => (
-        <>
-          <h1 className="lamp-card-title">Reset Password</h1>
+    <>
+      <h1 className="lamp-card-title">Reset Password</h1>
           <p className="lamp-card-subtitle">
             Sync your credentials securely.
           </p>
@@ -379,8 +378,6 @@ const ForgotPassword: React.FC = () => {
             </Link>
           </div>
         </>
-      )}
-    </LampAuthLayout>
   );
 };
 

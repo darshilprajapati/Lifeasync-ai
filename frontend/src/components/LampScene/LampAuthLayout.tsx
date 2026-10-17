@@ -1,40 +1,9 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { getSharedLampState, subscribeLampState, toggleGlobalLamp } from './lampState';
 import './LampScene.css';
 
 const LampSceneCanvas = lazy(() => import('./LampSceneCanvas'));
-
-/* ------------------------------------------------------------------ */
-/* Global In-Memory Lamp State Store (Preserved across Route Changes) */
-/* ------------------------------------------------------------------ */
-let sharedLampIsOn = true;
-let sharedLampState: 'off' | 'turningOn' | 'on' | 'turningOff' = 'on';
-const stateListeners = new Set<(state: 'off' | 'turningOn' | 'on' | 'turningOff', isOn: boolean) => void>();
-
-function notifyListeners() {
-  stateListeners.forEach((fn) => fn(sharedLampState, sharedLampIsOn));
-}
-
-export function toggleGlobalLamp() {
-  if (sharedLampIsOn) {
-    sharedLampIsOn = false;
-    sharedLampState = 'turningOff';
-    notifyListeners();
-
-    setTimeout(() => {
-      sharedLampState = 'off';
-      notifyListeners();
-    }, 450);
-  } else {
-    sharedLampIsOn = true;
-    sharedLampState = 'turningOn';
-    notifyListeners();
-
-    setTimeout(() => {
-      sharedLampState = 'on';
-      notifyListeners();
-    }, 450);
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /* Check for WebGL capability safely                                  */
@@ -53,24 +22,22 @@ function checkWebGLSupport(): boolean {
 }
 
 interface LampAuthLayoutProps {
-  children: (isFormActive: boolean, lampState: 'off' | 'turningOn' | 'on' | 'turningOff') => React.ReactNode;
-  activeRoute?: 'login' | 'register' | 'forgot-password';
+  children?: (isFormActive: boolean, lampState: 'off' | 'turningOn' | 'on' | 'turningOff') => React.ReactNode;
 }
 
 const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
-  const [lampIsOn, setLampIsOn] = useState(sharedLampIsOn);
-  const [lampState, setLampState] = useState(sharedLampState);
+  const initialState = getSharedLampState();
+  const [lampIsOn, setLampIsOn] = useState(initialState.isOn);
+  const [lampState, setLampState] = useState(initialState.state);
   const [hasWebGL] = useState(checkWebGLSupport);
+  const location = useLocation();
 
   useEffect(() => {
-    const listener = (newState: 'off' | 'turningOn' | 'on' | 'turningOff', newIsOn: boolean) => {
+    const unsubscribe = subscribeLampState((newState, newIsOn) => {
       setLampState(newState);
       setLampIsOn(newIsOn);
-    };
-    stateListeners.add(listener);
-    return () => {
-      stateListeners.delete(listener);
-    };
+    });
+    return unsubscribe;
   }, []);
 
   const handleToggle = () => {
@@ -87,6 +54,7 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
     >
       {/* ========================================================= */}
       {/* LEFT SECTION (52% Desktop): 3D Lamp Environment           */}
+      {/* Contains strictly LifeSync AI branding & interactive lamp */}
       {/* ========================================================= */}
       <section className="lamp-left-panel" aria-label="Interactive Lamp Experience">
         {/* Brand Header */}
@@ -106,7 +74,7 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        {/* 3D Lamp Scene Container */}
+        {/* 3D Lamp Scene Container: Mounts once and persists across route navigation */}
         <div className="lamp-visual-container">
           {hasWebGL ? (
             <Suspense
@@ -137,47 +105,18 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
               </div>
             </div>
           )}
-
-          {/* Interactive Floating Cord Label Callout matching the reference */}
-          <div className="lamp-cord-indicator" onClick={handleToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggle(); }}>
-            <span className="lamp-cord-line" />
-            <span className="lamp-cord-label">
-              {lampIsOn ? 'PULL AGAIN FOR DARK' : 'PULL THE CORD'}
-            </span>
-          </div>
         </div>
 
-        {/* Accessible Lamp Light Toggle Pill (Always usable in ON and OFF states) */}
-        <div className="lamp-interactive-bar">
-          <button
-            type="button"
-            className="lamp-toggle-pill"
-            onClick={handleToggle}
-            aria-pressed={lampIsOn}
-            aria-label={`Toggle lamp illumination. Currently ${lampIsOn ? 'Illuminated' : 'Dark'}. Press to toggle.`}
-          >
-            <span className={`lamp-toggle-indicator ${lampIsOn ? 'is-active' : ''}`} />
-            <span className="lamp-toggle-text">
-              {lampIsOn ? 'Illumination ON' : 'Illumination OFF'} — Click cord or toggle
-            </span>
-          </button>
-        </div>
-
-        {/* Bottom Feature Badges */}
-        <footer className="lamp-features-footer">
-          <div className="lamp-feature-item">
-            <span className="lamp-feature-bullet">✦</span>
-            <span>Intelligent AI Workouts</span>
-          </div>
-          <div className="lamp-feature-item">
-            <span className="lamp-feature-bullet">✦</span>
-            <span>Holistic Life Balance</span>
-          </div>
-          <div className="lamp-feature-item">
-            <span className="lamp-feature-bullet">✦</span>
-            <span>Zero-Knowledge Privacy</span>
-          </div>
-        </footer>
+        {/* Accessible screen-reader control */}
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="lamp-sr-only-toggle"
+          aria-pressed={lampIsOn}
+          aria-label={`Toggle lamp illumination. Currently ${lampIsOn ? 'Illuminated' : 'Dark'}.`}
+        >
+          Toggle Lamp Illumination
+        </button>
       </section>
 
       {/* ========================================================= */}
@@ -206,7 +145,13 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
                 width: '100%',
               }}
             >
-              {children(isFormActive, lampState)}
+              {/* Only the inner form card animates during Login/Signup navigation */}
+              <div key={location.pathname} className="lamp-card-content-transition">
+                {children
+                  ? children(isFormActive, lampState)
+                  : <Outlet context={{ isFormActive, lampState, lampIsOn, toggleLamp: handleToggle }} />
+                }
+              </div>
             </fieldset>
           </div>
         </div>

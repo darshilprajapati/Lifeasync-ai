@@ -156,133 +156,36 @@
   to { transform: rotate(360deg); }
 }
 
-/* Pull-Cord Floating Label matching the reference video */
-.lamp-cord-indicator {
+/* Visually hidden screen reader toggle for accessibility */
+.lamp-sr-only-toggle {
   position: absolute;
-  top: 48%;
-  left: 54%;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-  animation: floatSubtle 3s ease-in-out infinite;
-}
-
-@keyframes floatSubtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.lamp-cord-line {
-  display: inline-block;
-  width: 32px;
+  width: 1px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.45);
-  transition: width 0.2s ease, background 0.3s ease;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
-.lamp-cord-indicator:hover .lamp-cord-line {
-  width: 44px;
-  background: #FFE1A8;
+/* Polished restrained transition for card content during route navigation */
+@keyframes formFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.lamp-cord-label {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+.lamp-card-content-transition {
+  animation: formFadeSlideIn 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+  width: 100%;
 }
 
-.lamp-cord-indicator:hover .lamp-cord-label {
-  color: #FFE1A8;
-  text-shadow: 0 0 10px rgba(255, 225, 168, 0.6);
-}
-
-.state-dark-room .lamp-cord-label {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-/* Accessible Interactive Light Toggle Pill */
-.lamp-interactive-bar {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  justify-content: flex-start;
-  margin-top: auto;
-  padding-bottom: 14px;
-}
-
-.lamp-toggle-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 24px;
-  padding: 8px 18px;
-  color: #FFFFFF;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.state-dark-room .lamp-toggle-pill {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.24);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
-}
-
-.lamp-toggle-pill:hover {
-  background: rgba(255, 255, 255, 0.28);
-  transform: translateY(-1px);
-}
-
-.lamp-toggle-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  transition: all 0.25s ease;
-}
-
-.lamp-toggle-indicator.is-active {
-  background: #FFF275;
-  box-shadow: 0 0 12px #FFF275;
-}
-
-/* Features Footer */
-.lamp-features-footer {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  padding-top: 16px;
-}
-
-.lamp-feature-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.88);
-  font-weight: 500;
-}
-
-.lamp-feature-bullet {
-  color: #FFF275;
-  font-size: 11px;
-}
 
 /* --------------------------------------------------------------------------
    RIGHT PANEL (48% Desktop): Light-Controlled Auth Panel
@@ -713,16 +616,6 @@
     padding: 24px 28px;
   }
 
-  .lamp-cord-indicator {
-    left: 60%;
-    top: 45%;
-  }
-
-  .lamp-interactive-bar,
-  .lamp-features-footer {
-    display: none;
-  }
-
   .lamp-right-panel {
     flex: 1 0 auto;
     width: 100%;
@@ -746,11 +639,6 @@
     min-height: 190px;
     height: 190px;
     padding: 18px;
-  }
-
-  .lamp-cord-indicator {
-    left: 64%;
-    top: 42%;
   }
 
   .lamp-brand-title {

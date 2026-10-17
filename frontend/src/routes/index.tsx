@@ -12,6 +12,7 @@ import { AdminPanel } from '../features/admin';
 import { Profile } from '../features/profile';
 import { Login, Register, ForgotPassword } from '../features/auth';
 import { ProtectedRoute, GuestRoute, AdminRoute } from './RouteGuards';
+import LampAuthLayout from '../components/LampScene/LampAuthLayout';
 
 /**
  * Main Application Routing definition.
@@ -22,11 +23,13 @@ import { ProtectedRoute, GuestRoute, AdminRoute } from './RouteGuards';
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Guest Only Routes (Login/Register/ForgotPassword) */}
+      {/* Guest Only Routes: Persistent LampAuthLayout shared across Login/Register/ForgotPassword */}
       <Route element={<GuestRoute />}>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route element={<LampAuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        </Route>
       </Route>
 
       {/* Main Authenticated Layout Routes */}
