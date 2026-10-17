@@ -110,6 +110,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
 
       setActiveDay(updatedDay);
       onDayUpdated(updatedDay);
+      window.dispatchEvent(new CustomEvent('lifesync:workout-updated', { detail: { day: updatedDay } }));
     } catch (err: any) {
       console.error('Failed to toggle exercise completion:', err);
       const errMsg = err?.response?.data?.message || 'Failed to update exercise status.';

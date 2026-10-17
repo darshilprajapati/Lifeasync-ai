@@ -110,6 +110,12 @@ namespace LifeSyncAI.Core.Services
                 var log = await _context.HealthLogs.FindAsync(id);
                 if (log != null)
                 {
+                    var linkedSession = await _context.WorkoutSessionLogs.FirstOrDefaultAsync(s => s.HealthLogId == id);
+                    if (linkedSession != null)
+                    {
+                        linkedSession.HealthLogId = null;
+                    }
+
                     _context.HealthLogs.Remove(log);
                     await _context.SaveChangesAsync();
                 }

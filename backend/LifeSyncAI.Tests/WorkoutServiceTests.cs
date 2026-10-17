@@ -1297,6 +1297,58 @@ namespace LifeSyncAI.Tests
             }
         }
 
+        [Fact]
+        public async Task WorkoutDurationTracking_UpdatesHealthOverviewLog_AccumulatesMultipleExercisesAndIsIdempotent()
+        {
+            // Arrange
+            var healthService = new HealthService(_context);
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Count >= 2);
+            var exercise1 = activeDay.Exercises[0];
+            var exercise2 = activeDay.Exercises[1];
+            var monday = new DateTime(2026, 10, 19);
+
+            // Initial state: Health logs have 0 workout minutes
+            var initialHealthLogs = await healthService.GetLogsAsync(_testUser.Id, monday);
+            Assert.True(initialHealthLogs.IsSuccess);
+            Assert.DoesNotContain(initialHealthLogs.Data, l => l.LogType == "Workout");
+
+            // Act 1: Complete exercise 1
+            var res1 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(res1.IsSuccess, res1.Message);
+
+            // Assert: HealthLog exists with calculated duration for exercise 1
+            var healthLogs1 = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLog1 = Assert.Single(healthLogs1.Data, l => l.LogType == "Workout");
+            float duration1 = workoutLog1.LogValue;
+            Assert.True(duration1 > 0);
+            Assert.True(duration1 < activeDay.TargetDurationMinutes);
+
+            // Act 2: Repeated completion of exercise 1 (idempotency check)
+            var resRepeat = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(resRepeat.IsSuccess, resRepeat.Message);
+
+            var healthLogsRepeat = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLogRepeat = Assert.Single(healthLogsRepeat.Data, l => l.LogType == "Workout");
+            Assert.Equal(duration1, workoutLogRepeat.LogValue);
+
+            // Act 3: Complete exercise 2 -> duration accumulates
+            var res2 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise2.Id, monday, true, clientReferenceDate: monday);
+            Assert.True(res2.IsSuccess, res2.Message);
+
+            var healthLogs2 = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLog2 = Assert.Single(healthLogs2.Data, l => l.LogType == "Workout");
+            Assert.True(workoutLog2.LogValue > duration1);
+
+            // Act 4: Undo exercise 2 -> duration reverses back to duration1
+            var undoRes2 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise2.Id, monday, false, clientReferenceDate: monday);
+            Assert.True(undoRes2.IsSuccess, undoRes2.Message);
+
+            var healthLogsAfterUndo = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLogAfterUndo = Assert.Single(healthLogsAfterUndo.Data, l => l.LogType == "Workout");
+            Assert.Equal(duration1, workoutLogAfterUndo.LogValue);
+        }
+
         private static void SetControllerUser(ControllerBase controller, int userId)
         {
             var claims = new List<Claim>

@@ -33,6 +33,7 @@ import {
   ToggleButton as MuiToggleButton,
   ToggleButtonGroup as MuiToggleButtonGroup
 } from '@mui/material';
+import { useNotification } from '../context/NotificationContext';
 import { WorkoutPlannerDashboard } from '../features/workouts/WorkoutPlannerDashboard';
 
 const parseDateSafe = (dateStr: string) => {
@@ -44,6 +45,10 @@ const parseDateSafe = (dateStr: string) => {
     const m = parseInt(parts[1], 10) - 1;
     const d = parseInt(parts[2], 10);
     if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const rawDate = new Date(dateStr);
+      if (!isNaN(rawDate.getTime())) {
+        return new Date(y, m, d, rawDate.getHours(), rawDate.getMinutes(), rawDate.getSeconds());
+      }
       return new Date(y, m, d);
     }
   }
@@ -67,6 +72,7 @@ interface HealthLog {
 }
 
 const Health: React.FC = () => {
+  const { notify } = useNotification();
   const [logs, setLogs] = useState<HealthLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +115,7 @@ const Health: React.FC = () => {
     setError(msg);
     setTimeout(() => {
       setError((prev) => (prev === msg ? null : prev));
-    }, 2000);
+    }, 3000);
   };
 
   const fetchHealthLogs = async () => {
@@ -127,6 +133,7 @@ const Health: React.FC = () => {
           .filter((l) => l.logType === 'Water' && isSameDay(parseDateSafe(l.logDate), today))
           .reduce((sum, current) => sum + current.logValue, 0);
         setTodaysWater(waterSum);
+
         const workoutSum = allLogs
           .filter((l) => l.logType === 'Workout' && isSameDay(parseDateSafe(l.logDate), today))
           .reduce((sum, current) => sum + current.logValue, 0);
@@ -156,7 +163,22 @@ const Health: React.FC = () => {
 
   useEffect(() => {
     fetchHealthLogs();
+    const handleWorkoutEvent = () => {
+      fetchHealthLogs();
+    };
+    window.addEventListener('lifesync:workout-updated', handleWorkoutEvent);
+    return () => {
+      window.removeEventListener('lifesync:workout-updated', handleWorkoutEvent);
+    };
   }, []);
+
+  useEffect(() => {
+    if (mainTab === 'metrics') {
+      fetchHealthLogs();
+    }
+  }, [mainTab]);
+
+  const todaysLogs = logs.filter((l) => isSameDay(parseDateSafe(l.logDate), new Date()));
 
   useEffect(() => {
     if (activeTab !== 'forecast') return;
@@ -191,23 +213,33 @@ const Health: React.FC = () => {
 
     // Validate daily limits
     if (type === 'Water' && todaysWater + value > 10000) {
-      showTemporaryError(`Daily water intake limit exceeded. You cannot log more than 10,000 ml per day (currently at ${todaysWater} ml).`);
+      const msg = `Daily water intake limit exceeded. You cannot log more than 10,000 ml per day (currently at ${todaysWater} ml).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (type === 'Sleep' && todaysSleep + value > 24) {
-      showTemporaryError(`Daily sleep duration limit exceeded. You cannot log more than 24 hours per day (currently at ${todaysSleep} hours).`);
+      const msg = `Daily sleep duration limit exceeded. You cannot log more than 24 hours per day (currently at ${todaysSleep} hours).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (type === 'Steps' && todaysSteps + value > 100000) {
-      showTemporaryError(`Daily steps limit exceeded. You cannot log more than 100,000 steps per day (currently at ${todaysSteps} steps).`);
+      const msg = `Daily steps limit exceeded. You cannot log more than 100,000 steps per day (currently at ${todaysSteps} steps).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (type === 'Calories' && todaysCalories + value > 10000) {
-      showTemporaryError(`Daily calories limit exceeded. You cannot log more than 10,000 kcal per day (currently at ${todaysCalories} kcal).`);
+      const msg = `Daily calories limit exceeded. You cannot log more than 10,000 kcal per day (currently at ${todaysCalories} kcal).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (type === 'Workout' && todaysWorkout + value > 360) {
-      showTemporaryError(`Daily workout duration limit exceeded. You cannot log more than 360 minutes per day (currently at ${todaysWorkout} mins).`);
+      const msg = `Daily workout duration limit exceeded. You cannot log more than 360 minutes per day (currently at ${todaysWorkout} mins).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
 
@@ -222,9 +254,12 @@ const Health: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('health_log_created', { module: 'health', action: 'create_log', item_type: type.toLowerCase() });
         await fetchHealthLogs();
+        notify.success(`+${value} ${getUnit(type)} added to today's ${type}!`, 'Log Updated');
       }
     } catch (err: any) {
-      showTemporaryError(err.response?.data?.message || `Failed to log ${type}.`);
+      const errMsg = err.response?.data?.message || `Failed to log ${type}.`;
+      showTemporaryError(errMsg);
+      notify.error(errMsg, 'Quick Log Failed');
     }
   };
 
@@ -233,28 +268,39 @@ const Health: React.FC = () => {
     const val = parseFloat(logValue);
     if (isNaN(val) || val <= 0) {
       showTemporaryError('Please enter a valid positive number.');
+      notify.warning('Please enter a valid positive number.', 'Invalid Input');
       return;
     }
 
     // Validate daily limits
     if (logType === 'Water' && todaysWater + val > 10000) {
-      showTemporaryError(`Daily water intake limit exceeded. You cannot log more than 10,000 ml per day (currently at ${todaysWater} ml).`);
+      const msg = `Daily water intake limit exceeded. You cannot log more than 10,000 ml per day (currently at ${todaysWater} ml).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (logType === 'Sleep' && todaysSleep + val > 24) {
-      showTemporaryError(`Daily sleep duration limit exceeded. You cannot log more than 24 hours per day (currently at ${todaysSleep} hours).`);
+      const msg = `Daily sleep duration limit exceeded. You cannot log more than 24 hours per day (currently at ${todaysSleep} hours).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (logType === 'Steps' && todaysSteps + val > 100000) {
-      showTemporaryError(`Daily steps limit exceeded. You cannot log more than 100,000 steps per day (currently at ${todaysSteps} steps).`);
+      const msg = `Daily steps limit exceeded. You cannot log more than 100,000 steps per day (currently at ${todaysSteps} steps).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (logType === 'Calories' && todaysCalories + val > 10000) {
-      showTemporaryError(`Daily calories limit exceeded. You cannot log more than 10,000 kcal per day (currently at ${todaysCalories} kcal).`);
+      const msg = `Daily calories limit exceeded. You cannot log more than 10,000 kcal per day (currently at ${todaysCalories} kcal).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
     if (logType === 'Workout' && todaysWorkout + val > 360) {
-      showTemporaryError(`Daily workout duration limit exceeded. You cannot log more than 360 minutes per day (currently at ${todaysWorkout} mins).`);
+      const msg = `Daily workout duration limit exceeded. You cannot log more than 360 minutes per day (currently at ${todaysWorkout} mins).`;
+      showTemporaryError(msg);
+      notify.warning(msg, 'Daily Limit Reached');
       return;
     }
 
@@ -273,9 +319,12 @@ const Health: React.FC = () => {
         await fetchHealthLogs();
         setLogValue('');
         setLogDetails('');
+        notify.success(`${logType} logged successfully!`, 'Health Record Saved');
       }
     } catch (err: any) {
-      showTemporaryError(err.response?.data?.message || `Failed to save ${logType} log.`);
+      const errMsg = err.response?.data?.message || `Failed to save ${logType} log.`;
+      showTemporaryError(errMsg);
+      notify.error(errMsg, 'Save Failed');
     } finally {
       setSubmitting(false);
     }
@@ -287,9 +336,12 @@ const Health: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('health_log_deleted', { module: 'health', action: 'delete_log' });
         await fetchHealthLogs();
+        notify.info('Health log removed.', 'Record Deleted');
       }
     } catch (err: any) {
-      showTemporaryError(err.response?.data?.message || 'Failed to delete health log.');
+      const errMsg = err.response?.data?.message || 'Failed to delete health log.';
+      showTemporaryError(errMsg);
+      notify.error(errMsg, 'Delete Failed');
     }
   };
 
@@ -353,60 +405,105 @@ const Health: React.FC = () => {
           Track hydration, sleep, steps, and calories or plan science-backed periodized AI workouts inside a single, unified health space.
         </MuiTypography>
 
-        {/* Module Sub-navigation Tabs */}
-        <MuiStack direction="row" spacing={1} sx={{ mb: 3 }}>
+        {/* Module Sub-navigation Tabs as a unified segmented control */}
+        <MuiBox sx={{ mb: 3.5, display: 'flex', width: { xs: '100%', sm: 'auto' } }}>
           <MuiToggleButtonGroup
             value={mainTab}
             exclusive
-            onChange={(_, val) => val && setMainTab(val)}
-            size="small"
+            onChange={(_, val) => {
+              if (val) {
+                setMainTab(val);
+                if (val === 'metrics') {
+                  fetchHealthLogs();
+                }
+              }
+            }}
+            aria-label="Health navigation view selection"
             sx={{
+              display: 'inline-flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              width: { xs: '100%', sm: 'auto' },
               bgcolor: 'var(--bg-card, #ffffff)',
-              borderRadius: '12px',
-              p: 0.4,
-              boxShadow: 'var(--shadow-soft)'
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              borderRadius: '14px',
+              p: '5px',
+              gap: { xs: '4px', sm: '6px' },
+              boxShadow: 'var(--shadow-soft, 0 2px 8px rgba(0,0,0,0.04))',
+              '& .MuiToggleButtonGroup-grouped': {
+                border: 'none !important',
+                borderRadius: '10px !important'
+              }
             }}
           >
             <MuiToggleButton
               value="workouts"
+              aria-label="AI Weekly Workout Planner"
               sx={{
-                borderRadius: '10px !important',
+                flex: { xs: 1, sm: 'initial' },
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 42,
+                px: 2.5,
+                py: 1,
+                fontSize: '13.5px',
+                fontWeight: 650,
+                letterSpacing: '0.2px',
                 textTransform: 'none',
-                px: 2,
-                py: 0.8,
-                fontSize: '13px',
-                fontWeight: 700,
-                gap: 1,
+                gap: 1.2,
+                color: 'var(--text-secondary, #6b7280)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(99, 102, 241, 0.06)',
+                  color: 'var(--accent-primary, #6366f1)'
+                },
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(99, 102, 241, 0.15) !important',
-                  color: 'var(--accent-primary) !important'
+                  bgcolor: 'rgba(99, 102, 241, 0.12) !important',
+                  color: 'var(--accent-primary, #6366f1) !important',
+                  fontWeight: 700,
+                  boxShadow: '0 1px 3px rgba(99, 102, 241, 0.15)'
                 }
               }}
             >
-              <FitnessCenterIcon sx={{ fontSize: 18 }} />
+              <FitnessCenterIcon sx={{ fontSize: 19 }} />
               AI Weekly Workout Planner 🏋️
             </MuiToggleButton>
+
             <MuiToggleButton
               value="metrics"
+              aria-label="Overview & Daily Logs"
               sx={{
-                borderRadius: '10px !important',
+                flex: { xs: 1, sm: 'initial' },
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 42,
+                px: 2.5,
+                py: 1,
+                fontSize: '13.5px',
+                fontWeight: 650,
+                letterSpacing: '0.2px',
                 textTransform: 'none',
-                px: 2,
-                py: 0.8,
-                fontSize: '13px',
-                fontWeight: 700,
-                gap: 1,
+                gap: 1.2,
+                color: 'var(--text-secondary, #6b7280)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(99, 102, 241, 0.06)',
+                  color: 'var(--accent-primary, #6366f1)'
+                },
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(99, 102, 241, 0.15) !important',
-                  color: 'var(--accent-primary) !important'
+                  bgcolor: 'rgba(99, 102, 241, 0.12) !important',
+                  color: 'var(--accent-primary, #6366f1) !important',
+                  fontWeight: 700,
+                  boxShadow: '0 1px 3px rgba(99, 102, 241, 0.15)'
                 }
               }}
             >
-              <DirectionsWalkIcon sx={{ fontSize: 18 }} />
+              <DirectionsWalkIcon sx={{ fontSize: 19 }} />
               Overview & Daily Logs
             </MuiToggleButton>
           </MuiToggleButtonGroup>
-        </MuiStack>
+        </MuiBox>
 
         {error && (
           <MuiAlert severity="error" onClose={() => setError(null)} sx={{ mb: 3, borderRadius: '12px' }}>
@@ -415,7 +512,7 @@ const Health: React.FC = () => {
         )}
 
         {mainTab === 'workouts' ? (
-          <WorkoutPlannerDashboard />
+          <WorkoutPlannerDashboard onWorkoutChanged={fetchHealthLogs} />
         ) : (
           <>
             {/* 5 Health Metrics Dashboard Row */}
@@ -552,11 +649,11 @@ const Health: React.FC = () => {
         </MuiGrid>
 
         {/* Split Bottom Section - Left Side: Manual Form, Right Side: Activity Logs */}
-        <MuiGrid container spacing={3} sx={{ flex: 1, minHeight: 0, overflow: 'hidden', mb: 1 }}>
+        <MuiGrid container spacing={3} sx={{ mb: 4, alignItems: 'stretch' }}>
           {/* Left Column: Manual Form */}
-          <MuiGrid size={{ xs: 12, md: 5 }} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            <MuiCard sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <MuiCardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <MuiGrid size={{ xs: 12, md: 5 }} sx={{ display: 'flex', flexDirection: 'column' }}>
+            <MuiCard sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <MuiCardContent sx={{ p: 3, pb: '28px !important', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 {/* Tabs */}
                 <MuiStack direction="row" spacing={2} sx={{ mb: 2, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                   <MuiButton 
@@ -597,49 +694,60 @@ const Health: React.FC = () => {
                       Log custom amounts for Water, Sleep, Steps, Calories, or Workout. Daily limits apply.
                     </MuiTypography>
 
-                    <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-                      <MuiGrid container spacing={2}>
-                        <MuiGrid size={{ xs: 12, sm: 6 }}>
-                          <MuiFormControl fullWidth size="small">
-                            <MuiInputLabel>Category</MuiInputLabel>
-                            <MuiSelect
-                              value={logType}
-                              label="Category"
-                              onChange={(e) => setLogType(e.target.value as any)}
-                            >
-                              <MuiMenuItem value="Water">Water (ml)</MuiMenuItem>
-                              <MuiMenuItem value="Sleep">Sleep (hours)</MuiMenuItem>
-                              <MuiMenuItem value="Steps">Steps (count)</MuiMenuItem>
-                              <MuiMenuItem value="Calories">Calories (kcal)</MuiMenuItem>
-                              <MuiMenuItem value="Workout">Workout (mins)</MuiMenuItem>
-                            </MuiSelect>
-                          </MuiFormControl>
+                    <form
+                      onSubmit={handleManualSubmit}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        flex: 1,
+                        width: '100%',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <MuiBox sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <MuiGrid container spacing={2}>
+                          <MuiGrid size={{ xs: 12, sm: 6 }}>
+                            <MuiFormControl fullWidth size="small">
+                              <MuiInputLabel id="health-category-select-label">Category</MuiInputLabel>
+                              <MuiSelect
+                                labelId="health-category-select-label"
+                                value={logType}
+                                label="Category"
+                                onChange={(e) => setLogType(e.target.value as any)}
+                              >
+                                <MuiMenuItem value="Water">Water (ml)</MuiMenuItem>
+                                <MuiMenuItem value="Sleep">Sleep (hours)</MuiMenuItem>
+                                <MuiMenuItem value="Steps">Steps (count)</MuiMenuItem>
+                                <MuiMenuItem value="Calories">Calories (kcal)</MuiMenuItem>
+                                <MuiMenuItem value="Workout">Workout (mins)</MuiMenuItem>
+                              </MuiSelect>
+                            </MuiFormControl>
+                          </MuiGrid>
+                          <MuiGrid size={{ xs: 12, sm: 6 }}>
+                            <MuiTextField
+                              label={`Value (${getUnit(logType)})`}
+                              type="number"
+                              required
+                              fullWidth
+                              size="small"
+                              value={logValue}
+                              onChange={(e) => setLogValue(e.target.value)}
+                              slotProps={{ htmlInput: { min: 0.01, step: 'any' } }}
+                            />
+                          </MuiGrid>
                         </MuiGrid>
-                        <MuiGrid size={{ xs: 12, sm: 6 }}>
-                          <MuiTextField
-                            label={`Value (${getUnit(logType)})`}
-                            type="number"
-                            required
-                            fullWidth
-                            size="small"
-                            value={logValue}
-                            onChange={(e) => setLogValue(e.target.value)}
-                            slotProps={{ htmlInput: { min: 0.01, step: 'any' } }}
-                          />
-                        </MuiGrid>
-                      </MuiGrid>
 
-                      <MuiTextField
-                        label="Log details / description"
-                        placeholder={`e.g. ${logType === 'Sleep' ? 'Slept like a baby' : logType === 'Steps' ? 'Afternoon run' : logType === 'Calories' ? 'Lunch meal' : 'Water glass'}`}
-                        required
-                        fullWidth
-                        size="small"
-                        value={logDetails}
-                        onChange={(e) => setLogDetails(e.target.value)}
-                      />
-
-                      <MuiBox sx={{ flex: 1 }} />
+                        <MuiTextField
+                          label="Log details / description"
+                          placeholder={`e.g. ${logType === 'Sleep' ? 'Slept like a baby' : logType === 'Steps' ? 'Afternoon run' : logType === 'Calories' ? 'Lunch meal' : 'Water glass'}`}
+                          required
+                          fullWidth
+                          size="small"
+                          value={logDetails}
+                          onChange={(e) => setLogDetails(e.target.value)}
+                        />
+                      </MuiBox>
 
                       <MuiButton
                         type="submit"
@@ -647,14 +755,18 @@ const Health: React.FC = () => {
                         disabled={submitting}
                         fullWidth
                         sx={{
-                          bgcolor: 'var(--accent-primary)',
-                          color: 'white',
-                          py: 1.1,
+                          mt: 2.5,
+                          py: 1.25,
+                          bgcolor: 'var(--accent-primary, #e85a4f)',
+                          color: '#ffffff',
                           borderRadius: '10px',
-                          fontWeight: 600,
+                          fontWeight: 700,
+                          fontSize: '14px',
                           textTransform: 'none',
                           boxShadow: 'none',
-                          '&:hover': { bgcolor: 'var(--accent-secondary)' }
+                          transition: 'all 0.2s ease',
+                          '&:hover': { bgcolor: 'var(--accent-secondary, #d94b40)' },
+                          '&.Mui-disabled': { bgcolor: 'rgba(232, 90, 79, 0.4)', color: '#ffffff' }
                         }}
                       >
                         {submitting ? 'Saving Entry...' : `Save ${logType} Log`}
@@ -850,23 +962,23 @@ const Health: React.FC = () => {
           </MuiGrid>
 
           {/* Right Column: Activity Logs List */}
-          <MuiGrid size={{ xs: 12, md: 7 }} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
-            <MuiCard sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              <MuiCardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 3, overflow: 'hidden' }}>
+          <MuiGrid size={{ xs: 12, md: 7 }} sx={{ display: 'flex', flexDirection: 'column' }}>
+            <MuiCard sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px' }}>
+              <MuiCardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3, pb: '24px !important' }}>
                 <MuiTypography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'var(--text-primary)', flexShrink: 0 }}>
                   Today's Health Activity Logs
                 </MuiTypography>
 
                 {loading ? (
                   <LogoLoader />
-                ) : logs.length === 0 ? (
-                  <MuiBox sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D' }}>
+                ) : todaysLogs.length === 0 ? (
+                  <MuiBox sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', py: 4 }}>
                     <FitnessCenterIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
                     <MuiTypography variant="body1">No logs registered today. Use the log controls above to record health metrics!</MuiTypography>
                   </MuiBox>
                 ) : (
-                  <MuiStack spacing={1} sx={{ overflowY: 'auto', flex: 1, pr: 1 }}>
-                    {logs.map((l) => (
+                  <MuiStack spacing={1} sx={{ overflowY: 'auto', maxHeight: { xs: '320px', md: '360px' }, flex: 1, pr: 1 }}>
+                    {todaysLogs.map((l) => (
                       <MuiCard
                         key={l.id}
                         sx={{

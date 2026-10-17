@@ -23,7 +23,11 @@ import { trackAction } from '../../utils/analytics';
 import { formatLocalDate } from './utils/workoutDateUtils';
 import { useNotification } from '../../context/NotificationContext';
 
-export const WorkoutPlannerDashboard: React.FC = () => {
+interface WorkoutPlannerDashboardProps {
+  onWorkoutChanged?: () => void;
+}
+
+export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = ({ onWorkoutChanged }) => {
   const { notify } = useNotification();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [plan, setPlan] = useState<UserWorkoutPlan | null>(null);
@@ -93,6 +97,7 @@ export const WorkoutPlannerDashboard: React.FC = () => {
       days: plan.days.map((d) => (d.id === updatedDay.id ? updatedDay : d))
     });
     loadData(selectedDate);
+    onWorkoutChanged?.();
   };
 
   const handleDayDetailUpdated = (updatedDay: WorkoutDay) => {

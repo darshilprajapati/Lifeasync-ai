@@ -696,12 +696,15 @@ namespace LifeSyncAI.Core.Services
                         existingLog.ActualDurationMinutes = completedDurationMinutes;
                         existingLog.EstimatedCaloriesBurned = completedCalories;
 
+                        var hlTimestamp = targetDate.Date.Add(DateTime.UtcNow.TimeOfDay);
+
                         if (existingLog.HealthLogId.HasValue)
                         {
                             var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
                             if (hl != null)
                             {
                                 hl.LogValue = completedDurationMinutes;
+                                hl.LogDate = hlTimestamp;
                                 hl.Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)";
                             }
                             else
@@ -711,7 +714,7 @@ namespace LifeSyncAI.Core.Services
                                     UserId = userId,
                                     LogType = "Workout",
                                     LogValue = completedDurationMinutes,
-                                    LogDate = targetDate,
+                                    LogDate = hlTimestamp,
                                     Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
                                 };
                                 await _context.HealthLogs.AddAsync(newHl);
@@ -726,7 +729,7 @@ namespace LifeSyncAI.Core.Services
                                 UserId = userId,
                                 LogType = "Workout",
                                 LogValue = completedDurationMinutes,
-                                LogDate = targetDate,
+                                LogDate = hlTimestamp,
                                 Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
                             };
                             await _context.HealthLogs.AddAsync(newHl);
@@ -736,12 +739,13 @@ namespace LifeSyncAI.Core.Services
                     }
                     else
                     {
+                        var hlTimestamp = targetDate.Date.Add(DateTime.UtcNow.TimeOfDay);
                         var newHl = new HealthLog
                         {
                             UserId = userId,
                             LogType = "Workout",
                             LogValue = completedDurationMinutes,
-                            LogDate = targetDate,
+                            LogDate = hlTimestamp,
                             Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
                         };
                         await _context.HealthLogs.AddAsync(newHl);
