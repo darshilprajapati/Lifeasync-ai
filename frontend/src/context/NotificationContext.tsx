@@ -206,11 +206,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const addNotification = useCallback(
     (type: NotificationType, message: string, title?: string, duration?: number) => {
-      // Prevent duplicates within 2000ms
+      // Prevent duplicates within 4000ms
       const cacheKey = `${type}:${message}`;
       const now = Date.now();
       const lastSeen = recentMessagesRef.current.get(cacheKey) || 0;
-      if (now - lastSeen < 2000) {
+      if (now - lastSeen < 4000) {
         return;
       }
       recentMessagesRef.current.set(cacheKey, now);
@@ -224,6 +224,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       };
 
       setNotifications((prev) => {
+        // Strict deduplication: never stack an identical notification card currently active
+        if (prev.some((n) => n.type === type && n.message === message)) {
+          return prev;
+        }
         // Cap visible queue at 3
         const updated = [newItem, ...prev];
         return updated.slice(0, 3);

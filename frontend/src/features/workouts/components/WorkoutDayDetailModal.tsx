@@ -9,8 +9,7 @@ import {
   IconButton,
   Button,
   Chip,
-  LinearProgress,
-  Alert
+  LinearProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -46,21 +45,20 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   const { notify } = useNotification();
   const [activeDay, setActiveDay] = useState<WorkoutDay | null>(day);
   const [togglingId, setTogglingId] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Sync state when day changes
   React.useEffect(() => {
     setActiveDay(day);
-    setErrorMsg(null);
   }, [day]);
 
   if (!activeDay) return null;
 
-  const today = new Date();
   const isToday = isDateToday(calendarDate);
-
-  const isPast = calendarDate < new Date(today.setHours(0, 0, 0, 0));
-  const isFuture = calendarDate > new Date(today.setHours(23, 59, 59, 999));
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const isPast = calendarDate < todayStart;
+  const isFuture = calendarDate > todayEnd;
 
   const exercises = activeDay.exercises || [];
   const completedCount = exercises.filter((e) => e.isCompleted).length;
@@ -80,13 +78,11 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
 
     if (!isToday) {
       const msg = 'Workout exercises can only be completed for today’s scheduled date.';
-      setErrorMsg(msg);
       notify.warning(msg, 'Restricted Action');
       return;
     }
 
     setTogglingId(ex.id);
-    setErrorMsg(null);
 
     try {
       const sessionDateStr = formatLocalDate(calendarDate);
@@ -117,7 +113,6 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
     } catch (err: any) {
       console.error('Failed to toggle exercise completion:', err);
       const errMsg = err?.response?.data?.message || 'Failed to update exercise status.';
-      setErrorMsg(errMsg);
       notify.error(errMsg, 'Update Failed');
     } finally {
       setTogglingId(null);
@@ -254,11 +249,6 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
 
       {/* Content */}
       <DialogContent sx={{ p: 3 }}>
-        {errorMsg && (
-          <Alert severity="warning" onClose={() => setErrorMsg(null)} sx={{ mb: 2.5, borderRadius: '12px' }}>
-            {errorMsg}
-          </Alert>
-        )}
 
         {/* Rest Day view */}
         {activeDay.isRestDay ? (

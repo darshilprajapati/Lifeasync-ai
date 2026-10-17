@@ -1016,6 +1016,130 @@ namespace LifeSyncAI.Tests
             Assert.Contains("Unauthorized", result.Message, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Fact]
+        public async Task ToggleExerciseCompletion_WithClientReferenceDate_ValidatesAgainstClientLocalDay()
+        {
+            // Arrange
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+
+            // Client local day is Sunday, Oct 18, 2026
+            var clientToday = new DateTime(2026, 10, 18);
+            var pastDate = new DateTime(2026, 10, 17);
+            var futureDate = new DateTime(2026, 10, 19);
+
+            // Act 1: Complete today's session (Oct 18) using clientReferenceDate
+            var completeResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, clientToday, true, clientToday);
+            Assert.True(completeResult.IsSuccess);
+            Assert.True(completeResult.Data.Exercises.First(e => e.Id == exercise.Id).IsCompleted);
+
+            // Act 2: Attempting to complete yesterday (Oct 17) must be rejected
+            var pastResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, pastDate, true, clientToday);
+            Assert.False(pastResult.IsSuccess);
+            Assert.Contains("Past workouts are view-only", pastResult.Message);
+
+            // Act 3: Attempting to complete tomorrow (Oct 19) must be rejected
+            var futureResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, futureDate, true, clientToday);
+            Assert.False(futureResult.IsSuccess);
+            Assert.Contains("Future workouts cannot be completed early", futureResult.Message);
+
+            // Act 4: Undo completion on today's session succeeds
+            var undoResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, clientToday, false, clientToday);
+            Assert.True(undoResult.IsSuccess);
+            Assert.False(undoResult.Data.Exercises.First(e => e.Id == exercise.Id).IsCompleted);
+        }
+
+        [Fact]
+        public async Task WorkoutController_CompleteExercise_WithTimezoneHeader_EnforcesTodayDateMatching()
+        {
+            // Arrange
+            var controller = new WorkoutController(_workoutService);
+            SetControllerUser(controller, _testUser.Id);
+
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+
+            // Set timezone header to Asia/Kolkata
+            controller.HttpContext.Request.Headers["X-Client-Timezone"] = "Asia/Kolkata";
+            controller.HttpContext.Request.Headers["X-Client-Offset"] = "-330";
+
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+            var expectedToday = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+
+            // Act: Complete for expected user today
+            var actionResult = await controller.CompleteExercise(exercise.Id, expectedToday);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+            var response = Assert.IsType<ApiResponse<WorkoutDayDto>>(okResult.Value);
+            Assert.True(response.IsSuccess);
+        }
+
+        [Fact]
+        public async Task WorkoutActions_DoNotModifyPlannerEvents_EnsuresPlannerIndependence()
+        {
+            // Arrange
+            int initialPlannerEventCount = await _context.PlannerEvents.CountAsync();
+
+            // Act 1: Get or generate active plan
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            Assert.True(planResult.IsSuccess);
+
+            // Act 2: Generate AI plan
+            var genReq = new GenerateAiWorkoutPlanRequestDto
+            {
+                Goal = "Build Muscle",
+                FitnessLevel = "Beginner",
+                DaysPerWeek = 4,
+                PreferredDurationMinutes = 30,
+                WorkoutMode = "Without Equipment"
+            };
+            var aiResult = await _workoutService.GenerateAiPlanAsync(_testUser.Id, genReq);
+            Assert.True(aiResult.IsSuccess);
+
+            // Act 3: Complete and Undo an exercise
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Any());
+            var exercise = activeDay.Exercises.First();
+            var today = DateTime.UtcNow.Date;
+
+            var completeResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, today, true);
+            Assert.True(completeResult.IsSuccess);
+
+            var undoResult = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise.Id, today, false);
+            Assert.True(undoResult.IsSuccess);
+
+            // Assert: Absolutely no PlannerEvents were added or modified
+            int finalPlannerEventCount = await _context.PlannerEvents.CountAsync();
+            Assert.Equal(initialPlannerEventCount, finalPlannerEventCount);
+        }
+
+        [Fact]
+        public async Task SyncPlannerAsync_NeverSyncsRestDaysOrDaysWithRestTitle()
+        {
+            // Arrange: Ensure user has a plan with both active workout and rest days
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var monday = new DateTime(2026, 10, 19);
+
+            // Act: Perform explicit sync
+            var syncResult = await _workoutService.SyncPlannerAsync(_testUser.Id, monday);
+            Assert.True(syncResult.IsSuccess);
+
+            // Assert: Verify synced events in database
+            var syncedEvents = await _context.PlannerEvents
+                .Where(e => e.UserId == _testUser.Id && e.Description != null && e.Description.Contains("[WorkoutSync:DayId:"))
+                .ToListAsync();
+
+            // None of the synced events must have "Rest" in title or description
+            Assert.NotEmpty(syncedEvents);
+            Assert.All(syncedEvents, evt =>
+            {
+                Assert.DoesNotContain("Rest", evt.Title, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("Complete Rest Day", evt.Description, StringComparison.OrdinalIgnoreCase);
+            });
+        }
+
         private static void SetControllerUser(ControllerBase controller, int userId)
         {
             var claims = new List<Claim>

@@ -5,7 +5,12 @@ import {
   Stack,
   IconButton,
   Button,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -36,6 +41,8 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   onSyncPlanner,
   syncingPlanner
 }) => {
+  const [confirmSyncOpen, setConfirmSyncOpen] = React.useState(false);
+
   // Compute Monday of the selected week
   const getMonday = (d: Date): Date => {
     const date = new Date(d);
@@ -140,7 +147,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             <Button
               size="small"
               variant="outlined"
-              onClick={onSyncPlanner}
+              onClick={() => setConfirmSyncOpen(true)}
               disabled={syncingPlanner}
               startIcon={<CalendarMonthIcon sx={{ fontSize: '15px !important' }} />}
               sx={{
@@ -228,6 +235,54 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
           );
         })}
       </Box>
+
+      {/* Deliberate Confirmation Dialog for Personal Planner Export */}
+      <Dialog
+        open={confirmSyncOpen}
+        onClose={() => setConfirmSyncOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '16px',
+              p: 1
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+          Export Workouts to Personal Planner?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            This deliberate action exports active scheduled workouts for the selected calendar week into your Personal Planner calendar.
+            Workouts are otherwise maintained independently inside the Workout Planner.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmSyncOpen(false)}
+            sx={{ textTransform: 'none', color: 'var(--text-secondary)' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirmSyncOpen(false);
+              onSyncPlanner?.();
+            }}
+            variant="contained"
+            sx={{
+              textTransform: 'none',
+              bgcolor: 'var(--accent-primary)',
+              '&:hover': { bgcolor: 'var(--accent-primary-hover, #4f46e5)' }
+            }}
+          >
+            Confirm Export
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

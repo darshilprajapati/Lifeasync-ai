@@ -941,7 +941,7 @@ namespace LifeSyncAI.Core.Services
 
                 int syncedCount = 0;
 
-                foreach (var day in plan.Days.Where(d => !d.IsRestDay))
+                foreach (var day in plan.Days.Where(d => !d.IsRestDay && !d.FocusTitle.Contains("Rest", StringComparison.OrdinalIgnoreCase) && d.Exercises.Any()))
                 {
                     int offset = ((int)day.DayOfWeek == 0 ? 7 : (int)day.DayOfWeek) - 1;
                     var sessionDate = monday.AddDays(offset);

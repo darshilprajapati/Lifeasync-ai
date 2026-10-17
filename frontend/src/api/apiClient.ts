@@ -16,10 +16,20 @@ const apiClient = axios.create({
   },
 });
 
-// Attach client date/timezone header to all outgoing requests
+// Attach client date and timezone headers to all outgoing requests
 apiClient.interceptors.request.use(
   (config) => {
-    config.headers['X-Client-Date'] = new Date().toISOString();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    config.headers['X-Client-Date'] = `${y}-${m}-${d}`;
+    try {
+      config.headers['X-Client-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+      config.headers['X-Client-Timezone'] = 'UTC';
+    }
+    config.headers['X-Client-Offset'] = now.getTimezoneOffset().toString();
     return config;
   },
   (error) => {

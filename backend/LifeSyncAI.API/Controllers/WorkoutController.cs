@@ -60,7 +60,8 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
-            var result = await _workoutService.GetWorkoutDayAsync(userId, dayId, sessionDate);
+            var date = sessionDate?.Date ?? GetUserCurrentDate();
+            var result = await _workoutService.GetWorkoutDayAsync(userId, dayId, date);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -80,10 +81,9 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
-            var clientDateStr = Request.Headers["X-Client-Date"].ToString();
-            var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
-            var date = sessionDate ?? clientDate.Date;
-            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true, clientDate);
+            var userToday = GetUserCurrentDate();
+            var date = sessionDate?.Date ?? userToday;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true, userToday);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -93,12 +93,51 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
-            var clientDateStr = Request.Headers["X-Client-Date"].ToString();
-            var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
-            var date = sessionDate ?? clientDate.Date;
-            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, false, clientDate);
+            var userToday = GetUserCurrentDate();
+            var date = sessionDate?.Date ?? userToday;
+            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, false, userToday);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
+        }
+
+        private DateTime GetUserCurrentDate()
+        {
+            // 1. Prioritize validated IANA timezone from request header (e.g., "Asia/Kolkata", "America/New_York", "UTC")
+            var timezoneHeader = Request.Headers["X-Client-Timezone"].ToString();
+            if (!string.IsNullOrWhiteSpace(timezoneHeader))
+            {
+                try
+                {
+                    var tz = TimeZoneInfo.FindSystemTimeZoneById(timezoneHeader.Trim());
+                    return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+                }
+                catch
+                {
+                    // Fallback to offset or date check if timezone id is unrecognized
+                }
+            }
+
+            // 2. Check for X-Client-Offset in minutes from UTC (JavaScript Date.getTimezoneOffset())
+            var offsetHeader = Request.Headers["X-Client-Offset"].ToString();
+            if (!string.IsNullOrWhiteSpace(offsetHeader) && int.TryParse(offsetHeader, out var offsetMinutes))
+            {
+                // In JS, getTimezoneOffset() is (UTC - Local) in minutes (e.g. -330 for UTC+5:30)
+                return DateTime.UtcNow.AddMinutes(-offsetMinutes).Date;
+            }
+
+            // 3. Fallback to client local calendar date if within +/- 26 hours of UTC (valid timezone limits)
+            var clientDateStr = Request.Headers["X-Client-Date"].ToString();
+            if (!string.IsNullOrWhiteSpace(clientDateStr) && DateTime.TryParse(clientDateStr, out var parsedClientDate))
+            {
+                var utcDate = DateTime.UtcNow.Date;
+                if (Math.Abs((parsedClientDate.Date - utcDate).TotalHours) <= 26)
+                {
+                    return parsedClientDate.Date;
+                }
+            }
+
+            // 4. Default to server UTC date
+            return DateTime.UtcNow.Date;
         }
 
         [HttpPost("sessions")]
@@ -126,7 +165,7 @@ namespace LifeSyncAI.API.Controllers
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutWeekSummaryDto>.Fail("User is not authenticated."));
-            var date = weekStartDate ?? DateTime.UtcNow.Date;
+            var date = weekStartDate?.Date ?? GetUserCurrentDate();
             int diff = (7 + (int)date.DayOfWeek - (int)DayOfWeek.Monday) % 7;
             var monday = date.AddDays(-diff);
 
