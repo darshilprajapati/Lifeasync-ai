@@ -1,28 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, TextField, Button, Alert, InputAdornment, Step, Stepper, StepLabel } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import EmailIcon from '@mui/icons-material/Email';
-import LockIcon from '@mui/icons-material/Lock';
-import PinIcon from '@mui/icons-material/Pin';
+import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
+import LampAuthLayout from '../components/LampScene/LampAuthLayout';
 
 const steps = ['Enter Email', 'Verify OTP', 'New Password'];
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
-  
+
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  
+
   // Resend cooldown timer state
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -36,6 +34,10 @@ const ForgotPassword: React.FC = () => {
 
   const handleRequestOtp = async (e?: React.FormEvent, isResend: boolean = false) => {
     if (e) e.preventDefault();
+    if (!email) {
+      setError('Please provide your email address.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     if (!isResend) {
@@ -46,7 +48,7 @@ const ForgotPassword: React.FC = () => {
       const response = await apiClient.post('/api/auth/forgot-password', { email });
       if (response.data.isSuccess) {
         setSuccessMsg(response.data.message || 'OTP sent successfully.');
-        setResendCooldown(30); // start 30s cooldown
+        setResendCooldown(30); // 30s cooldown
         if (!isResend) {
           setActiveStep(1);
         }
@@ -62,6 +64,10 @@ const ForgotPassword: React.FC = () => {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!otp || otp.length < 6) {
+      setError('Please enter the full 6-digit OTP code.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setSuccessMsg(null);
@@ -83,11 +89,15 @@ const ForgotPassword: React.FC = () => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPassword.length < 6) {
+      setError('New password must be at least 6 characters.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    
+
     setSubmitting(true);
     setError(null);
     setSuccessMsg(null);
@@ -99,7 +109,7 @@ const ForgotPassword: React.FC = () => {
         setSuccessMsg('Your password has been successfully reset. Redirecting to login page...');
         setTimeout(() => {
           navigate('/login');
-        }, 3000);
+        }, 2500);
       } else {
         setError(response.data.message || 'Failed to reset password.');
       }
@@ -111,302 +121,255 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: '#EAE7DC', // Aligns with the default project background theme
-        p: 3,
-      }}
-    >
-      <Card
-        component={motion.div}
-        initial={{ scale: 0.97, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        sx={{
-          width: '100%',
-          maxWidth: '460px',
-          borderRadius: '18px',
-          boxShadow: 'var(--shadow-soft)', // Aligns with project cards shadow
-          bgcolor: '#FFFFFF', // Light theme card background
-          p: 3,
-        }}
-      >
-        <CardContent>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              mb: 1,
-              color: 'var(--text-primary)',
-              textAlign: 'center',
-              fontFamily: '"Josefin Sans", sans-serif',
-              letterSpacing: '0.04em'
-            }}
-          >
-            Reset Password
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 4, textAlign: 'center', fontFamily: '"Josefin Sans", sans-serif' }}>
+    <LampAuthLayout activeRoute="forgot-password">
+      {() => (
+        <>
+          <h1 className="lamp-card-title">Reset Password</h1>
+          <p className="lamp-card-subtitle">
             Sync your credentials securely.
-          </Typography>
+          </p>
 
-          <Stepper
-            activeStep={activeStep}
-            alternativeLabel
-            sx={{
-              mb: 4,
-              '& .MuiStepLabel-label': { color: 'var(--text-secondary)', fontFamily: '"Josefin Sans", sans-serif' },
-              '& .MuiStepLabel-label.Mui-active': { color: 'var(--text-primary)', fontWeight: 600 },
-              '& .MuiStepLabel-label.Mui-completed': { color: 'var(--accent-primary)' }
-            }}
-          >
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          {/* Stepper Header */}
+          <div className="lamp-stepper" aria-label="Password reset progress">
+            {steps.map((label, index) => {
+              const isActive = activeStep === index;
+              const isCompleted = activeStep > index;
+              return (
+                <div
+                  key={label}
+                  className={`lamp-step-node ${isActive ? 'is-active' : ''} ${isCompleted ? 'is-completed' : ''}`}
+                >
+                  <div className="lamp-step-badge">
+                    {isCompleted ? '✓' : index + 1}
+                  </div>
+                  <span className="lamp-step-name">{label}</span>
+                </div>
+              );
+            })}
+          </div>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>
-              {error}
-            </Alert>
+            <div className="lamp-alert lamp-alert-error" role="alert">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+              </svg>
+              <span>{error}</span>
+            </div>
           )}
 
           {successMsg && (
-            <Alert severity="success" sx={{ mb: 3, borderRadius: '12px' }}>
-              {successMsg}
-            </Alert>
+            <div className="lamp-alert lamp-alert-success" role="alert">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+              <span>{successMsg}</span>
+            </div>
           )}
 
+          {/* STEP 0: REQUEST OTP */}
           {activeStep === 0 && (
-            <form onSubmit={handleRequestOtp}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <TextField
-                  label="Email Address"
-                  variant="outlined"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon sx={{ color: 'var(--text-secondary)' }} />
-                        </InputAdornment>
-                      ),
-                    }
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                      '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                      '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                  }}
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  disabled={submitting}
-                  sx={{
-                    borderRadius: '12px',
-                    py: 1.5,
-                    bgcolor: 'var(--accent-primary)',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    boxShadow: '0 4px 14px 0 rgba(232, 90, 79, 0.25)',
-                    '&:hover': {
-                      bgcolor: 'var(--accent-secondary)',
-                    }
-                  }}
-                >
-                  {submitting ? 'Sending Request...' : 'Send Verification OTP'}
-                </Button>
-              </Box>
+            <form className="lamp-form" onSubmit={handleRequestOtp}>
+              <div className="lamp-field-group">
+                <label htmlFor="forgot-email" className="lamp-field-label">
+                  Email Address
+                </label>
+                <div className="lamp-input-container">
+                  <span className="lamp-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                  </span>
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    className="lamp-input-field"
+                    placeholder="name@example.com"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="lamp-primary-button"
+                disabled={submitting}
+              >
+                {submitting ? 'Sending Request…' : 'Send Verification OTP'}
+              </button>
             </form>
           )}
 
+          {/* STEP 1: VERIFY OTP */}
           {activeStep === 1 && (
-            <form onSubmit={handleVerifyOtp}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <TextField
-                  label="Enter 6-Digit OTP"
-                  variant="outlined"
-                  type="text"
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PinIcon sx={{ color: 'var(--text-secondary)' }} />
-                        </InputAdornment>
-                      ),
-                    }
-                  }}
-                  sx={{
-                    input: { letterSpacing: otp ? '8px' : 'normal', textAlign: otp ? 'center' : 'left', fontWeight: otp ? 700 : 'normal' },
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                      '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                      '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                  }}
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  disabled={submitting}
-                  sx={{
-                    borderRadius: '12px',
-                    py: 1.5,
-                    bgcolor: 'var(--accent-primary)',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    boxShadow: '0 4px 14px 0 rgba(232, 90, 79, 0.25)',
-                    '&:hover': {
-                      bgcolor: 'var(--accent-secondary)',
-                    }
+            <form className="lamp-form" onSubmit={handleVerifyOtp}>
+              <div className="lamp-field-group">
+                <label htmlFor="forgot-otp" className="lamp-field-label">
+                  Enter 6-Digit OTP
+                </label>
+                <div className="lamp-input-container">
+                  <span className="lamp-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="4" y1="9" x2="20" y2="9" />
+                      <line x1="4" y1="15" x2="20" y2="15" />
+                      <line x1="10" y1="3" x2="8" y2="21" />
+                      <line x1="16" y1="3" x2="14" y2="21" />
+                    </svg>
+                  </span>
+                  <input
+                    id="forgot-otp"
+                    type="text"
+                    className="lamp-input-field"
+                    placeholder="123456"
+                    maxLength={6}
+                    required
+                    style={{ letterSpacing: '0.25em', fontWeight: 600 }}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="lamp-primary-button"
+                disabled={submitting || otp.length !== 6}
+              >
+                {submitting ? 'Verifying OTP…' : 'Verify Code'}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleRequestOtp(undefined, true)}
+                  disabled={resendCooldown > 0 || submitting}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: resendCooldown > 0 ? '#8E8D8A' : '#E85A4F',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
                   }}
                 >
-                  {submitting ? 'Verifying...' : 'Verify OTP Code'}
-                </Button>
-                
-                {/* Resend OTP Button Container */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                  <Button
-                    variant="text"
-                    onClick={() => setActiveStep(0)}
-                    sx={{ color: 'var(--text-secondary)', textTransform: 'none', fontWeight: 600 }}
-                  >
-                    Change Email
-                  </Button>
-                  <Button
-                    variant="text"
-                    disabled={resendCooldown > 0 || submitting}
-                    onClick={() => handleRequestOtp(undefined, true)}
-                    sx={{ color: 'var(--accent-primary)', textTransform: 'none', fontWeight: 600 }}
-                  >
-                    {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
-                  </Button>
-                </Box>
-              </Box>
+                  {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP Code'}
+                </button>
+              </div>
             </form>
           )}
 
+          {/* STEP 2: ENTER NEW PASSWORD */}
           {activeStep === 2 && (
-            <form onSubmit={handleResetPassword}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <TextField
-                  label="New Password"
-                  variant="outlined"
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon sx={{ color: 'var(--text-secondary)' }} />
-                        </InputAdornment>
-                      ),
-                    }
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                      '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                      '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                  }}
-                />
-                <TextField
-                  label="Confirm New Password"
-                  variant="outlined"
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon sx={{ color: 'var(--text-secondary)' }} />
-                        </InputAdornment>
-                      ),
-                    }
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      '& fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                      '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                      '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                  }}
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  disabled={submitting}
-                  sx={{
-                    borderRadius: '12px',
-                    py: 1.5,
-                    bgcolor: 'var(--accent-primary)',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    boxShadow: '0 4px 14px 0 rgba(232, 90, 79, 0.25)',
-                    '&:hover': {
-                      bgcolor: 'var(--accent-secondary)',
-                    }
-                  }}
-                >
-                  {submitting ? 'Resetting Password...' : 'Save New Password & Sync'}
-                </Button>
-              </Box>
+            <form className="lamp-form" onSubmit={handleResetPassword}>
+              <div className="lamp-field-group">
+                <label htmlFor="new-password" className="lamp-field-label">
+                  New Password
+                </label>
+                <div className="lamp-input-container">
+                  <span className="lamp-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </span>
+                  <input
+                    id="new-password"
+                    type={showNewPassword ? 'text' : 'password'}
+                    className="lamp-input-field"
+                    placeholder="Minimum 6 characters"
+                    required
+                    style={{ paddingRight: '46px' }}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="lamp-eye-button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="lamp-field-group">
+                <label htmlFor="confirm-new-password" className="lamp-field-label">
+                  Confirm New Password
+                </label>
+                <div className="lamp-input-container">
+                  <span className="lamp-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </span>
+                  <input
+                    id="confirm-new-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="lamp-input-field"
+                    placeholder="Confirm new password"
+                    required
+                    style={{ paddingRight: '46px' }}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="lamp-eye-button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="lamp-primary-button"
+                disabled={submitting}
+              >
+                {submitting ? 'Resetting Password…' : 'Reset Password'}
+              </button>
             </form>
           )}
 
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-            <Typography
-              variant="body2"
-              onClick={() => navigate('/login')}
-              sx={{
-                color: 'var(--accent-primary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                '&:hover': { textDecoration: 'underline' },
-              }}
-            >
+          {/* Back to Sign In Link */}
+          <div className="lamp-switch-text">
+            Remembered your credentials?{' '}
+            <Link to="/login" className="lamp-switch-link">
               Back to Sign In
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+            </Link>
+          </div>
+        </>
+      )}
+    </LampAuthLayout>
   );
 };
 
 export default ForgotPassword;
-

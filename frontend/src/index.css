@@ -48,6 +48,11 @@
   cursor: none !important;
 }
 
+input, textarea {
+  /* Preserve the normal text insertion cursor inside input fields and text areas */
+  cursor: text !important;
+}
+
 html, body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -123,6 +128,7 @@ input, button, select, textarea {
   z-index: 99999;
   transform: translate(-50%, -50%);
   transition: width 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 .custom-cursor-ring {
@@ -131,7 +137,8 @@ input, button, select, textarea {
   left: 0;
   width: 32px;
   height: 32px;
-  border: 1px solid rgba(232, 90, 79, 0.4);
+  border: 1px solid rgba(232, 90, 79, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   pointer-events: none;
   z-index: 99998;

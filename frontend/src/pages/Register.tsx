@@ -1,377 +1,305 @@
 import React, { useState } from 'react';
-import { Alert, Box, Typography, TextField, Button, Card, CardContent, InputAdornment, IconButton } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import PageWrapper from '../components/PageWrapper';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import EmailIcon from '@mui/icons-material/Email';
-import LockIcon from '@mui/icons-material/Lock';
-import PersonIcon from '@mui/icons-material/Person';
-import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { trackAction } from '../utils/analytics';
-
-import { LifeSyncConstellation } from '../components/LifeSyncConstellation';
+import LampAuthLayout from '../components/LampScene/LampAuthLayout';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState('');
+
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [touched, setTouched] = useState({
+    fullName: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+  });
+
+  const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const passwordsMatch = password === confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!fullName.trim()) {
+      setErrorMessage('Please enter your full name.');
+      return;
+    }
+    if (!email.trim() || !emailIsValid) {
+      setErrorMessage('Please provide a valid email address.');
+      return;
+    }
+    if (!password) {
+      setErrorMessage('Please create a secure password.');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
     setSubmitting(true);
+    trackAction('register_attempt', { email });
+
     try {
-      await register(name, email, password);
-      trackAction('sign_up', { method: 'email_password' });
-      // Registration immediately establishes authenticated session; navigate to dashboard
-      navigate('/', { replace: true });
+      await register(fullName.trim(), email.trim(), password);
+      trackAction('register_success');
+      setSuccessMessage('Account created successfully! Redirecting...');
+      setTimeout(() => {
+        navigate('/');
+      }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Registration failed.');
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Registration failed. Please check your details and try again.';
+      setErrorMessage(serverMsg);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <PageWrapper>
-      <Box
-        sx={{
-          display: 'flex',
-          height: '100vh',
-          width: '100vw',
-          bgcolor: 'var(--bg-primary)',
-        }}
-      >
-        {/* Left Side: Brand presentation (Split Layout) */}
-        <Box
-          sx={{
-            flex: 1,
-            display: { xs: 'none', md: 'flex' },
-            flexDirection: 'column',
-            justifyContent: 'center',
-            p: 8,
-            background: 'linear-gradient(135deg, #E85A4F 0%, #E98074 100%)',
-            color: 'white',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Shifting background ambient light blobs */}
-          <Box
-            component={motion.div}
-            animate={{
-              x: [0, 40, -30, 0],
-              y: [0, -50, 30, 0],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: 'easeInOut'
-            }}
-            sx={{
-              position: 'absolute',
-              top: '15%',
-              left: '15%',
-              width: '320px',
-              height: '320px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)',
-              filter: 'blur(35px)',
-              pointerEvents: 'none',
-              zIndex: 1,
-            }}
-          />
-          <Box
-            component={motion.div}
-            animate={{
-              x: [0, -30, 45, 0],
-              y: [0, 40, -40, 0],
-            }}
-            transition={{
-              duration: 12,
-              repeat: Infinity,
-              ease: 'easeInOut'
-            }}
-            sx={{
-              position: 'absolute',
-              bottom: '15%',
-              right: '15%',
-              width: '280px',
-              height: '280px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 70%)',
-              filter: 'blur(25px)',
-              pointerEvents: 'none',
-              zIndex: 1,
-            }}
-          />
+    <LampAuthLayout activeRoute="register">
+      {() => (
+        <>
+          <h1 className="lamp-card-title">Create Account</h1>
+          <p className="lamp-card-subtitle">
+            Start your unified wellness & productivity journey.
+          </p>
 
-          {/* Logo & Project Name in top-left corner */}
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            sx={{
-              position: 'absolute',
-              top: '32px',
-              left: '32px',
-              zIndex: 3,
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ display: 'inline-block' }}
-            >
-              <Box
-                sx={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundImage: 'url(/logo.jpg)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  border: '1.5px solid rgba(255, 255, 255, 0.25)',
-                  boxShadow: '0 0 12px rgba(0, 230, 118, 0.25)',
-                }}
-              />
-            </motion.div>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                color: '#FFFFFF',
-                fontSize: '1.2rem',
-                filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                fontFamily: '"Outfit", "Inter", sans-serif',
-                textTransform: 'uppercase',
-              }}
-            >
-              LifeSync AI
-            </Typography>
-          </Box>
+          {errorMessage && (
+            <div className="lamp-alert lamp-alert-error" role="alert">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+              </svg>
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-          {/* Central synchronization constellation graphic */}
-          <Box sx={{ zIndex: 2, width: '100%' }}>
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: { opacity: 0, scale: 0.9 },
-                visible: { opacity: 1, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } }
-              }}
-              style={{ width: '100%' }}
-            >
-              <LifeSyncConstellation />
-            </motion.div>
-          </Box>
-        </Box>
+          {successMessage && (
+            <div className="lamp-alert lamp-alert-success" role="alert">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+              <span>{successMessage}</span>
+            </div>
+          )}
 
-        {/* Right Side: Form Container */}
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 4,
-          }}
-        >
-
-          <Card
-            component={motion.div}
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            sx={{
-              width: '100%',
-              maxWidth: '450px',
-              borderRadius: '18px',
-              boxShadow: 'var(--shadow-soft)',
-              bgcolor: 'var(--card-bg)',
-              p: 3,
-              position: 'relative',
-              zIndex: 2,
-            }}
-          >
-            <CardContent>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: 'var(--text-primary)' }}>
-                Join LifeSync
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 4 }}>
-                Create your account to get started immediately.
-              </Typography>
-
-              {error && (
-                <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>
-                  {error}
-                </Alert>
+          <form className="lamp-form" onSubmit={handleSubmit} noValidate>
+            {/* Full Name */}
+            <div className="lamp-field-group">
+              <label htmlFor="register-name" className="lamp-field-label">
+                Full Name
+              </label>
+              <div className="lamp-input-container">
+                <span className="lamp-input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <input
+                  id="register-name"
+                  type="text"
+                  className={`lamp-input-field ${touched.fullName && !fullName.trim() ? 'has-error' : ''}`}
+                  placeholder="John Doe"
+                  autoComplete="name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, fullName: true }))}
+                />
+              </div>
+              {touched.fullName && !fullName.trim() && (
+                <span className="lamp-error-text">Full name is required</span>
               )}
+            </div>
 
-              {success && (
-                <Alert severity="success" sx={{ mb: 3, borderRadius: '12px' }}>
-                  {success}
-                </Alert>
+            {/* Email Address */}
+            <div className="lamp-field-group">
+              <label htmlFor="register-email" className="lamp-field-label">
+                Email Address
+              </label>
+              <div className="lamp-input-container">
+                <span className="lamp-input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </span>
+                <input
+                  id="register-email"
+                  type="email"
+                  className={`lamp-input-field ${touched.email && (!email.trim() || !emailIsValid) ? 'has-error' : ''}`}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, email: true }))}
+                />
+              </div>
+              {touched.email && !email.trim() && (
+                <span className="lamp-error-text">Email is required</span>
               )}
+              {touched.email && email.trim() && !emailIsValid && (
+                <span className="lamp-error-text">Enter a valid email address</span>
+              )}
+            </div>
 
-              <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {/* Name Input */}
-                  <TextField
-                    label="Full Name"
-                    variant="outlined"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PersonIcon sx={{ color: 'var(--neutral-secondary)' }} />
-                          </InputAdornment>
-                        ),
-                      }
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
-                        '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                        '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                    }}
-                  />
+            {/* Password */}
+            <div className="lamp-field-group">
+              <label htmlFor="register-password" className="lamp-field-label">
+                Password
+              </label>
+              <div className="lamp-input-container">
+                <span className="lamp-input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <input
+                  id="register-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className={`lamp-input-field ${touched.password && (!password || password.length < 6) ? 'has-error' : ''}`}
+                  placeholder="Minimum 6 characters"
+                  autoComplete="new-password"
+                  required
+                  style={{ paddingRight: '46px' }}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, password: true }))}
+                />
+                <button
+                  type="button"
+                  className="lamp-eye-button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {touched.password && !password && (
+                <span className="lamp-error-text">Password is required</span>
+              )}
+              {touched.password && password && password.length < 6 && (
+                <span className="lamp-error-text">Password must be at least 6 characters</span>
+              )}
+            </div>
 
-                  {/* Email Input */}
-                  <TextField
-                    label="Email Address"
-                    variant="outlined"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <EmailIcon sx={{ color: 'var(--neutral-secondary)' }} />
-                          </InputAdornment>
-                        ),
-                      }
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
-                        '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                        '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                    }}
-                  />
+            {/* Confirm Password */}
+            <div className="lamp-field-group">
+              <label htmlFor="register-confirm-password" className="lamp-field-label">
+                Confirm Password
+              </label>
+              <div className="lamp-input-container">
+                <span className="lamp-input-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <input
+                  id="register-confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className={`lamp-input-field ${touched.confirmPassword && (!confirmPassword || !passwordsMatch) ? 'has-error' : ''}`}
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  required
+                  style={{ paddingRight: '46px' }}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, confirmPassword: true }))}
+                />
+                <button
+                  type="button"
+                  className="lamp-eye-button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  tabIndex={0}
+                >
+                  {showConfirmPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {touched.confirmPassword && !confirmPassword && (
+                <span className="lamp-error-text">Please confirm your password</span>
+              )}
+              {touched.confirmPassword && confirmPassword && !passwordsMatch && (
+                <span className="lamp-error-text">Passwords do not match</span>
+              )}
+            </div>
 
-                  {/* Password Input */}
-                  <TextField
-                    label="Password"
-                    variant="outlined"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <LockIcon sx={{ color: 'var(--neutral-secondary)' }} />
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                              <motion.div
-                                key={showPassword ? 'visible' : 'hidden'}
-                                initial={{ opacity: 0, rotate: -45, scale: 0.8 }}
-                                animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                                transition={{ duration: 0.22, ease: 'easeOut' }}
-                                style={{ display: 'flex' }}
-                              >
-                                {showPassword ? (
-                                  <VisibilityOff sx={{ color: 'var(--accent-primary)' }} />
-                                ) : (
-                                  <Visibility sx={{ color: 'var(--neutral-secondary)' }} />
-                                )}
-                              </motion.div>
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
-                        '&:hover fieldset': { borderColor: 'var(--accent-primary)' },
-                        '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': { color: 'var(--accent-primary)' },
-                    }}
-                  />
+            {/* Primary Coral-Red Create Account Button */}
+            <button
+              id="register-submit-btn"
+              type="submit"
+              className="lamp-primary-button"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" style={{ animation: 'spinRing 1s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                  </svg>
+                  <span>Creating Account…</span>
+                </>
+              ) : (
+                'Create Account'
+              )}
+            </button>
+          </form>
 
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    fullWidth
-                    disabled={submitting}
-                    sx={{
-                      bgcolor: 'var(--accent-primary)',
-                      color: 'white',
-                      py: 1.5,
-                      borderRadius: '12px',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      boxShadow: '0 4px 14px rgba(232, 90, 79, 0.3)',
-                      '&:hover': {
-                        bgcolor: 'var(--accent-secondary)',
-                      },
-                    }}
-                  >
-                    {submitting ? 'Creating Account...' : 'Create Account'}
-                  </Button>
-                </Box>
-              </form>
-
-              <Box sx={{ mt: 4, textAlign: 'center' }}>
-                <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-                  Already have an account?{' '}
-                  <Link to="/login" style={{ color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
-                    Sign In
-                  </Link>
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
-    </PageWrapper>
+          {/* Switch to Login */}
+          <div className="lamp-switch-text">
+            Already have an account?{' '}
+            <Link to="/login" className="lamp-switch-link">
+              Sign In
+            </Link>
+          </div>
+        </>
+      )}
+    </LampAuthLayout>
   );
 };
 
 export default Register;
-
