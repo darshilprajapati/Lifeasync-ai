@@ -336,6 +336,7 @@ const Health: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('health_log_deleted', { module: 'health', action: 'delete_log' });
         await fetchHealthLogs();
+        window.dispatchEvent(new CustomEvent('lifesync:workout-updated'));
         notify.info('Health log removed.', 'Record Deleted');
       }
     } catch (err: any) {

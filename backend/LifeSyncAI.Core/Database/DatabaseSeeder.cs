@@ -152,10 +152,15 @@ namespace LifeSyncAI.Core.Database
                             ""IsDeleted"" boolean NOT NULL DEFAULT FALSE
                         );
 
-                        CREATE INDEX IF NOT EXISTS ""IX_WorkoutSessionLogs_User_Day_Date"" 
-                        ON ""WorkoutSessionLogs"" (""UserId"", ""WorkoutDayId"", ""SessionDate"");
-
                         ALTER TABLE ""WorkoutExerciseCompletions"" ADD COLUMN IF NOT EXISTS ""ActualDurationMinutes"" integer NOT NULL DEFAULT 0;
+                        ALTER TABLE ""WorkoutExerciseCompletions"" ADD COLUMN IF NOT EXISTS ""HealthLogId"" integer;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""UserId"" integer REFERENCES ""Users""(""Id"") ON DELETE CASCADE;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""SecondaryMuscles"" text;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""Description"" text;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""VideoUrl"" text;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""PostureTips"" text;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""CommonMistakes"" text;
+                        ALTER TABLE ""Exercises"" ADD COLUMN IF NOT EXISTS ""SafetyTips"" text;
                     ");
                 }
                 catch (Exception ex)
@@ -188,6 +193,25 @@ namespace LifeSyncAI.Core.Database
                             IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PlannerEvents') AND name = 'UpdatedAt')
                                 ALTER TABLE [PlannerEvents] ADD [UpdatedAt] datetime2 NULL;
 
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('WorkoutExerciseCompletions') AND name = 'ActualDurationMinutes')
+                                ALTER TABLE [WorkoutExerciseCompletions] ADD [ActualDurationMinutes] int NOT NULL DEFAULT 0;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('WorkoutExerciseCompletions') AND name = 'HealthLogId')
+                                ALTER TABLE [WorkoutExerciseCompletions] ADD [HealthLogId] int NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'UserId')
+                                ALTER TABLE [Exercises] ADD [UserId] int NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'SecondaryMuscles')
+                                ALTER TABLE [Exercises] ADD [SecondaryMuscles] nvarchar(max) NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'Description')
+                                ALTER TABLE [Exercises] ADD [Description] nvarchar(max) NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'VideoUrl')
+                                ALTER TABLE [Exercises] ADD [VideoUrl] nvarchar(max) NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'PostureTips')
+                                ALTER TABLE [Exercises] ADD [PostureTips] nvarchar(max) NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'CommonMistakes')
+                                ALTER TABLE [Exercises] ADD [CommonMistakes] nvarchar(max) NULL;
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Exercises') AND name = 'SafetyTips')
+                                ALTER TABLE [Exercises] ADD [SafetyTips] nvarchar(max) NULL;
+
                             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Exercises')
                             CREATE TABLE [Exercises] (
                                 [Id] int IDENTITY(1,1) PRIMARY KEY,
@@ -204,6 +228,13 @@ namespace LifeSyncAI.Core.Database
                                 [ThumbnailUrl] nvarchar(max) NULL,
                                 [AnimationUrl] nvarchar(max) NULL,
                                 [Instructions] nvarchar(max) NULL,
+                                [UserId] int NULL,
+                                [SecondaryMuscles] nvarchar(max) NULL,
+                                [Description] nvarchar(max) NULL,
+                                [VideoUrl] nvarchar(max) NULL,
+                                [PostureTips] nvarchar(max) NULL,
+                                [CommonMistakes] nvarchar(max) NULL,
+                                [SafetyTips] nvarchar(max) NULL,
                                 [CreatedAt] datetime2 NOT NULL DEFAULT GETUTCDATE(),
                                 [CreatedBy] nvarchar(max) NOT NULL DEFAULT 'System',
                                 [UpdatedAt] datetime2 NULL,
@@ -340,6 +371,13 @@ namespace LifeSyncAI.Core.Database
                                         ""ThumbnailUrl"" TEXT,
                                         ""AnimationUrl"" TEXT,
                                         ""Instructions"" TEXT,
+                                        ""UserId"" INTEGER,
+                                        ""SecondaryMuscles"" TEXT,
+                                        ""Description"" TEXT,
+                                        ""VideoUrl"" TEXT,
+                                        ""PostureTips"" TEXT,
+                                        ""CommonMistakes"" TEXT,
+                                        ""SafetyTips"" TEXT,
                                         ""CreatedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                         ""CreatedBy"" TEXT NOT NULL DEFAULT 'System',
                                         ""UpdatedAt"" TEXT,
@@ -415,7 +453,35 @@ namespace LifeSyncAI.Core.Database
 
                                     CREATE INDEX IF NOT EXISTS ""IX_WorkoutSessionLogs_User_Day_Date"" 
                                     ON ""WorkoutSessionLogs"" (""UserId"", ""WorkoutDayId"", ""SessionDate"");
+
+                                    CREATE TABLE IF NOT EXISTS ""WorkoutExerciseCompletions"" (
+                                        ""Id"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        ""UserId"" INTEGER NOT NULL,
+                                        ""WorkoutPlanId"" INTEGER NOT NULL,
+                                        ""WorkoutDayId"" INTEGER NOT NULL,
+                                        ""WorkoutDayExerciseId"" INTEGER NOT NULL,
+                                        ""ExerciseId"" INTEGER NOT NULL,
+                                        ""SessionDate"" TEXT NOT NULL,
+                                        ""CompletedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        ""ActualDurationMinutes"" INTEGER NOT NULL DEFAULT 0,
+                                        ""HealthLogId"" INTEGER,
+                                        ""CreatedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        ""CreatedBy"" TEXT NOT NULL DEFAULT 'System',
+                                        ""UpdatedAt"" TEXT,
+                                        ""UpdatedBy"" TEXT,
+                                        ""IsDeleted"" INTEGER NOT NULL DEFAULT 0
+                                    );
                                 ");
+
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""WorkoutExerciseCompletions"" ADD COLUMN ""ActualDurationMinutes"" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""WorkoutExerciseCompletions"" ADD COLUMN ""HealthLogId"" INTEGER;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""UserId"" INTEGER;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""SecondaryMuscles"" TEXT;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""Description"" TEXT;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""VideoUrl"" TEXT;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""PostureTips"" TEXT;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""CommonMistakes"" TEXT;"); } catch { }
+                                try { await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Exercises"" ADD COLUMN ""SafetyTips"" TEXT;"); } catch { }
                             }
                             catch (Exception ex)
                             {

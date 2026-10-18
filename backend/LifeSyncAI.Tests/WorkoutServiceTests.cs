@@ -1337,15 +1337,16 @@ namespace LifeSyncAI.Tests
             Assert.True(res2.IsSuccess, res2.Message);
 
             var healthLogs2 = await healthService.GetLogsAsync(_testUser.Id, monday);
-            var workoutLog2 = Assert.Single(healthLogs2.Data, l => l.LogType == "Workout");
-            Assert.True(workoutLog2.LogValue > duration1);
+            var totalDuration2 = healthLogs2.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.True(totalDuration2 > duration1);
 
             // Act 4: Undo exercise 2 -> duration reverses back to duration1
             var undoRes2 = await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise2.Id, monday, false, clientReferenceDate: monday);
             Assert.True(undoRes2.IsSuccess, undoRes2.Message);
 
             var healthLogsAfterUndo = await healthService.GetLogsAsync(_testUser.Id, monday);
-            var workoutLogAfterUndo = Assert.Single(healthLogsAfterUndo.Data, l => l.LogType == "Workout");
+            var totalAfterUndo = healthLogsAfterUndo.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(duration1, totalAfterUndo);
         }
 
         [Fact]
@@ -1379,8 +1380,8 @@ namespace LifeSyncAI.Tests
             Assert.Equal(8, ex1Dto.ActualDurationMinutes);
 
             var healthLogs1 = await healthService.GetLogsAsync(_testUser.Id, monday);
-            var workoutLog1 = Assert.Single(healthLogs1.Data, l => l.LogType == "Workout");
-            Assert.Equal(8, workoutLog1.LogValue);
+            var total1 = healthLogs1.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(8, total1);
 
             // Step 3: Complete exercise 2 with 12 minutes -> total becomes 20
             var res2 = await _workoutService.ToggleExerciseCompletionAsync(
@@ -1388,8 +1389,8 @@ namespace LifeSyncAI.Tests
             Assert.True(res2.IsSuccess);
 
             var healthLogs2 = await healthService.GetLogsAsync(_testUser.Id, monday);
-            var workoutLog2 = Assert.Single(healthLogs2.Data, l => l.LogType == "Workout");
-            Assert.Equal(20, workoutLog2.LogValue);
+            var total2 = healthLogs2.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(20, total2);
 
             // Step 4: Correct exercise 1 duration from 8 to 10 minutes -> total becomes 22
             var resEdit = await _workoutService.ToggleExerciseCompletionAsync(
@@ -1399,12 +1400,111 @@ namespace LifeSyncAI.Tests
             Assert.Equal(10, ex1Edited.ActualDurationMinutes);
 
             var healthLogs3 = await healthService.GetLogsAsync(_testUser.Id, monday);
-            var workoutLog3 = Assert.Single(healthLogs3.Data, l => l.LogType == "Workout");
-            Assert.Equal(22, workoutLog3.LogValue);
+            var total3 = healthLogs3.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(22, total3);
 
             // Step 5: Verify no personal planner tasks were created
             var plannerEventsCount = await _context.PlannerEvents.CountAsync(p => p.UserId == _testUser.Id);
             Assert.Equal(0, plannerEventsCount);
+        }
+
+        [Fact]
+        public async Task HealthActivityLog_Deletion_SynchronizesWithWorkoutSessionProgress()
+        {
+            // Arrange
+            var healthService = new HealthService(_context);
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Count >= 2);
+            var exercise1 = activeDay.Exercises[0];
+            var exercise2 = activeDay.Exercises[1];
+            var monday = new DateTime(2026, 10, 19);
+
+            // Complete both exercises (8m and 12m)
+            await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 8);
+            await _workoutService.ToggleExerciseCompletionAsync(_testUser.Id, exercise2.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 12);
+
+            var dayBeforeDelete = (await _workoutService.GetWorkoutDayAsync(_testUser.Id, activeDay.Id, monday)).Data;
+            Assert.Equal(2, dayBeforeDelete.Exercises.Count(e => e.IsCompleted));
+
+            // Find exercise 1's completion and linked HealthLog
+            var comp1 = await _context.WorkoutExerciseCompletions.FirstAsync(c => c.UserId == _testUser.Id && c.WorkoutDayExerciseId == exercise1.Id && c.SessionDate == monday);
+            Assert.NotNull(comp1.HealthLogId);
+
+            // Act: Delete exercise 1's HealthLog from Health Activity
+            var deleteResult = await healthService.DeleteLogAsync(comp1.HealthLogId.Value);
+            Assert.True(deleteResult.IsSuccess);
+
+            // Assert: Exercise 1 is now incomplete, Exercise 2 is still complete
+            var dayAfterDelete = (await _workoutService.GetWorkoutDayAsync(_testUser.Id, activeDay.Id, monday)).Data;
+            var ex1After = dayAfterDelete.Exercises.First(e => e.Id == exercise1.Id);
+            var ex2After = dayAfterDelete.Exercises.First(e => e.Id == exercise2.Id);
+
+            Assert.False(ex1After.IsCompleted);
+            Assert.True(ex2After.IsCompleted);
+            Assert.Equal(1, dayAfterDelete.Exercises.Count(e => e.IsCompleted));
+
+            // Total Health Activity workout duration now reflects only exercise 2 (12 mins)
+            var healthLogsAfter = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var totalRemaining = healthLogsAfter.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(12, totalRemaining);
+
+            // Delete remaining exercise 2's HealthLog -> returns to 0%
+            var comp2 = await _context.WorkoutExerciseCompletions.FirstAsync(c => c.UserId == _testUser.Id && c.WorkoutDayExerciseId == exercise2.Id && c.SessionDate == monday);
+            Assert.NotNull(comp2.HealthLogId);
+            await healthService.DeleteLogAsync(comp2.HealthLogId.Value);
+
+            var dayAfterAllDeleted = (await _workoutService.GetWorkoutDayAsync(_testUser.Id, activeDay.Id, monday)).Data;
+            Assert.Equal(0, dayAfterAllDeleted.Exercises.Count(e => e.IsCompleted));
+            Assert.False(dayAfterAllDeleted.IsCompletedForDate);
+
+            var healthLogsFinal = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var totalFinal = healthLogsFinal.Data.Where(l => l.LogType == "Workout").Sum(l => l.LogValue);
+            Assert.Equal(0, totalFinal);
+        }
+
+        [Fact]
+        public async Task CustomExercises_ArePrivateToOwner_AndAddableToRoutines()
+        {
+            // Arrange
+            var userB = new User
+            {
+                FullName = "User B",
+                Email = "userb@lifesync.ai",
+                PasswordHash = "hash123"
+            };
+            _context.Users.Add(userB);
+            await _context.SaveChangesAsync();
+
+            var customDto = new CreateCustomExerciseDto
+            {
+                Name = "Nordic Hamstring Curl",
+                Category = "Legs",
+                TargetMuscles = "Hamstrings, Glutes",
+                SecondaryMuscles = "Calves, Lower Back",
+                RequiresEquipment = false,
+                EquipmentType = "Bodyweight",
+                DifficultyLevel = "Advanced",
+                DefaultSets = 4,
+                DefaultReps = 6,
+                DefaultRestSeconds = 90,
+                Description = "High eccentric tension hamstring developer.",
+                Instructions = "Anchor feet firmly, slowly lower body with controlled eccentric tempo.",
+                VideoUrl = "https://www.youtube.com/watch?v=sample"
+            };
+
+            // Act 1: User A creates custom exercise
+            var createRes = await _workoutService.CreateCustomExerciseAsync(_testUser.Id, customDto);
+            Assert.True(createRes.IsSuccess);
+            Assert.True(createRes.Data.IsCustom);
+            Assert.Equal(_testUser.Id, createRes.Data.UserId);
+
+            // Act 2: User A lists exercises -> finds it
+            var userAList = await _workoutService.GetExercisesAsync(userId: _testUser.Id);
+            Assert.Contains(userAList.Data, e => e.Name == "Nordic Hamstring Curl" && e.IsCustom);
+
+            // Act 3: User B lists exercises -> DOES NOT see User A's custom exercise (private)
+            var userBList = await _workoutService.GetExercisesAsync(userId: userB.Id);
+            Assert.DoesNotContain(userBList.Data, e => e.Name == "Nordic Hamstring Curl");
         }
 
         private static void SetControllerUser(ControllerBase controller, int userId)

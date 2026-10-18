@@ -30,7 +30,18 @@ namespace LifeSyncAI.API.Controllers
             [FromQuery] string? search,
             [FromQuery] List<string>? equipmentList)
         {
-            var result = await _workoutService.GetExercisesAsync(requiresEquipment, category, search, equipmentList);
+            var userId = GetUserId();
+            var result = await _workoutService.GetExercisesAsync(requiresEquipment, category, search, equipmentList, userId > 0 ? userId : null);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("exercises/custom")]
+        public async Task<ActionResult<ApiResponse<ExerciseDto>>> CreateCustomExercise([FromBody] CreateCustomExerciseDto dto)
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return Unauthorized(ApiResponse<ExerciseDto>.Fail("User is not authenticated."));
+            var result = await _workoutService.CreateCustomExerciseAsync(userId, dto);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

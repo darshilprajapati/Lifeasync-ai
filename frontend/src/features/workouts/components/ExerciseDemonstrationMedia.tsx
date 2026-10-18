@@ -5,21 +5,43 @@ import {
   IconButton,
   Chip,
   Stack,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Divider,
+  Alert
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import SpeedIcon from '@mui/icons-material/Speed';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import CloseIcon from '@mui/icons-material/Close';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
-interface ExerciseDemonstrationMediaProps {
+export interface ExerciseDemonstrationMediaProps {
   exerciseName: string;
   category: string;
   targetMuscles?: string;
+  secondaryMuscles?: string;
   instructions?: string;
+  description?: string;
+  postureTips?: string;
+  commonMistakes?: string;
+  safetyTips?: string;
+  difficultyLevel?: string;
+  equipmentType?: string;
+  requiresEquipment?: boolean;
+  defaultSets?: number;
+  defaultReps?: number;
+  defaultRestSeconds?: number;
   animationUrl?: string;
   thumbnailUrl?: string;
+  videoUrl?: string;
+  isCustom?: boolean;
   size?: 'compact' | 'medium' | 'large';
   autoPlay?: boolean;
 }
@@ -28,14 +50,49 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
   exerciseName,
   category,
   targetMuscles,
+  secondaryMuscles,
   instructions,
+  description,
+  postureTips,
+  commonMistakes,
+  safetyTips,
+  difficultyLevel,
+  equipmentType,
+  requiresEquipment,
+  defaultSets,
+  defaultReps,
+  defaultRestSeconds,
   animationUrl,
   thumbnailUrl,
+  videoUrl,
+  isCustom,
   size = 'medium',
   autoPlay = true
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(autoPlay);
   const [mediaError, setMediaError] = useState<boolean>(false);
+  const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
+  const [videoPlayerError, setVideoPlayerError] = useState<boolean>(false);
+
+  const getYouTubeEmbedUrl = (url?: string): string | null => {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname.includes('youtube.com')) {
+        const v = parsed.searchParams.get('v');
+        if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
+        const pathParts = parsed.pathname.split('/');
+        if (pathParts[1] === 'embed' && pathParts[2]) return url;
+      }
+      if (parsed.hostname === 'youtu.be') {
+        const v = parsed.pathname.replace(/^\//, '');
+        if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
 
   // Height mappings based on size
   const heightMap = {
@@ -489,24 +546,341 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
           </Typography>
         </Stack>
 
-        {instructions && (
-          <Tooltip title={instructions} arrow placement="top">
-            <IconButton
-              size="small"
-              sx={{
-                bgcolor: 'rgba(15, 23, 42, 0.85)',
-                backdropFilter: 'blur(8px)',
-                color: 'rgba(255, 255, 255, 0.8)',
-                width: 26,
-                height: 26,
-                border: '1px solid rgba(255, 255, 255, 0.12)'
-              }}
-            >
-              <InfoOutlinedIcon sx={{ fontSize: 15 }} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Tooltip title="View exercise details and demonstration" arrow placement="top">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setVideoPlayerError(false);
+              setDetailsOpen(true);
+            }}
+            sx={{
+              bgcolor: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(8px)',
+              color: 'rgba(255, 255, 255, 0.9)',
+              width: 26,
+              height: 26,
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              '&:hover': {
+                bgcolor: themeColor,
+                color: '#ffffff'
+              }
+            }}
+          >
+            <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
+
+      {/* Exercise Details & Demonstration Modal */}
+      <Dialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '20px',
+              bgcolor: 'var(--bg-card, #ffffff)',
+              backgroundImage: 'none',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              p: 0.5
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ p: 2.5, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.8, flexWrap: 'wrap', gap: 0.5 }}>
+              <Chip
+                label={category}
+                size="small"
+                sx={{
+                  bgcolor: `${themeColor}18`,
+                  color: themeColor,
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  height: 22
+                }}
+              />
+              {difficultyLevel && (
+                <Chip
+                  label={difficultyLevel}
+                  size="small"
+                  sx={{ height: 22, fontSize: '11px', fontWeight: 600 }}
+                />
+              )}
+              <Chip
+                label={requiresEquipment !== false && equipmentType ? equipmentType : 'Bodyweight'}
+                size="small"
+                sx={{ height: 22, fontSize: '11px', fontWeight: 600 }}
+              />
+              {isCustom && (
+                <Chip
+                  label="Custom Exercise"
+                  size="small"
+                  sx={{
+                    height: 22,
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    bgcolor: 'rgba(236, 72, 153, 0.12)',
+                    color: '#ec4899',
+                    border: '1px solid rgba(236, 72, 153, 0.3)'
+                  }}
+                />
+              )}
+            </Stack>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+              {exerciseName}
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setDetailsOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 2.5, pt: 1 }}>
+          {/* Demonstration Media Area */}
+          <Box sx={{ mb: 2.5 }}>
+            {videoUrl && !videoPlayerError ? (
+              <Box sx={{ borderRadius: '14px', overflow: 'hidden', bgcolor: '#000000', mb: 1 }}>
+                {getYouTubeEmbedUrl(videoUrl) ? (
+                  <Box sx={{ position: 'relative', pt: '56.25%' }}>
+                    <iframe
+                      src={getYouTubeEmbedUrl(videoUrl)!}
+                      title={exerciseName}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 0
+                      }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </Box>
+                ) : (
+                  <video
+                    controls
+                    src={videoUrl}
+                    onError={() => setVideoPlayerError(true)}
+                    style={{ width: '100%', maxHeight: 280, display: 'block' }}
+                  />
+                )}
+              </Box>
+            ) : animationUrl && !mediaError ? (
+              <Box
+                sx={{
+                  textAlign: 'center',
+                  p: 2,
+                  bgcolor: '#0f172a',
+                  borderRadius: '14px',
+                  mb: 1
+                }}
+              >
+                <img
+                  src={animationUrl}
+                  alt={exerciseName}
+                  onError={() => setMediaError(true)}
+                  style={{ maxHeight: 220, maxWidth: '100%', borderRadius: 8, objectFit: 'contain' }}
+                />
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: '14px',
+                  bgcolor: 'rgba(0, 0, 0, 0.03)',
+                  border: '1px dashed rgba(0, 0, 0, 0.15)',
+                  textAlign: 'center',
+                  mb: 1
+                }}
+              >
+                <FitnessCenterIcon sx={{ fontSize: 36, color: 'var(--text-secondary)', mb: 1, opacity: 0.6 }} />
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)', mb: 0.5 }}>
+                  No verified demonstration video attached
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 1.5 }}>
+                  Review the written posture guide below or explore demonstration videos online.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + ' proper form')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '12px'
+                  }}
+                >
+                  Find Demonstration
+                </Button>
+              </Box>
+            )}
+
+            {/* If video URL was provided, also offer Find Demonstration link for more angles */}
+            {videoUrl && !videoPlayerError && (
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + ' proper form')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ fontSize: '11px', textTransform: 'none', color: 'var(--text-secondary)' }}
+                >
+                  Find More Demonstrations
+                </Button>
+              </Box>
+            )}
+          </Box>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {/* Description & Step-by-Step Instructions */}
+          <Stack spacing={2}>
+            {description && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                  Description
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  {description}
+                </Typography>
+              </Box>
+            )}
+
+            {instructions && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                  Step-by-Step Instructions
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-line',
+                    bgcolor: 'rgba(0, 0, 0, 0.02)',
+                    p: 1.5,
+                    borderRadius: '10px',
+                    border: '1px solid rgba(0, 0, 0, 0.05)'
+                  }}
+                >
+                  {instructions}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Target Muscles */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.8 }}>
+                Target Anatomy
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.8 }}>
+                {targetMuscles && (
+                  <Chip
+                    label={`Primary: ${targetMuscles}`}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      bgcolor: 'rgba(99, 102, 241, 0.1)',
+                      color: 'var(--accent-primary, #6366f1)'
+                    }}
+                  />
+                )}
+                {secondaryMuscles && (
+                  <Chip
+                    label={`Secondary: ${secondaryMuscles}`}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      bgcolor: 'rgba(16, 185, 129, 0.1)',
+                      color: '#10b981'
+                    }}
+                  />
+                )}
+              </Stack>
+            </Box>
+
+            {/* Recommended Sets / Reps Guidance */}
+            {(defaultSets || defaultReps || defaultRestSeconds) && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.8 }}>
+                  Recommended Guidance
+                </Typography>
+                <Stack direction="row" spacing={2} sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)', p: 1.2, borderRadius: '10px' }}>
+                  {defaultSets !== undefined && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>Sets</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{defaultSets}</Typography>
+                    </Box>
+                  )}
+                  {defaultReps !== undefined && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>Reps / Duration</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{defaultReps}</Typography>
+                    </Box>
+                  )}
+                  {defaultRestSeconds !== undefined && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>Rest</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{defaultRestSeconds}s</Typography>
+                    </Box>
+                  )}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Posture & Form Technique */}
+            {postureTips && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                  Posture & Form Technique
+                </Typography>
+                <Alert severity="info" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                  {postureTips}
+                </Alert>
+              </Box>
+            )}
+
+            {/* Common Mistakes & Safety Tips */}
+            {(commonMistakes || safetyTips) && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                  Safety & Form Cues
+                </Typography>
+                <Stack spacing={1}>
+                  {commonMistakes && (
+                    <Alert severity="warning" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                      <strong>Avoid:</strong> {commonMistakes}
+                    </Alert>
+                  )}
+                  {safetyTips && (
+                    <Alert severity="success" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                      <strong>Tip:</strong> {safetyTips}
+                    </Alert>
+                  )}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
+          <Button onClick={() => setDetailsOpen(false)} sx={{ fontWeight: 700, borderRadius: '10px' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

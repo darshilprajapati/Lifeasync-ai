@@ -1,6 +1,7 @@
 import apiClient from '../../../api/apiClient';
 import type {
   Exercise,
+  CreateCustomExerciseInput,
   UserWorkoutPlan,
   WorkoutDay,
   WorkoutSessionLog,
@@ -35,6 +36,11 @@ export const workoutService = {
 
     const res = await apiClient.get(`/api/workout/exercises?${query.toString()}`);
     return res.data?.data || [];
+  },
+
+  createCustomExercise: async (data: CreateCustomExerciseInput): Promise<Exercise> => {
+    const res = await apiClient.post('/api/workout/exercises/custom', data);
+    return res.data?.data;
   },
 
   getActivePlan: async (targetDate?: string): Promise<UserWorkoutPlan> => {

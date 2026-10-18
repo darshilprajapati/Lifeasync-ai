@@ -9,7 +9,8 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
 {
     public interface IWorkoutService
     {
-        Task<ApiResponse<List<ExerciseDto>>> GetExercisesAsync(bool? requiresEquipment = null, string? category = null, string? search = null, List<string>? equipmentList = null);
+        Task<ApiResponse<List<ExerciseDto>>> GetExercisesAsync(bool? requiresEquipment = null, string? category = null, string? search = null, List<string>? equipmentList = null, int? userId = null);
+        Task<ApiResponse<ExerciseDto>> CreateCustomExerciseAsync(int userId, CreateCustomExerciseDto dto);
         Task<ApiResponse<UserWorkoutPlanDto>> GetActivePlanAsync(int userId, DateTime? targetDate = null);
         Task<ApiResponse<UserWorkoutPlanDto>> CreateOrUpdatePlanAsync(int userId, CreateWorkoutPlanDto dto);
         Task<ApiResponse<WorkoutDayDto>> UpdateDayAsync(int userId, int dayId, UpdateWorkoutDayDto dto);

@@ -3,6 +3,7 @@ export interface Exercise {
   name: string;
   category: string;
   targetMuscles: string;
+  secondaryMuscles?: string;
   requiresEquipment: boolean;
   equipmentType: string;
   difficultyLevel: string;
@@ -12,7 +13,35 @@ export interface Exercise {
   estimatedMetValue: number;
   thumbnailUrl?: string;
   animationUrl?: string;
+  videoUrl?: string;
+  description?: string;
   instructions?: string;
+  postureTips?: string;
+  commonMistakes?: string;
+  safetyTips?: string;
+  isCustom?: boolean;
+  userId?: number;
+}
+
+export interface CreateCustomExerciseInput {
+  name: string;
+  category: string;
+  targetMuscles: string;
+  secondaryMuscles?: string;
+  requiresEquipment: boolean;
+  equipmentType?: string;
+  difficultyLevel?: string;
+  defaultSets?: number;
+  defaultReps?: number;
+  defaultRestSeconds?: number;
+  estimatedMetValue?: number;
+  description?: string;
+  instructions?: string;
+  postureTips?: string;
+  commonMistakes?: string;
+  safetyTips?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface WorkoutDayExercise {
@@ -22,14 +51,24 @@ export interface WorkoutDayExercise {
   exerciseName: string;
   category: string;
   targetMuscles: string;
+  secondaryMuscles?: string;
   requiresEquipment: boolean;
   equipmentType: string;
+  difficultyLevel?: string;
   sets: number;
   reps: number;
   restSeconds: number;
   orderIndex: number;
   estimatedMetValue: number;
+  description?: string;
   instructions?: string;
+  postureTips?: string;
+  commonMistakes?: string;
+  safetyTips?: string;
+  videoUrl?: string;
+  animationUrl?: string;
+  thumbnailUrl?: string;
+  isCustom?: boolean;
   isCompleted?: boolean;
   completedAt?: string;
   actualDurationMinutes?: number;

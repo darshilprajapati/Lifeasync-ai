@@ -17,5 +17,15 @@ namespace LifeSyncAI.Core.Models
         public string? ThumbnailUrl { get; set; }
         public string? AnimationUrl { get; set; }
         public string? Instructions { get; set; }
+
+        // Custom exercise and rich kinetic properties
+        public int? UserId { get; set; }                               // Null for built-in, set to userId for user-created custom exercises
+        public string? SecondaryMuscles { get; set; }
+        public string? Description { get; set; }
+        public string? VideoUrl { get; set; }
+        public string? PostureTips { get; set; }
+        public string? CommonMistakes { get; set; }
+        public string? SafetyTips { get; set; }
+        public bool IsCustom => UserId.HasValue;
     }
 }

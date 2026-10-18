@@ -66,6 +66,28 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
     loadData(selectedDate);
   }, [selectedDate]);
 
+  useEffect(() => {
+    const handleWorkoutEvent = async () => {
+      loadData(selectedDate);
+      if (detailModalDay) {
+        try {
+          const dateStr = formatLocalDate(selectedDate);
+          const refreshedDay = await workoutService.getDay(detailModalDay.day.id, dateStr);
+          if (refreshedDay) {
+            setDetailModalDay((prev) => (prev ? { ...prev, day: refreshedDay } : null));
+          }
+        } catch (e) {
+          console.error('Failed to refresh open day modal on workout update:', e);
+        }
+      }
+    };
+
+    window.addEventListener('lifesync:workout-updated', handleWorkoutEvent);
+    return () => {
+      window.removeEventListener('lifesync:workout-updated', handleWorkoutEvent);
+    };
+  }, [selectedDate, detailModalDay]);
+
   const handleDateChange = (newDate: Date) => {
     setSelectedDate(newDate);
   };

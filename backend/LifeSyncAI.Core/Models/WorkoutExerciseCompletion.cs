@@ -12,5 +12,6 @@ namespace LifeSyncAI.Core.Models
         public DateTime SessionDate { get; set; }                     // Calendar date: e.g. 2026-10-17
         public DateTime CompletedAt { get; set; } = DateTime.UtcNow;
         public int ActualDurationMinutes { get; set; }
+        public int? HealthLogId { get; set; }                         // Linked HealthLog (LogType = "Workout") for Health Activity synchronization
     }
 }

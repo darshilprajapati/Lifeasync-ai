@@ -25,11 +25,15 @@ namespace LifeSyncAI.Core.Services
             bool? requiresEquipment = null, 
             string? category = null, 
             string? search = null, 
-            List<string>? equipmentList = null)
+            List<string>? equipmentList = null,
+            int? userId = null)
         {
             try
             {
                 var query = _context.Exercises.AsQueryable();
+
+                // Privacy rule: Only return system exercises (UserId == null) or custom exercises owned by this user
+                query = query.Where(e => !e.IsDeleted && (e.UserId == null || (userId.HasValue && e.UserId == userId.Value)));
 
                 // Equipment filter
                 if (requiresEquipment.HasValue)
@@ -74,7 +78,15 @@ namespace LifeSyncAI.Core.Services
                     EstimatedMetValue = e.EstimatedMetValue,
                     ThumbnailUrl = e.ThumbnailUrl,
                     AnimationUrl = e.AnimationUrl,
-                    Instructions = e.Instructions
+                    Instructions = e.Instructions,
+                    IsCustom = e.UserId.HasValue,
+                    UserId = e.UserId,
+                    SecondaryMuscles = e.SecondaryMuscles,
+                    Description = e.Description,
+                    VideoUrl = e.VideoUrl,
+                    PostureTips = e.PostureTips,
+                    CommonMistakes = e.CommonMistakes,
+                    SafetyTips = e.SafetyTips
                 }).ToList();
 
                 return ApiResponse<List<ExerciseDto>>.Success(dtos, "Exercise catalog retrieved successfully.");
@@ -82,6 +94,82 @@ namespace LifeSyncAI.Core.Services
             catch (Exception ex)
             {
                 return ApiResponse<List<ExerciseDto>>.Fail($"Failed to load exercises: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<ExerciseDto>> CreateCustomExerciseAsync(int userId, CreateCustomExerciseDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.Name))
+                {
+                    return ApiResponse<ExerciseDto>.Fail("Exercise name is required.");
+                }
+
+                if (string.IsNullOrWhiteSpace(dto.TargetMuscles))
+                {
+                    return ApiResponse<ExerciseDto>.Fail("Primary muscle group is required.");
+                }
+
+                var exercise = new Exercise
+                {
+                    Name = dto.Name.Trim(),
+                    Category = string.IsNullOrWhiteSpace(dto.Category) ? "Full Body" : dto.Category.Trim(),
+                    TargetMuscles = dto.TargetMuscles.Trim(),
+                    SecondaryMuscles = dto.SecondaryMuscles?.Trim(),
+                    RequiresEquipment = dto.RequiresEquipment,
+                    EquipmentType = string.IsNullOrWhiteSpace(dto.EquipmentType) ? "None" : dto.EquipmentType.Trim(),
+                    DifficultyLevel = string.IsNullOrWhiteSpace(dto.DifficultyLevel) ? "Beginner" : dto.DifficultyLevel.Trim(),
+                    DefaultSets = dto.DefaultSets > 0 ? dto.DefaultSets : 3,
+                    DefaultReps = dto.DefaultReps > 0 ? dto.DefaultReps : 12,
+                    DefaultRestSeconds = dto.DefaultRestSeconds >= 0 ? dto.DefaultRestSeconds : 60,
+                    EstimatedMetValue = dto.EstimatedMetValue > 0 ? dto.EstimatedMetValue : 5.0f,
+                    Description = dto.Description?.Trim(),
+                    Instructions = !string.IsNullOrWhiteSpace(dto.Instructions) ? dto.Instructions.Trim() : "Perform with steady tempo and controlled form.",
+                    VideoUrl = dto.VideoUrl?.Trim(),
+                    ThumbnailUrl = dto.ThumbnailUrl?.Trim(),
+                    AnimationUrl = dto.AnimationUrl?.Trim(),
+                    PostureTips = dto.PostureTips?.Trim(),
+                    CommonMistakes = dto.CommonMistakes?.Trim(),
+                    SafetyTips = dto.SafetyTips?.Trim(),
+                    UserId = userId,
+                    CreatedBy = $"User_{userId}"
+                };
+
+                await _context.Exercises.AddAsync(exercise);
+                await _context.SaveChangesAsync();
+
+                var outDto = new ExerciseDto
+                {
+                    Id = exercise.Id,
+                    Name = exercise.Name,
+                    Category = exercise.Category,
+                    TargetMuscles = exercise.TargetMuscles,
+                    SecondaryMuscles = exercise.SecondaryMuscles,
+                    RequiresEquipment = exercise.RequiresEquipment,
+                    EquipmentType = exercise.EquipmentType,
+                    DifficultyLevel = exercise.DifficultyLevel,
+                    DefaultSets = exercise.DefaultSets,
+                    DefaultReps = exercise.DefaultReps,
+                    DefaultRestSeconds = exercise.DefaultRestSeconds,
+                    EstimatedMetValue = exercise.EstimatedMetValue,
+                    Description = exercise.Description,
+                    Instructions = exercise.Instructions,
+                    VideoUrl = exercise.VideoUrl,
+                    ThumbnailUrl = exercise.ThumbnailUrl,
+                    AnimationUrl = exercise.AnimationUrl,
+                    PostureTips = exercise.PostureTips,
+                    CommonMistakes = exercise.CommonMistakes,
+                    SafetyTips = exercise.SafetyTips,
+                    IsCustom = true,
+                    UserId = userId
+                };
+
+                return ApiResponse<ExerciseDto>.Success(outDto, "Custom exercise created successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<ExerciseDto>.Fail($"Failed to create custom exercise: {ex.Message}");
             }
         }
 
@@ -645,9 +733,10 @@ namespace LifeSyncAI.Core.Services
 
                 if (isCompleted)
                 {
+                    WorkoutExerciseCompletion completion;
                     if (!existingCompletions.Any())
                     {
-                        var completion = new WorkoutExerciseCompletion
+                        completion = new WorkoutExerciseCompletion
                         {
                             UserId = userId,
                             WorkoutPlanId = workoutDay.WorkoutPlanId,
@@ -663,12 +752,55 @@ namespace LifeSyncAI.Core.Services
                     }
                     else
                     {
-                        var existing = existingCompletions.First();
+                        completion = existingCompletions.First();
                         if (actualDurationMinutes.HasValue && actualDurationMinutes.Value > 0)
                         {
-                            existing.ActualDurationMinutes = actualDurationMinutes.Value;
+                            completion.ActualDurationMinutes = actualDurationMinutes.Value;
                         }
-                        existing.CompletedAt = DateTime.UtcNow;
+                        completion.CompletedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // Synchronize linked HealthLog for this individual completed exercise
+                    var hlTimestamp = targetDate.Date.Add(DateTime.UtcNow.TimeOfDay);
+                    if (completion.HealthLogId.HasValue)
+                    {
+                        var exHl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == completion.HealthLogId.Value && h.UserId == userId);
+                        if (exHl != null)
+                        {
+                            exHl.LogValue = durationToSet;
+                            exHl.LogDate = hlTimestamp;
+                            exHl.Details = $"Completed {dayExercise.Exercise?.Name ?? "Exercise"} ({durationToSet} mins)";
+                        }
+                        else
+                        {
+                            var newHl = new HealthLog
+                            {
+                                UserId = userId,
+                                LogType = "Workout",
+                                LogValue = durationToSet,
+                                LogDate = hlTimestamp,
+                                Details = $"Completed {dayExercise.Exercise?.Name ?? "Exercise"} ({durationToSet} mins)"
+                            };
+                            await _context.HealthLogs.AddAsync(newHl);
+                            await _context.SaveChangesAsync();
+                            completion.HealthLogId = newHl.Id;
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                    else
+                    {
+                        var newHl = new HealthLog
+                        {
+                            UserId = userId,
+                            LogType = "Workout",
+                            LogValue = durationToSet,
+                            LogDate = hlTimestamp,
+                            Details = $"Completed {dayExercise.Exercise?.Name ?? "Exercise"} ({durationToSet} mins)"
+                        };
+                        await _context.HealthLogs.AddAsync(newHl);
+                        await _context.SaveChangesAsync();
+                        completion.HealthLogId = newHl.Id;
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -676,6 +808,17 @@ namespace LifeSyncAI.Core.Services
                 {
                     if (existingCompletions.Any())
                     {
+                        foreach (var comp in existingCompletions)
+                        {
+                            if (comp.HealthLogId.HasValue)
+                            {
+                                var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == comp.HealthLogId.Value && h.UserId == userId);
+                                if (hl != null)
+                                {
+                                    _context.HealthLogs.Remove(hl);
+                                }
+                            }
+                        }
                         _context.WorkoutExerciseCompletions.RemoveRange(existingCompletions);
                         await _context.SaveChangesAsync();
                     }
@@ -733,61 +876,19 @@ namespace LifeSyncAI.Core.Services
                         existingLog.ActualDurationMinutes = completedDurationMinutes;
                         existingLog.EstimatedCaloriesBurned = completedCalories;
 
-                        var hlTimestamp = targetDate.Date.Add(DateTime.UtcNow.TimeOfDay);
-
+                        // Clear legacy session health log if present to avoid double-counting with individual exercise health logs
                         if (existingLog.HealthLogId.HasValue)
                         {
-                            var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
-                            if (hl != null)
+                            var oldHl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
+                            if (oldHl != null)
                             {
-                                hl.LogValue = completedDurationMinutes;
-                                hl.LogDate = hlTimestamp;
-                                hl.Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)";
+                                _context.HealthLogs.Remove(oldHl);
                             }
-                            else
-                            {
-                                var newHl = new HealthLog
-                                {
-                                    UserId = userId,
-                                    LogType = "Workout",
-                                    LogValue = completedDurationMinutes,
-                                    LogDate = hlTimestamp,
-                                    Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
-                                };
-                                await _context.HealthLogs.AddAsync(newHl);
-                                await _context.SaveChangesAsync();
-                                existingLog.HealthLogId = newHl.Id;
-                            }
-                        }
-                        else
-                        {
-                            var newHl = new HealthLog
-                            {
-                                UserId = userId,
-                                LogType = "Workout",
-                                LogValue = completedDurationMinutes,
-                                LogDate = hlTimestamp,
-                                Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
-                            };
-                            await _context.HealthLogs.AddAsync(newHl);
-                            await _context.SaveChangesAsync();
-                            existingLog.HealthLogId = newHl.Id;
+                            existingLog.HealthLogId = null;
                         }
                     }
                     else
                     {
-                        var hlTimestamp = targetDate.Date.Add(DateTime.UtcNow.TimeOfDay);
-                        var newHl = new HealthLog
-                        {
-                            UserId = userId,
-                            LogType = "Workout",
-                            LogValue = completedDurationMinutes,
-                            LogDate = hlTimestamp,
-                            Details = $"Workout session - {workoutDay.FocusTitle} ({todayCompletions.Count}/{allExerciseIds.Count} exercises, est. {completedCalories} kcal)"
-                        };
-                        await _context.HealthLogs.AddAsync(newHl);
-                        await _context.SaveChangesAsync();
-
                         existingLog = new WorkoutSessionLog
                         {
                             UserId = userId,
@@ -798,28 +899,26 @@ namespace LifeSyncAI.Core.Services
                             CompletedAt = DateTime.UtcNow,
                             ActualDurationMinutes = completedDurationMinutes,
                             EstimatedCaloriesBurned = completedCalories,
-                            HealthLogId = newHl.Id
+                            HealthLogId = null
                         };
                         await _context.WorkoutSessionLogs.AddAsync(existingLog);
                     }
+                    await _context.SaveChangesAsync();
                 }
                 else
                 {
                     if (existingLog != null)
                     {
-                        existingLog.IsCompleted = false;
-                        existingLog.ActualDurationMinutes = 0;
-                        existingLog.EstimatedCaloriesBurned = 0;
-
                         if (existingLog.HealthLogId.HasValue)
                         {
-                            var hl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
-                            if (hl != null)
+                            var oldHl = await _context.HealthLogs.FirstOrDefaultAsync(h => h.Id == existingLog.HealthLogId.Value && h.UserId == userId);
+                            if (oldHl != null)
                             {
-                                _context.HealthLogs.Remove(hl);
+                                _context.HealthLogs.Remove(oldHl);
                             }
-                            existingLog.HealthLogId = null;
                         }
+                        _context.WorkoutSessionLogs.Remove(existingLog);
+                        await _context.SaveChangesAsync();
                     }
                 }
 
@@ -1140,7 +1239,17 @@ namespace LifeSyncAI.Core.Services
                     Instructions = e.Exercise?.Instructions,
                     IsCompleted = completion != null,
                     CompletedAt = completion?.CompletedAt,
-                    ActualDurationMinutes = completion?.ActualDurationMinutes
+                    ActualDurationMinutes = completion?.ActualDurationMinutes,
+                    IsCustom = e.Exercise?.IsCustom ?? false,
+                    DifficultyLevel = e.Exercise?.DifficultyLevel ?? "Beginner",
+                    SecondaryMuscles = e.Exercise?.SecondaryMuscles,
+                    Description = e.Exercise?.Description,
+                    VideoUrl = e.Exercise?.VideoUrl,
+                    ThumbnailUrl = e.Exercise?.ThumbnailUrl,
+                    AnimationUrl = e.Exercise?.AnimationUrl,
+                    PostureTips = e.Exercise?.PostureTips,
+                    CommonMistakes = e.Exercise?.CommonMistakes,
+                    SafetyTips = e.Exercise?.SafetyTips
                 };
             }).ToList();
 

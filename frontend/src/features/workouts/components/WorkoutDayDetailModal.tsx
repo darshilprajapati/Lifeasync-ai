@@ -407,7 +407,22 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                         exerciseName={ex.exerciseName}
                         category={ex.category}
                         targetMuscles={ex.targetMuscles}
+                        secondaryMuscles={ex.secondaryMuscles}
                         instructions={ex.instructions}
+                        description={ex.description}
+                        postureTips={ex.postureTips}
+                        commonMistakes={ex.commonMistakes}
+                        safetyTips={ex.safetyTips}
+                        difficultyLevel={ex.difficultyLevel}
+                        equipmentType={ex.equipmentType}
+                        requiresEquipment={ex.requiresEquipment}
+                        defaultSets={ex.sets}
+                        defaultReps={ex.reps}
+                        defaultRestSeconds={ex.restSeconds}
+                        animationUrl={ex.animationUrl}
+                        thumbnailUrl={ex.thumbnailUrl}
+                        videoUrl={ex.videoUrl}
+                        isCustom={ex.isCustom}
                         size="compact"
                         autoPlay={isToday && !isExDone}
                       />
@@ -424,6 +439,20 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                         <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '17px', color: 'var(--text-primary)' }}>
                           {ex.exerciseName}
                         </Typography>
+                        {ex.isCustom && (
+                          <Chip
+                            label="Custom"
+                            size="small"
+                            sx={{
+                              height: 20,
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              bgcolor: 'rgba(236, 72, 153, 0.12)',
+                              color: '#ec4899',
+                              border: '1px solid rgba(236, 72, 153, 0.3)'
+                            }}
+                          />
+                        )}
                         {ex.requiresEquipment && (
                           <Chip
                             icon={<FitnessCenterIcon sx={{ fontSize: '12px !important' }} />}
