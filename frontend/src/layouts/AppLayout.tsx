@@ -20,6 +20,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ChatIcon from '@mui/icons-material/Chat';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useThemeSystem } from '../context/ThemeContext';
 import CompanionChatDrawer from '../components/CompanionChatDrawer';
 import LogoLoader from '../components/LogoLoader';
 import { trackAction } from '../utils/analytics';
@@ -36,6 +37,8 @@ const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { designSystem } = useThemeSystem();
+  const isProf = designSystem === 'professional';
   const [collapsed, setCollapsed] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [pageChanging, setPageChanging] = useState(false);
@@ -143,9 +146,9 @@ const AppLayout: React.FC = () => {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: '12px',
+              borderRadius: isProf ? '0px !important' : '14px',
               boxShadow: 'var(--shadow-soft)',
-              border: '1px solid var(--bg-secondary)',
+              border: '1px solid var(--card-border)',
               minWidth: 150,
             }
           }
@@ -339,11 +342,28 @@ const AppLayout: React.FC = () => {
                   alignItems: 'center',
                   gap: isItemCollapsed ? '0px' : '12px',
                   padding: '12px',
-                  borderRadius: 'var(--radius-button)',
+                  borderRadius: isProf ? '0px' : '12px',
                   textDecoration: 'none',
                   color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  backgroundColor: isActive ? 'rgba(232, 90, 79, 0.08)' : 'transparent',
-                  transition: 'var(--transition-fast)',
+                  backgroundColor: isActive
+                    ? (isProf ? 'rgba(217, 83, 30, 0.08)' : 'rgba(232, 90, 79, 0.12)')
+                    : 'transparent',
+                  borderLeft: isProf && dockPosition === 'left'
+                    ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
+                    : 'none',
+                  borderRight: isProf && dockPosition === 'right'
+                    ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
+                    : 'none',
+                  borderBottom: isProf && dockPosition === 'top'
+                    ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
+                    : 'none',
+                  borderTop: isProf && dockPosition === 'bottom'
+                    ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
+                    : 'none',
+                  boxShadow: !isProf && isActive
+                    ? '0 4px 14px rgba(232, 90, 79, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25)'
+                    : 'none',
+                  transition: isProf ? 'background-color 0.15s ease' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                   justifyContent: isItemCollapsed ? 'center' : 'flex-start',
                   width: '100%',
                 })}
@@ -522,10 +542,10 @@ const AppLayout: React.FC = () => {
         transition={{ duration: 0.3, ease: [0.25, 0.8, 0.25, 1] }}
         style={{
           backgroundColor: 'var(--card-bg)',
-          borderRight: dockPosition === 'left' ? '1px solid var(--neutral-primary)' : 'none',
-          borderLeft: dockPosition === 'right' ? '1px solid var(--neutral-primary)' : 'none',
-          borderTop: dockPosition === 'bottom' ? '1px solid var(--neutral-primary)' : 'none',
-          borderBottom: dockPosition === 'top' ? '1px solid var(--neutral-primary)' : 'none',
+          borderRight: dockPosition === 'left' ? '1px solid var(--card-border)' : 'none',
+          borderLeft: dockPosition === 'right' ? '1px solid var(--card-border)' : 'none',
+          borderTop: dockPosition === 'bottom' ? '1px solid var(--card-border)' : 'none',
+          borderBottom: dockPosition === 'top' ? '1px solid var(--card-border)' : 'none',
           display: 'flex',
           flexDirection: isSidebar ? 'column' : 'row',
           justifyContent: 'space-between',
@@ -656,14 +676,15 @@ const AppLayout: React.FC = () => {
               height: 44,
               bgcolor: 'var(--card-bg)',
               color: 'var(--accent-primary)',
-              border: '1px solid rgba(232, 90, 79, 0.25)',
+              borderRadius: isProf ? '0px !important' : '12px',
+              border: isProf ? '1px solid var(--card-border)' : '1px solid rgba(232, 90, 79, 0.25)',
               boxShadow: 'var(--shadow-soft)',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: isProf ? 'none' : 'blur(8px)',
               zIndex: 100,
               transition: 'all 0.25s ease',
               '&:hover': {
                 bgcolor: 'rgba(232, 90, 79, 0.08)',
-                transform: 'scale(1.08)'
+                transform: isProf ? 'none' : 'scale(1.08)'
               }
             }}
           >

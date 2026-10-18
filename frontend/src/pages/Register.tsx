@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useThemeSystem, type DesignSystem, type ThemeMode } from '../context/ThemeContext';
 import { trackAction } from '../utils/analytics';
 import { useLampAuthContext } from '../components/LampScene';
 
@@ -12,6 +13,10 @@ const Register: React.FC = () => {
   const { isFormActive } = useLampAuthContext();
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { designSystem, setDesignSystem, mode, setMode } = useThemeSystem();
+
+  const [selectedDesign, setSelectedDesign] = useState<DesignSystem>(designSystem);
+  const [selectedMode, setSelectedMode] = useState<ThemeMode>(mode);
 
   const [fullName, setFullName] = useState(cachedRegisterFullName);
   const [email, setEmail] = useState(cachedRegisterEmail);
@@ -66,6 +71,8 @@ const Register: React.FC = () => {
 
     try {
       await register(fullName.trim(), email.trim(), password);
+      setDesignSystem(selectedDesign);
+      setMode(selectedMode);
       trackAction('register_success');
       setSuccessMessage('Account created successfully! Redirecting...');
       setTimeout(() => {
@@ -283,6 +290,111 @@ const Register: React.FC = () => {
           {touched.confirmPassword && confirmPassword && !passwordsMatch && (
             <span className="lamp-error-text">Passwords do not match</span>
           )}
+        </div>
+
+        {/* Design System & Theme Mode Experience Selector */}
+        <div className="lamp-field-group" style={{ marginTop: '2px', marginBottom: '8px' }}>
+          <label className="lamp-field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Choose Your Design Experience</span>
+            <span style={{ fontSize: '10px', opacity: 0.7, textTransform: 'none' }}>Changeable anytime</span>
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+            {/* Option A: Professional */}
+            <div
+              id="pref-professional"
+              role="button"
+              tabIndex={isFormActive ? 0 : -1}
+              onClick={() => setSelectedDesign('professional')}
+              style={{
+                padding: '10px',
+                border: selectedDesign === 'professional' ? '2px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: selectedDesign === 'professional' ? 'rgba(232, 90, 79, 0.14)' : 'rgba(255, 255, 255, 0.04)',
+                borderRadius: '0px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#FFFFFF' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: 'var(--accent-primary)' }} />
+                Professional
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '10px', lineHeight: 1.3, color: 'rgba(255, 255, 255, 0.75)' }}>
+                Clean, simple, rectangular, and productivity-focused.
+              </p>
+            </div>
+
+            {/* Option B: Modern 3D */}
+            <div
+              id="pref-modern3d"
+              role="button"
+              tabIndex={isFormActive ? 0 : -1}
+              onClick={() => setSelectedDesign('modern3d')}
+              style={{
+                padding: '10px',
+                border: selectedDesign === 'modern3d' ? '2px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: selectedDesign === 'modern3d' ? 'rgba(232, 90, 79, 0.14)' : 'rgba(255, 255, 255, 0.04)',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: selectedDesign === 'modern3d' ? '0 4px 12px rgba(232, 90, 79, 0.25)' : 'none',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#FFFFFF' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', background: 'linear-gradient(135deg, #FF6B5B, #4A90E2)' }} />
+                Modern 3D
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '10px', lineHeight: 1.3, color: 'rgba(255, 255, 255, 0.75)' }}>
+                Interactive, dimensional, animated, and visually expressive.
+              </p>
+            </div>
+          </div>
+
+          {/* Initial Theme Mode Choice */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+            <button
+              type="button"
+              id="pref-mode-light"
+              onClick={() => setSelectedMode('light')}
+              tabIndex={isFormActive ? 0 : -1}
+              style={{
+                flex: 1,
+                padding: '5px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                borderRadius: selectedDesign === 'professional' ? '0px' : '8px',
+                border: selectedMode === 'light' ? '1.5px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: selectedMode === 'light' ? 'rgba(232, 90, 79, 0.15)' : 'transparent',
+                color: selectedMode === 'light' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Light Mode
+            </button>
+            <button
+              type="button"
+              id="pref-mode-dark"
+              onClick={() => setSelectedMode('dark')}
+              tabIndex={isFormActive ? 0 : -1}
+              style={{
+                flex: 1,
+                padding: '5px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                borderRadius: selectedDesign === 'professional' ? '0px' : '8px',
+                border: selectedMode === 'dark' ? '1.5px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: selectedMode === 'dark' ? 'rgba(232, 90, 79, 0.15)' : 'transparent',
+                color: selectedMode === 'dark' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Dark Mode
+            </button>
+          </div>
         </div>
 
         {/* Primary Coral-Red Create Account Button */}

@@ -1,35 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box, Typography } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
 import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider as LifeSyncThemeProvider } from './context/ThemeContext';
 import { trackNavigation } from './utils/analytics';
 import { setupNoonKeepAliveScheduler } from './utils/keepAlive';
 
 // Initialize TanStack query client
 const queryClient = new QueryClient();
-
-// Shared base typography settings
-const typographyConfig = {
-  fontFamily: '"Josefin Sans", sans-serif',
-  allVariants: {
-    letterSpacing: '0.04em',
-  },
-  h1: { fontFamily: '"Josefin Sans", sans-serif' },
-  h2: { fontFamily: '"Josefin Sans", sans-serif' },
-  h3: { fontFamily: '"Josefin Sans", sans-serif' },
-  h4: { fontFamily: '"Josefin Sans", sans-serif' },
-  h5: { fontFamily: '"Josefin Sans", sans-serif' },
-  h6: { fontFamily: '"Josefin Sans", sans-serif' },
-  body1: { fontFamily: '"Josefin Sans", sans-serif' },
-  body2: { fontFamily: '"Josefin Sans", sans-serif' },
-  button: { fontFamily: '"Josefin Sans", sans-serif' },
-};
 
 function AppContent() {
   const { loading } = useAuth();
@@ -230,111 +213,9 @@ function AppContent() {
 }
 
 function App() {
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('lifesync_theme') === 'dark');
-
-  useEffect(() => {
-    (window as any).toggleLifeSyncTheme = () => {
-      setIsDark((prev) => {
-        const next = !prev;
-        localStorage.setItem('lifesync_theme', next ? 'dark' : 'light');
-        const root = document.documentElement;
-        if (next) {
-          root.style.setProperty('--bg-primary', '#121212');
-          root.style.setProperty('--bg-secondary', '#1A1A1A');
-          root.style.setProperty('--card-bg', '#1E1E1E');
-          root.style.setProperty('--text-primary', '#FFFFFF');
-          root.style.setProperty('--text-secondary', '#A0A0A0');
-          root.style.setProperty('--neutral-primary', '#333333');
-        } else {
-          root.style.setProperty('--bg-primary', '#EAE7DC');
-          root.style.setProperty('--bg-secondary', '#F5F3EE');
-          root.style.setProperty('--card-bg', '#FFFFFF');
-          root.style.setProperty('--text-primary', '#2D2D2D');
-          root.style.setProperty('--text-secondary', '#6D6D6D');
-          root.style.setProperty('--neutral-primary', '#D8C3A5');
-        }
-        return next;
-      });
-    };
-
-    const root = document.documentElement;
-    if (isDark) {
-      root.style.setProperty('--bg-primary', '#121212');
-      root.style.setProperty('--bg-secondary', '#1A1A1A');
-      root.style.setProperty('--card-bg', '#1E1E1E');
-      root.style.setProperty('--text-primary', '#FFFFFF');
-      root.style.setProperty('--text-secondary', '#A0A0A0');
-      root.style.setProperty('--neutral-primary', '#333333');
-    } else {
-      root.style.setProperty('--bg-primary', '#EAE7DC');
-      root.style.setProperty('--bg-secondary', '#F5F3EE');
-      root.style.setProperty('--card-bg', '#FFFFFF');
-      root.style.setProperty('--text-primary', '#2D2D2D');
-      root.style.setProperty('--text-secondary', '#6D6D6D');
-      root.style.setProperty('--neutral-primary', '#D8C3A5');
-    }
-  }, [isDark]);
-
-  const activeTheme = createTheme({
-    typography: typographyConfig,
-    palette: {
-      mode: isDark ? 'dark' : 'light',
-      background: {
-        default: isDark ? '#121212' : '#EAE7DC',
-        paper: isDark ? '#1E1E1E' : '#FFFFFF',
-      },
-      primary: {
-        main: '#E85A4F',
-        light: '#E98074',
-      },
-      text: {
-        primary: isDark ? '#FFFFFF' : '#2D2D2D',
-        secondary: isDark ? '#A0A0A0' : '#6D6D6D',
-      },
-      success: {
-        main: '#3FA76D',
-      },
-      warning: {
-        main: '#F5B041',
-      },
-      error: {
-        main: '#E74C3C',
-      },
-      info: {
-        main: '#4A90E2',
-      },
-    },
-    shape: {
-      borderRadius: 12,
-    },
-    components: {
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            borderRadius: '18px',
-            boxShadow: isDark 
-              ? '0 4px 20px -2px rgba(0, 0, 0, 0.5)' 
-              : '0 4px 20px -2px rgba(142, 141, 138, 0.15)',
-            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-            backgroundImage: 'none',
-          },
-        },
-      },
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            borderRadius: '12px',
-            textTransform: 'none',
-            fontWeight: 600,
-          },
-        },
-      },
-    },
-  });
-
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={activeTheme}>
+      <LifeSyncThemeProvider>
         <CssBaseline />
         <CustomCursor />
         <AuthProvider>
@@ -344,7 +225,7 @@ function App() {
             </BrowserRouter>
           </NotificationProvider>
         </AuthProvider>
-      </ThemeProvider>
+      </LifeSyncThemeProvider>
     </QueryClientProvider>
   );
 }

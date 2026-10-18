@@ -44,13 +44,39 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* Hide system cursor to support the high-fidelity custom cursor */
+}
+
+/* Custom Cursor default for Modern 3D mode (hidden on touch or when Professional is active) */
+html:not([data-design-system="professional"]) * {
   cursor: none !important;
 }
 
-input, textarea {
-  /* Preserve the normal text insertion cursor inside input fields and text areas */
+html:not([data-design-system="professional"]) input,
+html:not([data-design-system="professional"]) textarea {
   cursor: text !important;
+}
+
+/* Professional Mode: Restore native desktop cursor and sharp business ergonomics */
+[data-design-system="professional"] * {
+  cursor: auto !important;
+}
+
+[data-design-system="professional"] button,
+[data-design-system="professional"] a,
+[data-design-system="professional"] [role="button"],
+[data-design-system="professional"] select,
+[data-design-system="professional"] .interactive-hover {
+  cursor: pointer !important;
+}
+
+[data-design-system="professional"] input,
+[data-design-system="professional"] textarea {
+  cursor: text !important;
+}
+
+[data-design-system="professional"] .custom-cursor-dot,
+[data-design-system="professional"] .custom-cursor-ring {
+  display: none !important;
 }
 
 html, body {
@@ -63,6 +89,7 @@ html, body {
   overflow-x: hidden;
   height: 100%;
   width: 100%;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 #root {
@@ -83,6 +110,110 @@ input, button, select, textarea {
   outline: none;
 }
 
+/* ------------------------------------------------------------------ */
+/* Design System A: Professional - Sharp Rectangular Rules            */
+/* ------------------------------------------------------------------ */
+[data-design-system="professional"] {
+  --font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --letter-spacing-wide: 0.01em;
+}
+
+[data-design-system="professional"] .MuiCard-root,
+[data-design-system="professional"] .MuiPaper-root,
+[data-design-system="professional"] .MuiButton-root,
+[data-design-system="professional"] .MuiInputBase-root,
+[data-design-system="professional"] .MuiOutlinedInput-root,
+[data-design-system="professional"] .MuiOutlinedInput-notchedOutline,
+[data-design-system="professional"] .MuiChip-root,
+[data-design-system="professional"] .MuiDialog-paper,
+[data-design-system="professional"] .MuiMenu-paper,
+[data-design-system="professional"] .MuiSelect-select,
+[data-design-system="professional"] .lamp-primary-button,
+[data-design-system="professional"] .lamp-input-container,
+[data-design-system="professional"] .lamp-input-field,
+[data-design-system="professional"] .lamp-card-container {
+  border-radius: 0px !important;
+}
+
+[data-design-system="professional"] .MuiButton-root {
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+[data-design-system="professional"] .MuiButton-root:hover:not(:disabled) {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-design-system="professional"] .MuiButton-root:active:not(:disabled) {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-design-system="professional"] .MuiCard-root {
+  border: 1px solid var(--card-border) !important;
+  box-shadow: var(--shadow-soft) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-design-system="professional"] .MuiCard-root:hover {
+  transform: none !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Design System B: Modern 3D - Dimensional, Tactile & Depth Rules    */
+/* ------------------------------------------------------------------ */
+[data-design-system="modern3d"] {
+  --font-family: 'Josefin Sans', sans-serif;
+}
+
+/* 3D Contained Primary Buttons */
+[data-design-system="modern3d"] .MuiButton-containedPrimary {
+  background: linear-gradient(180deg, #FA7367 0%, var(--accent-primary) 100%) !important;
+  box-shadow: 0 4px 14px rgba(232, 90, 79, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiButton-containedPrimary:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 22px rgba(232, 90, 79, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-design-system="modern3d"] .MuiButton-containedPrimary:active:not(:disabled) {
+  transform: translateY(1px) !important;
+  box-shadow: 0 2px 6px rgba(232, 90, 79, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 3D Outlined Buttons */
+[data-design-system="modern3d"] .MuiButton-outlined {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiButton-outlined:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-design-system="modern3d"] .MuiButton-outlined:active:not(:disabled) {
+  transform: translateY(1px) !important;
+}
+
+/* 3D Cards */
+[data-design-system="modern3d"] .MuiCard-root {
+  border-radius: 18px !important;
+  border: 1px solid var(--card-border) !important;
+  box-shadow: var(--shadow-soft) !important;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiCard-root:hover {
+  box-shadow: var(--shadow-hover) !important;
+}
+
 /* Scrollbar customization */
 ::-webkit-scrollbar {
   width: 8px;
@@ -95,7 +226,7 @@ input, button, select, textarea {
 
 ::-webkit-scrollbar-thumb {
   background: var(--neutral-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-input);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -143,7 +274,6 @@ input, button, select, textarea {
   pointer-events: none;
   z-index: 99998;
   transform: translate(-50%, -50%);
-  /* Smooth lag transition for magnetic feel */
   transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1),
               width 0.2s ease,
               height 0.2s ease,
@@ -177,6 +307,18 @@ body.cursor-clicking .custom-cursor-ring {
   }
   .custom-cursor-dot, .custom-cursor-ring {
     display: none !important;
+  }
+}
+
+/* Respect user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
