@@ -45,24 +45,19 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   const cordAttachY = 2.36;
   const cordAttachZ = 0.12;
   const cordRestBottomY = 1.48;
+  const cordRestLength = cordAttachY - cordRestBottomY;
 
-  const restAngle = Math.atan2(cordAttachZ, cordAttachX);
-  const cordRadius = Math.sqrt(cordAttachX * cordAttachX + cordAttachZ * cordAttachZ);
-
-  // Pull Cord 360° Physics & Drag Interaction State
+  // Pull Cord 180° Arc Physics & Drag Interaction State
   const isDragging = useRef(false);
   const startScreenY = useRef(0);
   const startScreenX = useRef(0);
   const pointerDownTime = useRef(0);
 
-  const curAngle = useRef(restAngle);
-  const lastAngle = useRef(restAngle);
-  const curRadius = useRef(cordRadius);
+  const curSwingAngle = useRef(0); // 0 = straight down, -PI/2 = full left, +PI/2 = full right
   const pullDistance = useRef(0); // 0 to 0.42 units
 
   const velAngle = useRef(0);
-  const velRadius = useRef(0);
-  const pullVelY = useRef(0);
+  const pullVel = useRef(0);
   const hasTriggeredToggle = useRef(false);
 
   // Cleanup on unmount
@@ -229,80 +224,64 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
 
     // 2. Damped Spring Physics for Pull Cord
     if (!isDragging.current) {
-      const k = 195; // Spring stiffness
-      const c = 14; // Damping coefficient
-
-      // Vertical spring
-      const forceY = -k * pullDistance.current - c * pullVelY.current;
-      pullVelY.current += forceY * dt;
-      pullDistance.current += pullVelY.current * dt;
-
-      // Radial spring back to resting radius
-      const diffR = curRadius.current - cordRadius;
-      const forceR = -k * diffR - c * velRadius.current;
-      velRadius.current += forceR * dt;
-      curRadius.current += velRadius.current * dt;
-
-      // Angular spring smoothly returning to rest angle along the shortest circular arc
-      const kAngle = 65;
-      const cAngle = 9;
-      let diffAngle = curAngle.current - restAngle;
-      diffAngle = Math.atan2(Math.sin(diffAngle), Math.cos(diffAngle));
-      const forceAngle = -kAngle * diffAngle - cAngle * velAngle.current;
+      // Angular spring smoothly returning to vertical rest (0 rad)
+      const kAngle = 135;
+      const cAngle = 12;
+      const forceAngle = -kAngle * curSwingAngle.current - cAngle * velAngle.current;
       velAngle.current += forceAngle * dt;
-      curAngle.current += velAngle.current * dt;
+      curSwingAngle.current += velAngle.current * dt;
+
+      // Vertical/radial pull extension spring returning to rest (0)
+      const kPull = 200;
+      const cPull = 15;
+      const forcePull = -kPull * pullDistance.current - cPull * pullVel.current;
+      pullVel.current += forcePull * dt;
+      pullDistance.current += pullVel.current * dt;
 
       // Rest snap
-      if (Math.abs(pullDistance.current) < 0.001 && Math.abs(pullVelY.current) < 0.005) {
+      if (Math.abs(pullDistance.current) < 0.001 && Math.abs(pullVel.current) < 0.005) {
         pullDistance.current = 0;
-        pullVelY.current = 0;
+        pullVel.current = 0;
       }
-      if (Math.abs(diffR) < 0.001 && Math.abs(velRadius.current) < 0.005) {
-        curRadius.current = cordRadius;
-        velRadius.current = 0;
-      }
-      if (Math.abs(diffAngle) < 0.002 && Math.abs(velAngle.current) < 0.01) {
-        curAngle.current = restAngle;
+      if (Math.abs(curSwingAngle.current) < 0.001 && Math.abs(velAngle.current) < 0.005) {
+        curSwingAngle.current = 0;
         velAngle.current = 0;
       }
     }
 
     const currentDist = pullDistance.current;
-    const currentAngle = curAngle.current;
-    const currentR = curRadius.current;
+    const currentSwing = curSwingAngle.current;
 
     // 3. Mechanical Reaction on Lamp Arm & Shade
     if (shadeGroupRef.current) {
       const nodAngle = currentDist * 0.05;
-      shadeGroupRef.current.rotation.z = -nodAngle * Math.cos(currentAngle);
-      shadeGroupRef.current.rotation.x = nodAngle * Math.sin(currentAngle);
+      shadeGroupRef.current.rotation.z = -nodAngle * Math.cos(currentSwing);
       shadeGroupRef.current.position.y = 2.75 - nodAngle * 0.25;
     }
 
     // 4. Update 3D Cord Geometry Curve and Handle Position
     if (cordMeshRef.current && handleGroupRef.current) {
+      const pTopX = cordAttachX;
       const pTopY = cordAttachY - currentDist * 0.02;
-      const pTopX = cordRadius * Math.cos(currentAngle);
-      const pTopZ = cordRadius * Math.sin(currentAngle);
+      const pTopZ = cordAttachZ;
 
-      const pBottomY = cordRestBottomY - currentDist;
-      const pBottomX = currentR * Math.cos(currentAngle);
-      const pBottomZ = currentR * Math.sin(currentAngle);
+      const currentLength = cordRestLength + currentDist;
+      const pBottomX = pTopX + currentLength * Math.sin(currentSwing);
+      const pBottomY = pTopY - currentLength * Math.cos(currentSwing);
+      const pBottomZ = pTopZ + Math.sin(Math.abs(currentSwing) * 0.5) * 0.03;
 
       // Under tension, the curve straightens naturally
-      const tensionStraighten = THREE.MathUtils.clamp(currentDist * 2.5, 0, 0.85);
+      const tensionStraighten = THREE.MathUtils.clamp(currentDist * 2.5, 0, 0.9);
       const midBulge = 1 - tensionStraighten;
 
-      // Natural catenary hanging curve
-      const mid1Y = pTopY - (pTopY - pBottomY) * 0.35;
-      const mid1R = THREE.MathUtils.lerp(cordRadius, currentR, 0.25) + 0.03 * midBulge;
-      const mid1X = mid1R * Math.cos(currentAngle);
-      const mid1Z = mid1R * Math.sin(currentAngle);
+      // Natural catenary hanging curve across the 180° swing
+      const mid1X = pTopX + (pBottomX - pTopX) * 0.35 - 0.02 * Math.sin(currentSwing) * midBulge;
+      const mid1Y = pTopY - (pTopY - pBottomY) * 0.35 - 0.015 * Math.abs(Math.sin(currentSwing)) * midBulge;
+      const mid1Z = pTopZ + 0.01 * midBulge;
 
-      const mid2Y = pTopY - (pTopY - pBottomY) * 0.72;
-      const mid2R = THREE.MathUtils.lerp(cordRadius, currentR, 0.65) + 0.04 * midBulge;
-      const mid2X = mid2R * Math.cos(currentAngle);
-      const mid2Z = mid2R * Math.sin(currentAngle);
+      const mid2X = pTopX + (pBottomX - pTopX) * 0.72;
+      const mid2Y = pTopY - (pTopY - pBottomY) * 0.72 - 0.03 * Math.abs(Math.sin(currentSwing)) * midBulge;
+      const mid2Z = pTopZ + 0.015 * midBulge;
 
       const dynamicCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(pTopX, pTopY, pTopZ),
@@ -315,12 +294,10 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       cordMeshRef.current.geometry = new THREE.TubeGeometry(dynamicCurve, 20, 0.013, 8, false);
 
       handleGroupRef.current.position.set(pBottomX, pBottomY, pBottomZ);
-      const tiltAmount = (currentR - cordRadius) * 2.0;
-      handleGroupRef.current.rotation.x = tiltAmount * Math.sin(currentAngle);
-      handleGroupRef.current.rotation.z = -tiltAmount * Math.cos(currentAngle);
+      handleGroupRef.current.rotation.z = -currentSwing;
 
       if (collarRef.current) {
-        collarRef.current.position.set(pTopX, -0.38, pTopZ);
+        collarRef.current.position.set(cordAttachX, -0.38, cordAttachZ);
       }
     }
   });
@@ -356,13 +333,13 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
     pointerDownTime.current = performance.now();
     hasTriggeredToggle.current = false;
 
-    // Projected pole center on screen
-    const getPoleScreenPos = () => {
-      const polePos = new THREE.Vector3(0, cordRestBottomY, 0);
+    // Get screen position of cord's top pivot
+    const getPivotScreenPos = () => {
+      const pivotPos = new THREE.Vector3(cordAttachX, cordAttachY, cordAttachZ);
       if (groupRef.current) {
-        polePos.applyMatrix4(groupRef.current.matrixWorld);
+        pivotPos.applyMatrix4(groupRef.current.matrixWorld);
       }
-      const proj = polePos.clone().project(camera);
+      const proj = pivotPos.project(camera);
       const rect = gl.domElement.getBoundingClientRect();
       return {
         x: rect.left + ((proj.x + 1) / 2) * rect.width,
@@ -371,65 +348,57 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       };
     };
 
-    const { x: poleX, y: poleY } = getPoleScreenPos();
-    const initDx = e.clientX - poleX;
-    const initDy = e.clientY - poleY;
-    const tiltAspect = 0.55;
-    lastAngle.current = Math.atan2(initDy / tiltAspect, initDx);
+    // Get screen position of resting bottom handle
+    const getRestBottomScreenPos = () => {
+      const restPos = new THREE.Vector3(cordAttachX, cordRestBottomY, cordAttachZ);
+      if (groupRef.current) {
+        restPos.applyMatrix4(groupRef.current.matrixWorld);
+      }
+      const proj = restPos.project(camera);
+      const rect = gl.domElement.getBoundingClientRect();
+      return {
+        x: rect.left + ((proj.x + 1) / 2) * rect.width,
+        y: rect.top + ((-proj.y + 1) / 2) * rect.height,
+      };
+    };
+
+    const { x: pivotX, y: pivotY } = getPivotScreenPos();
+    const { x: restX, y: restY } = getRestBottomScreenPos();
+    const restLengthScreen = Math.max(30, Math.hypot(restX - pivotX, restY - pivotY));
 
     const onPointerMove = (evt: PointerEvent) => {
       if (!isDragging.current) return;
       evt.preventDefault();
 
-      const { x: pX, y: pY, rect } = getPoleScreenPos();
+      const { x: pX, y: pY } = getPivotScreenPos();
       const dx = evt.clientX - pX;
-      const dy = evt.clientY - pY;
+      const dy = evt.clientY - pY; // positive downwards
 
-      // Estimate pixel radius of rest ellipse on screen
-      const rScreenX =
-        (cordRadius * 0.7 / (camera as THREE.PerspectiveCamera).position.z) *
-        (rect.height / (2 * Math.tan(((camera as THREE.PerspectiveCamera).fov * Math.PI) / 360)));
-      const rx = Math.max(35, Math.min(120, rScreenX || 58));
-      const ry = rx * tiltAspect;
+      // Angle relative to straight down:
+      // dx = 0, dy > 0 -> 0 (straight down)
+      // dx > 0 -> to the right (up to +PI/2)
+      // dx < 0 -> to the left (down to -PI/2)
+      const rawAngle = Math.atan2(dx, Math.max(0.001, dy));
 
-      const rPointer = Math.sqrt(dx * dx + (dy / tiltAspect) * (dy / tiltAspect));
+      // Enforce the full 180° range: [-PI/2, +PI/2] (-90° to +90°)
+      const targetAngle = THREE.MathUtils.clamp(rawAngle, -Math.PI / 2, Math.PI / 2);
+      curSwingAngle.current = targetAngle;
 
-      // Continuous 360° rotation across boundary
-      if (rPointer > 8) {
-        const rawAngle = Math.atan2(dy / tiltAspect, dx);
-        let dTheta = rawAngle - lastAngle.current;
-        while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
-        while (dTheta < -Math.PI) dTheta += 2 * Math.PI;
-        curAngle.current += dTheta;
-        lastAngle.current = rawAngle;
-      }
+      // Distance from pivot in screen space
+      const ptrDist = Math.hypot(dx, dy);
 
-      // Handle radial extension (pulling slightly outward, never inward through pole)
-      const radialFactor = (rPointer - rx) / rx;
-      curRadius.current = THREE.MathUtils.clamp(
-        cordRadius + radialFactor * 0.12,
-        0.18, // Don't let it touch or pass through the central pole (radius ~0.055)
-        0.42 // Natural maximum swing outward
-      );
+      // Pull tension beyond resting length:
+      if (ptrDist > restLengthScreen) {
+        const pullAmount = Math.min(0.42, (ptrDist - restLengthScreen) * 0.005);
+        pullDistance.current = pullAmount;
 
-      // Downward pull distance calculation:
-      // At current angle, resting handle on the ellipse is at pY + ry * Math.sin(curAngle.current)
-      const restYOnScreen = pY + ry * Math.sin(curAngle.current);
-      const deltaYFromRest = evt.clientY - restYOnScreen;
-      const deltaYFromGrab = evt.clientY - startScreenY.current;
-      const effectivePullY = Math.max(deltaYFromRest, deltaYFromGrab * 0.75);
-
-      if (effectivePullY > 15) {
-        const dist = Math.min(0.42, (effectivePullY - 15) * 0.005);
-        pullDistance.current = dist;
-
-        // Activation threshold: 0.16 units (~35-40px downward pull)
-        if (dist >= 0.16 && !hasTriggeredToggle.current) {
+        // Activation threshold: 0.16 units (~35-40px extension beyond resting length)
+        if (pullAmount >= 0.16 && !hasTriggeredToggle.current) {
           hasTriggeredToggle.current = true;
           onToggle();
         }
       } else {
-        pullDistance.current = Math.max(-0.04, effectivePullY * 0.001);
+        pullDistance.current = 0;
       }
     };
 
@@ -445,19 +414,18 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       window.removeEventListener('pointercancel', onPointerUp);
 
       const elapsed = performance.now() - pointerDownTime.current;
-      const dy = Math.max(0, evt.clientY - startScreenY.current);
+      const dragDist = Math.hypot(evt.clientX - startScreenX.current, evt.clientY - startScreenY.current);
 
-      // If user made a quick intentional flick/tug downward (> 10px within 300ms) without crossing threshold yet:
-      if (!hasTriggeredToggle.current && elapsed < 300 && dy > 10) {
+      // If user made a quick intentional flick/tug in ANY direction (> 12px within 300ms) without crossing threshold yet:
+      if (!hasTriggeredToggle.current && elapsed < 300 && dragDist > 12) {
         pullDistance.current = 0.28;
         hasTriggeredToggle.current = true;
         onToggle();
       }
 
       // Initial release recoil velocity for damped harmonic return
-      pullVelY.current = -pullDistance.current * 18;
-      velRadius.current = -(curRadius.current - cordRadius) * 16;
-      velAngle.current = THREE.MathUtils.clamp(velAngle.current, -8, 8);
+      pullVel.current = -pullDistance.current * 18;
+      velAngle.current = -curSwingAngle.current * 14;
     };
 
     window.addEventListener('pointermove', onPointerMove, { passive: false });
