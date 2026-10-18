@@ -157,7 +157,7 @@ const Register: React.FC = () => {
               id="register-email"
               type="email"
               className={`lamp-input-field ${touched.email && (!email.trim() || !emailIsValid) ? 'has-error' : ''}`}
-              placeholder="name@example.com"
+              placeholder="you@example.com"
               autoComplete="email"
               required
               disabled={!isFormActive}

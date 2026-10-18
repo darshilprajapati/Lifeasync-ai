@@ -24,7 +24,6 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
   const downSpotRef = useRef<THREE.SpotLight>(null);
   const upSpotRef = useRef<THREE.SpotLight>(null);
   const pointLightRef = useRef<THREE.PointLight>(null);
-  const floorPoolRef = useRef<THREE.Mesh>(null);
   const bulbRef = useRef<THREE.Mesh>(null);
   const cordMeshRef = useRef<THREE.Mesh>(null);
   const handleGroupRef = useRef<THREE.Group>(null);
@@ -139,17 +138,6 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
     []
   );
 
-  const floorPoolMat = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#FFA845'),
-        transparent: true,
-        opacity: isOn ? 0.36 : 0,
-        depthWrite: false,
-      }),
-    [isOn]
-  );
-
   /* ------------------------------------------------------------------ */
   /* Cord Geometry & Curve Definition                                   */
   /* ------------------------------------------------------------------ */
@@ -225,13 +213,6 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
       bulbMat.emissiveIntensity = THREE.MathUtils.lerp(
         bulbMat.emissiveIntensity,
         t * 3.6,
-        delta * lightLerpSpeed
-      );
-    }
-    if (floorPoolMat) {
-      floorPoolMat.opacity = THREE.MathUtils.lerp(
-        floorPoolMat.opacity,
-        t * 0.36,
         delta * lightLerpSpeed
       );
     }
@@ -537,17 +518,6 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
         </mesh>
       </group>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 5. FLOOR LIGHT POOL: Realistic illuminated ellipse beneath lamp */}
-      {/* ------------------------------------------------------------- */}
-      <mesh
-        ref={floorPoolRef}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.01, 0]}
-        material={floorPoolMat}
-      >
-        <circleGeometry args={[2.0, 48]} />
-      </mesh>
     </group>
   );
 }
@@ -555,22 +525,9 @@ function LampModel({ isOn, onToggle }: LampModelProps) {
 /* ------------------------------------------------------------------ */
 /* Desk Floor Surface                                                 */
 /* ------------------------------------------------------------------ */
-function FloorSurface({ isOn }: { isOn: boolean }) {
-  const floorMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color(isOn ? '#78231B' : '#100D0C'),
-        roughness: 0.9,
-        metalness: 0.1,
-      }),
-    [isOn]
-  );
-
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.06, 0]} material={floorMat}>
-      <planeGeometry args={[35, 35]} />
-    </mesh>
-  );
+function FloorSurface({ isOn: _isOn }: { isOn: boolean }) {
+  // Transparent over the atmospheric Aurora background image
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

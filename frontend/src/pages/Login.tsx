@@ -96,7 +96,7 @@ const Login: React.FC = () => {
               id="login-email"
               type="email"
               className={`lamp-input-field ${touched.email && (!email || !emailIsValid) ? 'has-error' : ''}`}
-              placeholder="name@example.com"
+              placeholder="you@example.com"
               autoComplete="email"
               required
               disabled={!isFormActive}
