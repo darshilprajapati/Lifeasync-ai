@@ -98,9 +98,19 @@ export const workoutService = {
     return res.data?.data;
   },
 
-  completeExercise: async (workoutDayExerciseId: number, sessionDate?: string): Promise<WorkoutDay> => {
-    const query = sessionDate ? `?sessionDate=${encodeURIComponent(sessionDate)}` : '';
-    const res = await apiClient.post(`/api/workout/exercises/${workoutDayExerciseId}/complete${query}`);
+  completeExercise: async (
+    workoutDayExerciseId: number,
+    sessionDate?: string,
+    actualDurationMinutes?: number
+  ): Promise<WorkoutDay> => {
+    const params = new URLSearchParams();
+    if (sessionDate) params.append('sessionDate', sessionDate);
+    if (actualDurationMinutes !== undefined) params.append('actualDurationMinutes', String(actualDurationMinutes));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await apiClient.post(`/api/workout/exercises/${workoutDayExerciseId}/complete${query}`, {
+      sessionDate,
+      actualDurationMinutes
+    });
     return res.data?.data;
   },
 

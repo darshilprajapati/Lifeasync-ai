@@ -20,5 +20,6 @@ namespace LifeSyncAI.Core.DTO.Output.Workout
         public string? Instructions { get; set; }
         public bool IsCompleted { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public int? ActualDurationMinutes { get; set; }
     }
 }

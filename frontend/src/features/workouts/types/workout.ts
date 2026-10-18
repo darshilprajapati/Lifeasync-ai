@@ -32,6 +32,7 @@ export interface WorkoutDayExercise {
   instructions?: string;
   isCompleted?: boolean;
   completedAt?: string;
+  actualDurationMinutes?: number;
 }
 
 export interface WorkoutDay {

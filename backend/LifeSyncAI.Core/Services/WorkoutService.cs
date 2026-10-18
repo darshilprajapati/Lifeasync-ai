@@ -578,7 +578,8 @@ namespace LifeSyncAI.Core.Services
             int workoutDayExerciseId,
             DateTime sessionDate,
             bool isCompleted,
-            DateTime? clientReferenceDate = null)
+            DateTime? clientReferenceDate = null,
+            int? actualDurationMinutes = null)
         {
             try
             {
@@ -593,6 +594,11 @@ namespace LifeSyncAI.Core.Services
                 if (targetDate > today)
                 {
                     return ApiResponse<WorkoutDayDto>.Fail("Future workouts cannot be completed early.");
+                }
+
+                if (isCompleted && actualDurationMinutes.HasValue && actualDurationMinutes.Value <= 0)
+                {
+                    return ApiResponse<WorkoutDayDto>.Fail("Actual time taken must be a positive number of minutes.");
                 }
 
                 var dayExercise = await _context.WorkoutDayExercises
@@ -625,6 +631,18 @@ namespace LifeSyncAI.Core.Services
                     .Where(c => c.UserId == userId && c.WorkoutDayExerciseId == workoutDayExerciseId && c.SessionDate == targetDate)
                     .ToListAsync();
 
+                int calculatedFallback = 0;
+                {
+                    int sets = Math.Max(1, dayExercise.Sets);
+                    int restSecs = dayExercise.RestSeconds > 0 ? dayExercise.RestSeconds : 60;
+                    int exSeconds = (sets * 45) + (Math.Max(0, sets - 1) * restSecs);
+                    calculatedFallback = Math.Max(1, (int)Math.Round(exSeconds / 60.0));
+                }
+
+                int durationToSet = actualDurationMinutes.HasValue && actualDurationMinutes.Value > 0
+                    ? actualDurationMinutes.Value
+                    : calculatedFallback;
+
                 if (isCompleted)
                 {
                     if (!existingCompletions.Any())
@@ -637,9 +655,20 @@ namespace LifeSyncAI.Core.Services
                             WorkoutDayExerciseId = workoutDayExerciseId,
                             ExerciseId = dayExercise.ExerciseId,
                             SessionDate = targetDate,
-                            CompletedAt = DateTime.UtcNow
+                            CompletedAt = DateTime.UtcNow,
+                            ActualDurationMinutes = durationToSet
                         };
                         await _context.WorkoutExerciseCompletions.AddAsync(completion);
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        var existing = existingCompletions.First();
+                        if (actualDurationMinutes.HasValue && actualDurationMinutes.Value > 0)
+                        {
+                            existing.ActualDurationMinutes = actualDurationMinutes.Value;
+                        }
+                        existing.CompletedAt = DateTime.UtcNow;
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -670,11 +699,19 @@ namespace LifeSyncAI.Core.Services
 
                 foreach (var ex in completedExerciseList)
                 {
-                    int sets = Math.Max(1, ex.Sets);
-                    int restSecs = ex.RestSeconds > 0 ? ex.RestSeconds : 60;
-                    // ~45s movement effort per set + inter-set rest intervals
-                    int exSeconds = (sets * 45) + (Math.Max(0, sets - 1) * restSecs);
-                    int exMinutes = Math.Max(1, (int)Math.Round(exSeconds / 60.0));
+                    var comp = todayCompletions.FirstOrDefault(c => c.WorkoutDayExerciseId == ex.Id);
+                    int exMinutes = comp != null && comp.ActualDurationMinutes > 0
+                        ? comp.ActualDurationMinutes
+                        : 0;
+
+                    if (exMinutes <= 0)
+                    {
+                        int sets = Math.Max(1, ex.Sets);
+                        int restSecs = ex.RestSeconds > 0 ? ex.RestSeconds : 60;
+                        int exSeconds = (sets * 45) + (Math.Max(0, sets - 1) * restSecs);
+                        exMinutes = Math.Max(1, (int)Math.Round(exSeconds / 60.0));
+                    }
+
                     completedDurationMinutes += exMinutes;
 
                     float met = ex.Exercise?.EstimatedMetValue ?? 5.0f;
@@ -682,7 +719,7 @@ namespace LifeSyncAI.Core.Services
                     completedCalories += exCal;
                 }
 
-                completedDurationMinutes = Math.Clamp(completedDurationMinutes, 0, 360);
+                completedDurationMinutes = Math.Clamp(completedDurationMinutes, 0, 1440);
 
                 var existingLog = await _context.WorkoutSessionLogs
                     .FirstOrDefaultAsync(l => l.UserId == userId && l.WorkoutDayId == dayExercise.WorkoutDayId && l.SessionDate == targetDate);
@@ -1102,7 +1139,8 @@ namespace LifeSyncAI.Core.Services
                     EstimatedMetValue = e.Exercise?.EstimatedMetValue ?? 5.0f,
                     Instructions = e.Exercise?.Instructions,
                     IsCompleted = completion != null,
-                    CompletedAt = completion?.CompletedAt
+                    CompletedAt = completion?.CompletedAt,
+                    ActualDurationMinutes = completion?.ActualDurationMinutes
                 };
             }).ToList();
 

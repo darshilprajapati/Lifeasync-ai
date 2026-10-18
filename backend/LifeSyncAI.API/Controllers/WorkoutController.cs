@@ -77,13 +77,31 @@ namespace LifeSyncAI.API.Controllers
         }
 
         [HttpPost("exercises/{workoutDayExerciseId}/complete")]
-        public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> CompleteExercise(int workoutDayExerciseId, [FromQuery] DateTime? sessionDate)
+        public async Task<ActionResult<ApiResponse<WorkoutDayDto>>> CompleteExercise(
+            int workoutDayExerciseId, 
+            [FromQuery] DateTime? sessionDate,
+            [FromQuery] int? actualDurationMinutes = null,
+            [FromBody] CompleteExerciseRequestDto? requestDto = null)
         {
             var userId = GetUserId();
             if (userId <= 0) return Unauthorized(ApiResponse<WorkoutDayDto>.Fail("User is not authenticated."));
             var userToday = GetUserCurrentDate();
-            var date = sessionDate?.Date ?? userToday;
-            var result = await _workoutService.ToggleExerciseCompletionAsync(userId, workoutDayExerciseId, date, true, userToday);
+            var date = (requestDto?.SessionDate ?? sessionDate)?.Date ?? userToday;
+            var minutes = requestDto?.ActualDurationMinutes ?? actualDurationMinutes;
+
+            if (minutes.HasValue && minutes.Value <= 0)
+            {
+                return BadRequest(ApiResponse<WorkoutDayDto>.Fail("Actual time taken must be a positive number of minutes."));
+            }
+
+            var result = await _workoutService.ToggleExerciseCompletionAsync(
+                userId, 
+                workoutDayExerciseId, 
+                date, 
+                true, 
+                userToday, 
+                minutes);
+
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

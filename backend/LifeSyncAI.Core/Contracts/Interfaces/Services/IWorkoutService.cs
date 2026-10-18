@@ -18,7 +18,7 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         Task<ApiResponse<WorkoutWeekSummaryDto>> GetWeekSummaryAsync(int userId, DateTime weekStartDate);
         Task<ApiResponse<AiWorkoutPlanResponseDto>> GenerateAiPlanAsync(int userId, GenerateAiWorkoutPlanRequestDto request);
         Task<ApiResponse<int>> SyncPlannerAsync(int userId, DateTime? weekStartDate);
-        Task<ApiResponse<WorkoutDayDto>> ToggleExerciseCompletionAsync(int userId, int workoutDayExerciseId, DateTime sessionDate, bool isCompleted, DateTime? clientReferenceDate = null);
+        Task<ApiResponse<WorkoutDayDto>> ToggleExerciseCompletionAsync(int userId, int workoutDayExerciseId, DateTime sessionDate, bool isCompleted, DateTime? clientReferenceDate = null, int? actualDurationMinutes = null);
         Task<ApiResponse<WorkoutDayDto>> GetWorkoutDayAsync(int userId, int workoutDayId, DateTime? sessionDate = null);
     }
 }

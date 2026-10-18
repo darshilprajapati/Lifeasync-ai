@@ -3,6 +3,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
+  TextField,
   Box,
   Typography,
   Stack,
@@ -44,7 +46,9 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
 }) => {
   const { notify } = useNotification();
   const [activeDay, setActiveDay] = useState<WorkoutDay | null>(day);
-  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [completingExercise, setCompletingExercise] = useState<WorkoutDayExercise | null>(null);
+  const [actualMinutesInput, setActualMinutesInput] = useState<string>('');
+  const [isSubmittingDuration, setIsSubmittingDuration] = useState<boolean>(false);
 
   // Sync state when day changes
   React.useEffect(() => {
@@ -73,50 +77,108 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
     year: 'numeric'
   });
 
-  const handleToggleExercise = async (ex: WorkoutDayExercise) => {
-    if (togglingId !== null) return; // Prevent duplicate concurrent requests
+  const getExerciseScheduledMinutes = (ex: WorkoutDayExercise): number => {
+    const sets = Math.max(1, ex.sets || 1);
+    const restSecs = ex.restSeconds > 0 ? ex.restSeconds : 60;
+    const exSeconds = sets * 45 + Math.max(0, sets - 1) * restSecs;
+    return Math.max(1, Math.round(exSeconds / 60));
+  };
 
+  const handleOpenCompleteDialog = (ex: WorkoutDayExercise) => {
     if (!isToday) {
       const msg = 'Workout exercises can only be completed for today’s scheduled date.';
       notify.warning(msg, 'Restricted Action');
       return;
     }
 
-    setTogglingId(ex.id);
+    setCompletingExercise(ex);
+    // If already completed, initialize with existing actual minutes; otherwise leave empty so user explicitly specifies
+    if (ex.isCompleted && ex.actualDurationMinutes && ex.actualDurationMinutes > 0) {
+      setActualMinutesInput(String(ex.actualDurationMinutes));
+    } else {
+      setActualMinutesInput('');
+    }
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (!completingExercise || isSubmittingDuration) return;
+
+    const trimmed = actualMinutesInput.trim();
+    if (!trimmed) {
+      notify.error('Please enter the actual time taken (minutes).', 'Validation Error');
+      return;
+    }
+
+    const minutes = Number(trimmed);
+    if (!Number.isFinite(minutes) || !Number.isInteger(minutes) || minutes <= 0) {
+      notify.error('Actual time taken must be a positive whole number of minutes.', 'Validation Error');
+      return;
+    }
+
+    setIsSubmittingDuration(true);
 
     try {
       const sessionDateStr = formatLocalDate(calendarDate);
-      let updatedDay: WorkoutDay;
+      const updatedDay = await workoutService.completeExercise(
+        completingExercise.id,
+        sessionDateStr,
+        minutes
+      );
 
-      if (ex.isCompleted) {
-        // Undo completion
-        updatedDay = await workoutService.undoExercise(ex.id, sessionDateStr);
-        trackAction('workout_exercise_undone', {
-          module: 'workout',
-          exercise_id: ex.exerciseId,
-          day_id: activeDay.id
-        });
-        notify.info(`Reverted completion for ${ex.exerciseName}.`, 'Exercise Status Updated');
-      } else {
-        // Mark complete
-        updatedDay = await workoutService.completeExercise(ex.id, sessionDateStr);
-        trackAction('workout_exercise_completed', {
-          module: 'workout',
-          exercise_id: ex.exerciseId,
-          day_id: activeDay.id
-        });
-        notify.success(`Completed ${ex.exerciseName}! Great work.`, 'Exercise Completed');
-      }
+      trackAction('workout_exercise_completed', {
+        module: 'workout',
+        exercise_id: completingExercise.exerciseId,
+        day_id: activeDay.id,
+        actual_duration_minutes: minutes
+      });
+
+      notify.success(
+        completingExercise.isCompleted
+          ? `Updated actual duration for ${completingExercise.exerciseName} to ${minutes} mins.`
+          : `Completed ${completingExercise.exerciseName} in ${minutes} mins! Great work.`,
+        'Exercise Completed'
+      );
 
       setActiveDay(updatedDay);
       onDayUpdated(updatedDay);
       window.dispatchEvent(new CustomEvent('lifesync:workout-updated', { detail: { day: updatedDay } }));
+      setCompletingExercise(null);
     } catch (err: any) {
-      console.error('Failed to toggle exercise completion:', err);
-      const errMsg = err?.response?.data?.message || 'Failed to update exercise status.';
+      console.error('Failed to complete exercise:', err);
+      const errMsg = err?.response?.data?.message || 'Failed to save exercise completion.';
       notify.error(errMsg, 'Update Failed');
     } finally {
-      setTogglingId(null);
+      setIsSubmittingDuration(false);
+    }
+  };
+
+  const handleUndoExercise = async () => {
+    if (!completingExercise || isSubmittingDuration) return;
+
+    setIsSubmittingDuration(true);
+
+    try {
+      const sessionDateStr = formatLocalDate(calendarDate);
+      const updatedDay = await workoutService.undoExercise(completingExercise.id, sessionDateStr);
+
+      trackAction('workout_exercise_undone', {
+        module: 'workout',
+        exercise_id: completingExercise.exerciseId,
+        day_id: activeDay.id
+      });
+
+      notify.info(`Reverted completion for ${completingExercise.exerciseName}.`, 'Exercise Status Updated');
+
+      setActiveDay(updatedDay);
+      onDayUpdated(updatedDay);
+      window.dispatchEvent(new CustomEvent('lifesync:workout-updated', { detail: { day: updatedDay } }));
+      setCompletingExercise(null);
+    } catch (err: any) {
+      console.error('Failed to undo exercise completion:', err);
+      const errMsg = err?.response?.data?.message || 'Failed to revert exercise status.';
+      notify.error(errMsg, 'Update Failed');
+    } finally {
+      setIsSubmittingDuration(false);
     }
   };
 
@@ -321,7 +383,6 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
 
             {exercises.map((ex, index) => {
               const isExDone = Boolean(ex.isCompleted);
-              const isToggling = togglingId === ex.id;
 
               return (
                 <Box
@@ -373,7 +434,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                         )}
                       </Stack>
 
-                      {/* Sets, Reps, Rest Chips */}
+                      {/* Sets, Reps, Rest, Actual Duration Chips */}
                       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
                         <Chip
                           label={`${ex.sets} Sets`}
@@ -390,6 +451,19 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                           size="small"
                           sx={{ fontWeight: 700, bgcolor: 'rgba(0,0,0,0.05)', fontSize: '11px' }}
                         />
+                        {isExDone && ex.actualDurationMinutes != null && ex.actualDurationMinutes > 0 && (
+                          <Chip
+                            icon={<AccessTimeIcon sx={{ fontSize: '12px !important', color: '#059669 !important' }} />}
+                            label={`${ex.actualDurationMinutes} mins actual`}
+                            size="small"
+                            sx={{
+                              fontWeight: 700,
+                              bgcolor: 'rgba(16, 185, 129, 0.1)',
+                              color: '#059669',
+                              fontSize: '11px'
+                            }}
+                          />
+                        )}
                       </Stack>
 
                       {/* Instructions */}
@@ -405,8 +479,8 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                       <Button
                         variant={isExDone ? 'contained' : 'outlined'}
                         color={isExDone ? 'success' : 'primary'}
-                        disabled={!isToday || isToggling}
-                        onClick={() => handleToggleExercise(ex)}
+                        disabled={!isToday || isSubmittingDuration}
+                        onClick={() => handleOpenCompleteDialog(ex)}
                         startIcon={
                           isExDone ? (
                             <CheckCircleIcon sx={{ fontSize: '18px !important' }} />
@@ -429,7 +503,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                           }
                         }}
                       >
-                        {isExDone ? 'Completed' : 'Mark Complete'}
+                        {isExDone ? `Completed (${ex.actualDurationMinutes || 0}m)` : 'Mark Complete'}
                       </Button>
                     </Box>
                   </Stack>
@@ -439,6 +513,127 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
           </Box>
         )}
       </DialogContent>
+
+      {/* Complete Exercise Confirmation Dialog */}
+      <Dialog
+        open={Boolean(completingExercise)}
+        onClose={() => !isSubmittingDuration && setCompletingExercise(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '18px',
+              p: 1,
+              bgcolor: 'var(--bg-card, #ffffff)',
+              backgroundImage: 'none',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
+              boxShadow: 'var(--shadow-elevation, 0 10px 30px rgba(0,0,0,0.15))'
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '19px', color: 'var(--text-primary)', pb: 0.5 }}>
+          Complete Exercise
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          {completingExercise && (
+            <Stack spacing={2.5}>
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>
+                  Exercise: {completingExercise.exerciseName}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5, fontSize: '13px' }}>
+                  Scheduled duration: ~{getExerciseScheduledMinutes(completingExercise)} mins
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="actual-time-input"
+                  variant="subtitle2"
+                  sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 1, display: 'block' }}
+                >
+                  Actual time taken (minutes) *
+                </Typography>
+                <TextField
+                  id="actual-time-input"
+                  type="number"
+                  fullWidth
+                  autoFocus
+                  placeholder="e.g. 8"
+                  value={actualMinutesInput}
+                  onChange={(e) => setActualMinutesInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleConfirmCompletion();
+                    }
+                  }}
+                  slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                  disabled={isSubmittingDuration}
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '10px'
+                    }
+                  }}
+                />
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1, justifyContent: 'space-between' }}>
+          {completingExercise?.isCompleted ? (
+            <Button
+              variant="text"
+              color="error"
+              size="small"
+              onClick={handleUndoExercise}
+              disabled={isSubmittingDuration}
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '12px' }}
+            >
+              Undo Completion
+            </Button>
+          ) : (
+            <Box />
+          )}
+
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              onClick={() => setCompletingExercise(null)}
+              disabled={isSubmittingDuration}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                borderColor: 'rgba(0,0,0,0.15)'
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleConfirmCompletion}
+              disabled={isSubmittingDuration}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 700,
+                bgcolor: 'var(--accent-primary, #6366f1)',
+                '&:hover': {
+                  bgcolor: '#4f46e5'
+                }
+              }}
+            >
+              {isSubmittingDuration ? 'Saving...' : 'Mark Complete'}
+            </Button>
+          </Stack>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };

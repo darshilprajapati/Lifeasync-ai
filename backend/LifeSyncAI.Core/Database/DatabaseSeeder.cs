@@ -154,6 +154,8 @@ namespace LifeSyncAI.Core.Database
 
                         CREATE INDEX IF NOT EXISTS ""IX_WorkoutSessionLogs_User_Day_Date"" 
                         ON ""WorkoutSessionLogs"" (""UserId"", ""WorkoutDayId"", ""SessionDate"");
+
+                        ALTER TABLE ""WorkoutExerciseCompletions"" ADD COLUMN IF NOT EXISTS ""ActualDurationMinutes"" integer NOT NULL DEFAULT 0;
                     ");
                 }
                 catch (Exception ex)

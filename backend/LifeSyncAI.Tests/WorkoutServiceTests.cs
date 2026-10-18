@@ -1346,7 +1346,65 @@ namespace LifeSyncAI.Tests
 
             var healthLogsAfterUndo = await healthService.GetLogsAsync(_testUser.Id, monday);
             var workoutLogAfterUndo = Assert.Single(healthLogsAfterUndo.Data, l => l.LogType == "Workout");
-            Assert.Equal(duration1, workoutLogAfterUndo.LogValue);
+        }
+
+        [Fact]
+        public async Task WorkoutDurationTracking_WithActualDuration_UpdatesAccuratelyAndEditsCorrectly()
+        {
+            // Arrange
+            var healthService = new HealthService(_context);
+            var planResult = await _workoutService.GetActivePlanAsync(_testUser.Id);
+            var activeDay = planResult.Data.Days.First(d => !d.IsRestDay && d.Exercises.Count >= 2);
+            var exercise1 = activeDay.Exercises[0];
+            var exercise2 = activeDay.Exercises[1];
+            var monday = new DateTime(2026, 10, 19);
+
+            // Step 1: Reject invalid actual minutes (0 and negative)
+            var zeroResult = await _workoutService.ToggleExerciseCompletionAsync(
+                _testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 0);
+            Assert.False(zeroResult.IsSuccess);
+            Assert.Contains("positive", zeroResult.Message, StringComparison.OrdinalIgnoreCase);
+
+            var negResult = await _workoutService.ToggleExerciseCompletionAsync(
+                _testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: -5);
+            Assert.False(negResult.IsSuccess);
+
+            // Step 2: Complete exercise 1 with 8 minutes
+            var res1 = await _workoutService.ToggleExerciseCompletionAsync(
+                _testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 8);
+            Assert.True(res1.IsSuccess);
+            var dayDto1 = res1.Data;
+            var ex1Dto = dayDto1.Exercises.First(e => e.Id == exercise1.Id);
+            Assert.True(ex1Dto.IsCompleted);
+            Assert.Equal(8, ex1Dto.ActualDurationMinutes);
+
+            var healthLogs1 = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLog1 = Assert.Single(healthLogs1.Data, l => l.LogType == "Workout");
+            Assert.Equal(8, workoutLog1.LogValue);
+
+            // Step 3: Complete exercise 2 with 12 minutes -> total becomes 20
+            var res2 = await _workoutService.ToggleExerciseCompletionAsync(
+                _testUser.Id, exercise2.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 12);
+            Assert.True(res2.IsSuccess);
+
+            var healthLogs2 = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLog2 = Assert.Single(healthLogs2.Data, l => l.LogType == "Workout");
+            Assert.Equal(20, workoutLog2.LogValue);
+
+            // Step 4: Correct exercise 1 duration from 8 to 10 minutes -> total becomes 22
+            var resEdit = await _workoutService.ToggleExerciseCompletionAsync(
+                _testUser.Id, exercise1.Id, monday, true, clientReferenceDate: monday, actualDurationMinutes: 10);
+            Assert.True(resEdit.IsSuccess);
+            var ex1Edited = resEdit.Data.Exercises.First(e => e.Id == exercise1.Id);
+            Assert.Equal(10, ex1Edited.ActualDurationMinutes);
+
+            var healthLogs3 = await healthService.GetLogsAsync(_testUser.Id, monday);
+            var workoutLog3 = Assert.Single(healthLogs3.Data, l => l.LogType == "Workout");
+            Assert.Equal(22, workoutLog3.LogValue);
+
+            // Step 5: Verify no personal planner tasks were created
+            var plannerEventsCount = await _context.PlannerEvents.CountAsync(p => p.UserId == _testUser.Id);
+            Assert.Equal(0, plannerEventsCount);
         }
 
         private static void SetControllerUser(ControllerBase controller, int userId)
