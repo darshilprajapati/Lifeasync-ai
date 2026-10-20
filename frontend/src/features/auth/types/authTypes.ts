@@ -5,6 +5,9 @@ export interface UserDto {
   role: string;
   status: string;
   profilePhoto?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 export interface LoginRequest {

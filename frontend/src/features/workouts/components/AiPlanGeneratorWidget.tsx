@@ -557,7 +557,7 @@ export const AiPlanGeneratorWidget: React.FC<AiPlanGeneratorWidgetProps> = ({
           </Box>
 
           {/* Target Muscle Distribution Summary */}
-          <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'var(--bg-card, #ffffff)', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
               <PieChartIcon sx={{ fontSize: 18, color: 'var(--accent-primary)' }} />
               <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>

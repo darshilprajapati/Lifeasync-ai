@@ -17,6 +17,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import { useThemeSystem } from '../../../context/ThemeContext';
 import type { WorkoutDay, UserWorkoutPlan } from '../types/workout';
 import { WorkoutDayCard } from './WorkoutDayCard';
 
@@ -41,6 +42,8 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   onSyncPlanner,
   syncingPlanner
 }) => {
+  const { designSystem } = useThemeSystem();
+  const isProf = designSystem === 'professional';
   const [confirmSyncOpen, setConfirmSyncOpen] = React.useState(false);
 
   // Compute Monday of the selected week
@@ -110,9 +113,11 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             label={plan.title || 'My Routine'}
             size="small"
             sx={{
-              bgcolor: 'rgba(99, 102, 241, 0.1)',
+              borderRadius: isProf ? '0px !important' : '10px',
+              bgcolor: isProf ? 'transparent' : 'rgba(255, 115, 56, 0.12)',
+              border: isProf ? '1px solid var(--accent-primary)' : '1px solid rgba(255, 115, 56, 0.25)',
               color: 'var(--accent-primary)',
-              fontWeight: 600,
+              fontWeight: 700,
               fontSize: '11px'
             }}
           />
@@ -120,7 +125,12 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             label={`v${plan.version}`}
             size="small"
             variant="outlined"
-            sx={{ fontSize: '10px', height: 20 }}
+            sx={{
+              borderRadius: isProf ? '0px !important' : '8px',
+              fontSize: '10px',
+              height: 20,
+              borderColor: isProf ? 'var(--card-border)' : undefined
+            }}
           />
         </Stack>
 
@@ -131,13 +141,22 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             onClick={onOpenAiGenerator}
             startIcon={<AutoAwesomeIcon sx={{ fontSize: '15px !important' }} />}
             sx={{
-              borderRadius: '8px',
+              borderRadius: isProf ? '0px !important' : '10px',
               textTransform: 'none',
               fontSize: '12px',
-              fontWeight: 600,
-              borderColor: 'var(--accent-primary)',
+              fontWeight: 700,
+              borderColor: isProf ? 'var(--accent-primary)' : 'rgba(255, 115, 56, 0.35)',
               color: 'var(--accent-primary)',
-              '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' }
+              boxShadow: !isProf ? '0 2px 8px rgba(255, 115, 56, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4)' : 'none',
+              transition: isProf ? 'background-color 0.15s ease' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 115, 56, 0.08)',
+                borderColor: 'var(--accent-primary)',
+                transform: isProf ? 'none' : 'translateY(-2px)'
+              },
+              '&:active': {
+                transform: isProf ? 'none' : 'translateY(1px)'
+              }
             }}
           >
             AI Plan Generator
@@ -151,13 +170,20 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
               disabled={syncingPlanner}
               startIcon={<CalendarMonthIcon sx={{ fontSize: '15px !important' }} />}
               sx={{
-                borderRadius: '8px',
+                borderRadius: isProf ? '0px !important' : '10px',
                 textTransform: 'none',
                 fontSize: '12px',
                 fontWeight: 600,
-                borderColor: 'var(--border-color, #e2e8f0)',
+                borderColor: isProf ? 'var(--card-border)' : 'rgba(255, 255, 255, 0.2)',
                 color: 'var(--text-primary)',
-                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                boxShadow: !isProf ? '0 2px 8px rgba(0, 0, 0, 0.05)' : 'none',
+                '&:hover': {
+                  bgcolor: isProf ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)',
+                  transform: isProf ? 'none' : 'translateY(-2px)'
+                },
+                '&:active': {
+                  transform: isProf ? 'none' : 'translateY(1px)'
+                }
               }}
             >
               {syncingPlanner ? 'Syncing...' : 'Sync to Planner'}
@@ -168,10 +194,11 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             direction="row"
             sx={{
               alignItems: 'center',
-              bgcolor: 'var(--bg-card, #ffffff)',
-              borderRadius: '10px',
+              bgcolor: 'var(--card-bg)',
+              borderRadius: isProf ? '0px !important' : '12px',
+              border: isProf ? '1px solid var(--card-border)' : '1px solid rgba(255, 255, 255, 0.15)',
               p: 0.3,
-              boxShadow: 'var(--shadow-soft)'
+              boxShadow: isProf ? 'var(--shadow-soft)' : '0 4px 14px rgba(0,0,0,0.06)'
             }}
           >
             <IconButton size="small" onClick={handlePrevWeek}>
@@ -193,7 +220,13 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             sx={{
               textTransform: 'none',
               fontSize: '12px',
-              color: 'var(--text-secondary)'
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              borderRadius: isProf ? '0px !important' : '8px',
+              '&:hover': {
+                color: 'var(--accent-primary)',
+                bgcolor: 'rgba(255, 115, 56, 0.06)'
+              }
             }}
           >
             Today
@@ -215,7 +248,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
           width: '100%',
           overflowX: 'visible',
           pb: 1,
-          pt: 0.5
+          pt: 1
         }}
       >
         {orderedDays.map((day, idx) => {

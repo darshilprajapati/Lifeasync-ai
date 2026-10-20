@@ -103,8 +103,23 @@ namespace LifeSyncAI.Core.Database.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("CommonMistakes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PostureTips")
+                        .HasColumnType("text");
+
                     b.Property<bool>("RequiresEquipment")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("SafetyTips")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SecondaryMuscles")
+                        .HasColumnType("text");
 
                     b.Property<string>("TargetMuscles")
                         .IsRequired()
@@ -119,7 +134,15 @@ namespace LifeSyncAI.Core.Database.Migrations
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("text");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VideoUrl")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Exercises");
                 });
@@ -640,6 +663,9 @@ namespace LifeSyncAI.Core.Database.Migrations
                     b.Property<int>("ExerciseId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("HealthLogId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -782,6 +808,14 @@ namespace LifeSyncAI.Core.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("LifeSyncAI.Core.Models.Exercise", b =>
+                {
+                    b.HasOne("LifeSyncAI.Core.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("LifeSyncAI.Core.Models.Transaction", b =>

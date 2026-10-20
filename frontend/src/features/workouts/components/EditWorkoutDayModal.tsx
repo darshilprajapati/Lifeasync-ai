@@ -26,6 +26,7 @@ import type { WorkoutDay, Exercise, WorkoutDayExercise } from '../types/workout'
 import { workoutService } from '../services/workoutService';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { useNotification } from '../../../context/NotificationContext';
+import { useThemeSystem } from '../../../context/ThemeContext';
 
 interface EditWorkoutDayModalProps {
   open: boolean;
@@ -41,6 +42,9 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
   onSaveSuccess
 }) => {
   const { notify } = useNotification();
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
   const [focusTitle, setFocusTitle] = useState('');
   const [isRestDay, setIsRestDay] = useState(false);
   const [targetDuration, setTargetDuration] = useState(30);
@@ -192,9 +196,19 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
         onClose={onClose}
         maxWidth="md"
         fullWidth
-        slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: isProf ? '0px !important' : '16px',
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+              color: 'var(--text-primary)',
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
+              p: 1
+            }
+          }
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: 'var(--text-primary)' }}>
           Customize {day.dayName} Routine
         </DialogTitle>
 
@@ -270,11 +284,15 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                     startIcon={<AddIcon />}
                     onClick={handleOpenAddPicker}
                     sx={{
-                      borderRadius: '8px',
+                      borderRadius: isProf ? '0px' : '10px',
                       textTransform: 'none',
                       fontWeight: 600,
-                      borderColor: 'var(--accent-primary)',
-                      color: 'var(--accent-primary)'
+                      borderColor: '#FF6F26',
+                      color: '#FF6F26',
+                      '&:hover': {
+                        borderColor: '#FF6F26',
+                        bgcolor: 'rgba(255, 111, 38, 0.08)'
+                      }
                     }}
                   >
                     Add Exercise from Library
@@ -287,7 +305,7 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                     sx={{
                       p: 3,
                       border: '1px dashed rgba(0,0,0,0.15)',
-                      borderRadius: '12px',
+                      borderRadius: isProf ? '0px' : '12px',
                       textAlign: 'center'
                     }}
                   >
@@ -302,9 +320,13 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                         key={ex.id || `${ex.exerciseId}-${index}`}
                         sx={{
                           p: 1.5,
-                          borderRadius: '12px',
-                          border: '1px solid rgba(0,0,0,0.08)',
-                          bgcolor: 'var(--bg-card, #ffffff)',
+                          borderRadius: isProf ? '0px !important' : '12px',
+                          border: '1px solid var(--card-border)',
+                          bgcolor: isProf 
+                            ? (isDark ? '#26303F' : '#ffffff') 
+                            : (isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff'),
+                          color: 'var(--text-primary)',
+                          boxShadow: isProf ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
                           display: 'flex',
                           flexDirection: { xs: 'column', sm: 'row' },
                           alignItems: { xs: 'flex-start', sm: 'center' },
@@ -407,9 +429,9 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
             sx={{
               textTransform: 'none',
               fontWeight: 700,
-              borderRadius: '8px',
+              borderRadius: isProf ? '0px !important' : '8px',
               bgcolor: 'var(--accent-primary)',
-              '&:hover': { bgcolor: 'var(--accent-hover, #4f46e5)' }
+              '&:hover': { bgcolor: 'var(--accent-hover, #FF5722)' }
             }}
           >
             {saving ? 'Saving...' : 'Save Routine'}

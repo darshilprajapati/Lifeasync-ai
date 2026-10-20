@@ -25,9 +25,10 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
-import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 
 interface PlannerEvent {
   id: number;
@@ -389,7 +390,6 @@ const Planner: React.FC = () => {
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ThemeToggle />
             <ReportExporter module="Planner" />
           </Stack>
         </Stack>
@@ -406,7 +406,7 @@ const Planner: React.FC = () => {
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
           {/* Add / Edit Event Form */}
           <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
-            <Card sx={{ width: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
+            <TiltCard sx={{ width: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flex: 1 }}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: 'var(--accent-primary)' }}>
@@ -510,7 +510,7 @@ const Planner: React.FC = () => {
                         }}
                       />
                     )}
-                    <Button
+                    <IconSlideButton
                       type="submit"
                       variant="contained"
                       fullWidth
@@ -519,7 +519,6 @@ const Planner: React.FC = () => {
                       sx={{
                         bgcolor: 'var(--accent-primary)',
                         py: 1.5,
-                        borderRadius: '12px',
                         fontWeight: 600,
                         '&:hover': { bgcolor: 'var(--accent-secondary)' },
                       }}
@@ -527,16 +526,16 @@ const Planner: React.FC = () => {
                       {submitting
                         ? (editingId ? 'Saving Changes...' : 'Creating...')
                         : (editingId ? 'Save Changes' : 'Create Event')}
-                    </Button>
+                    </IconSlideButton>
                   </Stack>
                 </form>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Box>
 
           {/* Events List */}
           <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
-            <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <TiltCard sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
               <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -573,10 +572,10 @@ const Planner: React.FC = () => {
                               : '4px solid var(--accent-primary)',
                             transition: '0.2s',
                             bgcolor: e.isCompleted
-                              ? 'rgba(76, 175, 80, 0.02)'
+                              ? 'rgba(76, 175, 80, 0.08)'
                               : isOverdue
-                              ? 'rgba(239, 68, 68, 0.03)'
-                              : 'white',
+                              ? 'rgba(239, 68, 68, 0.08)'
+                              : 'var(--card-bg)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                           }}
                         >
@@ -673,7 +672,7 @@ const Planner: React.FC = () => {
                   </Stack>
                 )}
               </CardContent>
-            </Card>
+            </TiltCard>
           </Box>
         </Box>
       </Box>

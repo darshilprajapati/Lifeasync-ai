@@ -66,6 +66,23 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("leaderboard")]
+        public async Task<ActionResult<ApiResponse<LeaderboardResponseDto>>> GetLeaderboard([FromQuery] string scope = "city", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var userId = GetUserId();
+            var result = await _lifeScoreService.GetLeaderboardAsync(userId, scope, Math.Max(1, page), Math.Clamp(pageSize, 1, 50));
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpGet("cumulative")]
+        public async Task<ActionResult<ApiResponse<double>>> GetCumulativeScore()
+        {
+            var userId = GetUserId();
+            var total = await _lifeScoreService.GetCumulativeTotalLifeScoreAsync(userId);
+            return Ok(ApiResponse<double>.Success(total, "Cumulative life score loaded successfully."));
+        }
+
         private int GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

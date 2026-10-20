@@ -8,13 +8,21 @@ export interface UserDto {
   role: string;
   status: string;
   profilePhoto?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 interface AuthContextType {
   user: UserDto | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserDto>;
-  register: (fullName: string, email: string, password: string) => Promise<UserDto>;
+  register: (
+    fullName: string,
+    email: string,
+    password: string,
+    location?: { country?: string; state?: string; city?: string }
+  ) => Promise<UserDto>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: UserDto) => void;
 }
@@ -102,9 +110,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (fullName: string, email: string, password: string): Promise<UserDto> => {
+  const register = async (
+    fullName: string,
+    email: string,
+    password: string,
+    location?: { country?: string; state?: string; city?: string }
+  ): Promise<UserDto> => {
     try {
-      const response = await apiClient.post('/api/auth/register', { fullName, email, password });
+      const payload: any = { fullName, email, password };
+      if (location) {
+        if (location.country) payload.country = location.country.trim();
+        if (location.state) payload.state = location.state.trim();
+        if (location.city) payload.city = location.city.trim().toUpperCase();
+      }
+      const response = await apiClient.post('/api/auth/register', payload);
       if (response.data.isSuccess) {
         if (response.data.data) {
           setUser(response.data.data);

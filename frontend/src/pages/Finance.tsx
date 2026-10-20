@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, TextField, Button, IconButton, Select, MenuItem, InputLabel, FormControl, Grid, Alert, Stack, Tab, Tabs, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, TextField, IconButton, Select, MenuItem, InputLabel, FormControl, Grid, Alert, Stack, Tab, Tabs, Chip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -11,10 +11,11 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
-import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { trackAction } from '../utils/analytics';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 
 interface Transaction {
   id: number;
@@ -228,7 +229,6 @@ const Finance: React.FC = () => {
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ThemeToggle />
             <ReportExporter module="Finance" />
           </Stack>
         </Stack>
@@ -245,7 +245,7 @@ const Finance: React.FC = () => {
         {/* Summary & Projection Cards Row */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '5px solid #4CAF50' }}>
+            <TiltCard sx={{ borderLeft: '5px solid #4CAF50' }}>
               <CardContent>
                 <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
@@ -257,10 +257,10 @@ const Finance: React.FC = () => {
                   <TrendingUpIcon sx={{ color: '#4CAF50', fontSize: 40 }} />
                 </Stack>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '5px solid #E85A4F' }}>
+            <TiltCard sx={{ borderLeft: '5px solid #E85A4F' }}>
               <CardContent>
                 <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
@@ -272,10 +272,10 @@ const Finance: React.FC = () => {
                   <TrendingDownIcon sx={{ color: '#E85A4F', fontSize: 40 }} />
                 </Stack>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '5px solid var(--accent-primary)', bgcolor: 'rgba(232, 90, 79, 0.02)' }}>
+            <TiltCard sx={{ borderLeft: '5px solid var(--accent-primary)', bgcolor: 'rgba(232, 90, 79, 0.04)' }}>
               <CardContent>
                 <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
@@ -287,12 +287,12 @@ const Finance: React.FC = () => {
                   <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 40 }} />
                 </Stack>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Grid>
           
           {/* Commitment Projections */}
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '5px solid #2196F3', bgcolor: 'rgba(33, 150, 243, 0.02)' }}>
+            <TiltCard sx={{ borderLeft: '5px solid #2196F3', bgcolor: 'rgba(33, 150, 243, 0.04)' }}>
               <CardContent>
                 <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
@@ -304,10 +304,10 @@ const Finance: React.FC = () => {
                   <CalendarMonthIcon sx={{ color: '#2196F3', fontSize: 40 }} />
                 </Stack>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', borderLeft: '5px solid #9C27B0', bgcolor: 'rgba(156, 39, 176, 0.02)' }}>
+            <TiltCard sx={{ borderLeft: '5px solid #9C27B0', bgcolor: 'rgba(156, 39, 176, 0.04)' }}>
               <CardContent>
                 <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>
@@ -319,7 +319,7 @@ const Finance: React.FC = () => {
                   <ReceiptIcon sx={{ color: '#9C27B0', fontSize: 40 }} />
                 </Stack>
               </CardContent>
-            </Card>
+            </TiltCard>
           </Grid>
         </Grid>
 
@@ -336,7 +336,7 @@ const Finance: React.FC = () => {
           <Grid container spacing={4}>
             {/* Add Transaction Form */}
             <Grid size={{ xs: 12, md: 5 }}>
-              <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2 }}>
+              <TiltCard sx={{ p: 2 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
                     Log Transaction
@@ -388,7 +388,7 @@ const Finance: React.FC = () => {
                         onChange={(e) => setDate(e.target.value)}
                         slotProps={{ inputLabel: { shrink: true } }}
                       />
-                      <Button
+                      <IconSlideButton
                         type="submit"
                         variant="contained"
                         fullWidth
@@ -397,24 +397,23 @@ const Finance: React.FC = () => {
                         sx={{
                           bgcolor: 'var(--accent-primary)',
                           py: 1.5,
-                          borderRadius: '12px',
                           fontWeight: 600,
                           '&:hover': { bgcolor: 'var(--accent-secondary)' },
                         }}
                       >
                         {submitting ? 'Logging...' : 'Log Transaction'}
-                      </Button>
+                      </IconSlideButton>
                     </Stack>
                   </form>
                 </CardContent>
-              </Card>
+              </TiltCard>
             </Grid>
 
             {/* Transactions List & Charts */}
             <Grid size={{ xs: 12, md: 7 }}>
               <Stack spacing={4}>
                 {/* Chart Card */}
-                <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2 }}>
+                <TiltCard sx={{ p: 2 }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                       Income vs Expense Breakdown
@@ -433,10 +432,10 @@ const Finance: React.FC = () => {
                       </ResponsiveContainer>
                     </Box>
                   </CardContent>
-                </Card>
+                </TiltCard>
 
                 {/* Transactions History Card */}
-                <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+                <TiltCard sx={{ minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                       Transaction History
@@ -490,7 +489,7 @@ const Finance: React.FC = () => {
                       </Stack>
                     )}
                   </CardContent>
-                </Card>
+                </TiltCard>
               </Stack>
             </Grid>
           </Grid>
@@ -499,7 +498,7 @@ const Finance: React.FC = () => {
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
             {/* Add Commitment Form */}
             <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
-              <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', p: 2, display: 'flex', flexDirection: 'column' }}>
+              <TiltCard sx={{ width: '100%', height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flex: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
                     Add Commitment / Recurring Cost
@@ -556,7 +555,7 @@ const Finance: React.FC = () => {
                         onChange={(e) => setRecDueDate(e.target.value)}
                         slotProps={{ inputLabel: { shrink: true } }}
                       />
-                      <Button
+                      <IconSlideButton
                         type="submit"
                         variant="contained"
                         fullWidth
@@ -565,22 +564,21 @@ const Finance: React.FC = () => {
                         sx={{
                           bgcolor: 'var(--accent-primary)',
                           py: 1.5,
-                          borderRadius: '12px',
                           fontWeight: 600,
                           '&:hover': { bgcolor: 'var(--accent-secondary)' },
                         }}
                       >
                         {recSubmitting ? 'Recording...' : 'Record Commitment'}
-                      </Button>
+                      </IconSlideButton>
                     </Stack>
                   </form>
                 </CardContent>
-              </Card>
+              </TiltCard>
             </Box>
 
             {/* Commitments List sorted by expiry date first */}
             <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
-              <Card sx={{ width: '100%', height: '100%', borderRadius: '16px', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column', p: 2 }}>
+              <TiltCard sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
                     Active Bills, EMIs & Loans (Sorted by Expiry Date)
@@ -685,7 +683,7 @@ const Finance: React.FC = () => {
                     </Stack>
                   )}
                 </CardContent>
-              </Card>
+              </TiltCard>
             </Box>
           </Box>
         )}

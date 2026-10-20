@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Stack, Alert, CircularProgress, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, ListItemText, ListItemIcon, Pagination, InputAdornment } from '@mui/material';
+import { Box, Typography, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Stack, Alert, CircularProgress, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, ListItemText, ListItemIcon, Pagination, InputAdornment } from '@mui/material';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
@@ -10,9 +10,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
-import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
+import { TiltCard } from '../components/modern3d/TiltCard';
 
 interface ManagedUser {
   id: number;
@@ -274,7 +274,6 @@ const AdminPanel: React.FC = () => {
               System Administration
             </Typography>
           </Stack>
-          <ThemeToggle />
         </Stack>
         <Typography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
           Manage user accounts, approve registrations, configure status pipelines, and inspect audit activity logs.
@@ -299,7 +298,7 @@ const AdminPanel: React.FC = () => {
           </Tabs>
         </Box>
 
-        <Card sx={{ borderRadius: '16px', boxShadow: 'var(--shadow-soft)', minHeight: '500px', display: 'flex', flexDirection: 'column', p: 2 }}>
+        <TiltCard sx={{ minHeight: '500px', display: 'flex', flexDirection: 'column', p: 2 }}>
           <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {activeTab === 1 ? (
               // PENDING REGISTRATIONS QUEUE
@@ -533,7 +532,7 @@ const AdminPanel: React.FC = () => {
               </>
             )}
           </CardContent>
-        </Card>
+        </TiltCard>
 
         {/* DIALOG 1: RESET PASSWORD */}
         <Dialog open={resetDialogOpen} onClose={handleCloseResetDialog} slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}>

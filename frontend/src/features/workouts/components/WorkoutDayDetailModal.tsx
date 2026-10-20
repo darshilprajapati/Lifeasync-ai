@@ -28,6 +28,7 @@ import { ExerciseDemonstrationMedia } from './ExerciseDemonstrationMedia';
 import { trackAction } from '../../../utils/analytics';
 import { formatLocalDate, isDateToday } from '../utils/workoutDateUtils';
 import { useNotification } from '../../../context/NotificationContext';
+import { useThemeSystem } from '../../../context/ThemeContext';
 
 interface WorkoutDayDetailModalProps {
   open: boolean;
@@ -45,6 +46,9 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   onDayUpdated
 }) => {
   const { notify } = useNotification();
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
   const [activeDay, setActiveDay] = useState<WorkoutDay | null>(day);
   const [completingExercise, setCompletingExercise] = useState<WorkoutDayExercise | null>(null);
   const [actualMinutesInput, setActualMinutesInput] = useState<string>('');
@@ -191,10 +195,11 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
       slotProps={{
         paper: {
           sx: {
-            borderRadius: '20px',
-            bgcolor: 'var(--bg-card, #ffffff)',
+            borderRadius: isProf ? '0px !important' : '20px',
+            bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+            color: 'var(--text-primary)',
             backgroundImage: 'none',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
+            border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
             maxHeight: '90vh'
           }
         }
@@ -208,7 +213,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)'
+          borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
         }}
       >
         <Box>
@@ -217,7 +222,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
               variant="caption"
               sx={{
                 fontWeight: 700,
-                color: 'var(--accent-primary, #6366f1)',
+                color: '#FF6F26',
                 textTransform: 'uppercase',
                 letterSpacing: '0.8px'
               }}
@@ -230,11 +235,13 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                 label="Today's Session"
                 size="small"
                 sx={{
-                  bgcolor: 'var(--accent-primary, #6366f1)',
+                  background: isProf ? 'var(--accent-primary)' : 'linear-gradient(135deg, #FF6F26 0%, #FFA048 100%)',
                   color: '#ffffff',
                   fontWeight: 800,
                   fontSize: '10px',
-                  height: 20
+                  height: 20,
+                  borderRadius: isProf ? '0px !important' : '6px',
+                  boxShadow: isProf ? 'none' : '0 2px 6px rgba(255, 111, 38, 0.35)'
                 }}
               />
             )}
@@ -328,9 +335,9 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
               py: 6,
               px: 2,
               textAlign: 'center',
-              bgcolor: 'rgba(139, 92, 246, 0.04)',
-              borderRadius: '16px',
-              border: '1px dashed rgba(139, 92, 246, 0.3)'
+              bgcolor: isProf ? 'var(--card-bg)' : 'rgba(139, 92, 246, 0.04)',
+              borderRadius: isProf ? '0px !important' : '16px',
+              border: isProf ? '1px solid var(--card-border)' : '1px dashed rgba(139, 92, 246, 0.3)'
             }}
           >
             <HotelIcon sx={{ fontSize: 48, color: '#8b5cf6', mb: 1.5 }} />
@@ -348,9 +355,13 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
             <Box
               sx={{
                 p: 2,
-                borderRadius: '14px',
-                bgcolor: isFullyCompleted ? 'rgba(16, 185, 129, 0.06)' : 'rgba(99, 102, 241, 0.04)',
-                border: isFullyCompleted ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(99, 102, 241, 0.1)'
+                borderRadius: isProf ? '0px !important' : '14px',
+                bgcolor: isFullyCompleted 
+                  ? (isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)') 
+                  : (isProf ? 'var(--card-bg)' : (isDark ? 'rgba(255, 111, 38, 0.1)' : 'rgba(255, 111, 38, 0.06)')),
+                border: isFullyCompleted 
+                  ? '1px solid rgba(16, 185, 129, 0.25)' 
+                  : (isProf ? '1px solid var(--card-border)' : '1px solid rgba(255, 111, 38, 0.15)')
               }}
             >
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -366,11 +377,11 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                 value={progressPercent}
                 sx={{
                   height: 8,
-                  borderRadius: 4,
+                  borderRadius: isProf ? '0px' : 4,
                   bgcolor: 'rgba(0,0,0,0.06)',
                   '& .MuiLinearProgress-bar': {
-                    bgcolor: isFullyCompleted ? '#10b981' : 'var(--accent-primary)',
-                    borderRadius: 4
+                    bgcolor: isFullyCompleted ? '#10b981' : '#FF6F26',
+                    borderRadius: isProf ? '0px' : 4
                   }
                 }}
               />
@@ -388,12 +399,16 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                 <Box
                   key={ex.id || index}
                   sx={{
-                    borderRadius: '16px',
-                    border: isExDone ? '1px solid #10b981' : '1px solid rgba(0, 0, 0, 0.08)',
-                    bgcolor: isExDone ? 'rgba(16, 185, 129, 0.02)' : 'var(--bg-card, #ffffff)',
+                    borderRadius: isProf ? '0px !important' : '16px',
+                    border: isExDone ? '1px solid #10b981' : '1px solid var(--card-border)',
+                    bgcolor: isExDone
+                      ? (isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.02)')
+                      : (isProf
+                          ? (isDark ? '#26303F' : '#ffffff')
+                          : (isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff')),
                     p: 2.5,
                     transition: 'all 0.2s ease',
-                    boxShadow: 'var(--shadow-soft, 0 2px 8px rgba(0,0,0,0.04))'
+                    boxShadow: isProf ? 'none' : '0 4px 16px rgba(0,0,0,0.04)'
                   }}
                 >
                   <Stack
@@ -468,17 +483,17 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                         <Chip
                           label={`${ex.sets} Sets`}
                           size="small"
-                          sx={{ fontWeight: 700, bgcolor: 'rgba(0,0,0,0.05)', fontSize: '11px' }}
+                          sx={{ fontWeight: 700, bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', fontSize: '11px', borderRadius: isProf ? '0px' : '6px' }}
                         />
                         <Chip
                           label={`${ex.reps} Reps`}
                           size="small"
-                          sx={{ fontWeight: 700, bgcolor: 'rgba(0,0,0,0.05)', fontSize: '11px' }}
+                          sx={{ fontWeight: 700, bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', fontSize: '11px', borderRadius: isProf ? '0px' : '6px' }}
                         />
                         <Chip
                           label={`${ex.restSeconds}s Rest`}
                           size="small"
-                          sx={{ fontWeight: 700, bgcolor: 'rgba(0,0,0,0.05)', fontSize: '11px' }}
+                          sx={{ fontWeight: 700, bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', fontSize: '11px', borderRadius: isProf ? '0px' : '6px' }}
                         />
                         {isExDone && ex.actualDurationMinutes != null && ex.actualDurationMinutes > 0 && (
                           <Chip
@@ -489,7 +504,8 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                               fontWeight: 700,
                               bgcolor: 'rgba(16, 185, 129, 0.1)',
                               color: '#059669',
-                              fontSize: '11px'
+                              fontSize: '11px',
+                              borderRadius: isProf ? '0px' : '6px'
                             }}
                           />
                         )}
@@ -518,17 +534,17 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                           )
                         }
                         sx={{
-                          borderRadius: '12px',
+                          borderRadius: isProf ? '0px !important' : '10px',
                           textTransform: 'none',
                           fontWeight: 700,
                           fontSize: '13px',
                           px: 2.5,
                           py: 1,
                           bgcolor: isExDone ? '#10b981' : 'transparent',
-                          borderColor: isExDone ? '#10b981' : 'rgba(0,0,0,0.15)',
+                          borderColor: isExDone ? '#10b981' : 'var(--card-border)',
                           color: isExDone ? '#ffffff' : 'var(--text-primary)',
                           '&:hover': {
-                            bgcolor: isExDone ? '#059669' : 'rgba(99, 102, 241, 0.08)'
+                            bgcolor: isExDone ? '#059669' : (isDark ? 'rgba(255, 111, 38, 0.12)' : 'rgba(255, 111, 38, 0.08)')
                           }
                         }}
                       >
@@ -552,11 +568,11 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: '18px',
+              borderRadius: isProf ? '0px !important' : '18px',
               p: 1,
-              bgcolor: 'var(--bg-card, #ffffff)',
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
               backgroundImage: 'none',
-              border: '1px solid rgba(0, 0, 0, 0.1)',
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'),
               boxShadow: 'var(--shadow-elevation, 0 10px 30px rgba(0,0,0,0.15))'
             }
           }
@@ -605,7 +621,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                   size="small"
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px'
+                      borderRadius: isProf ? '0px !important' : '10px'
                     }
                   }}
                 />
@@ -635,11 +651,11 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
               onClick={() => setCompletingExercise(null)}
               disabled={isSubmittingDuration}
               sx={{
-                borderRadius: '10px',
+                borderRadius: isProf ? '0px !important' : '10px',
                 textTransform: 'none',
                 fontWeight: 600,
                 color: 'var(--text-secondary)',
-                borderColor: 'rgba(0,0,0,0.15)'
+                borderColor: 'var(--card-border)'
               }}
             >
               Cancel
@@ -649,12 +665,12 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
               onClick={handleConfirmCompletion}
               disabled={isSubmittingDuration}
               sx={{
-                borderRadius: '10px',
+                borderRadius: isProf ? '0px !important' : '10px',
                 textTransform: 'none',
                 fontWeight: 700,
-                bgcolor: 'var(--accent-primary, #6366f1)',
+                bgcolor: 'var(--accent-primary, #FF6F26)',
                 '&:hover': {
-                  bgcolor: '#4f46e5'
+                  bgcolor: 'var(--accent-secondary, #FF5722)'
                 }
               }}
             >

@@ -39,7 +39,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.style.setProperty('--bg-primary', '#F4F5F7');
         root.style.setProperty('--bg-secondary', '#EBECF0');
         root.style.setProperty('--card-bg', '#FFFFFF');
+        root.style.setProperty('--bg-card', '#FFFFFF');
         root.style.setProperty('--card-border', '#DFE1E6');
+        root.style.setProperty('--border-color', '#DFE1E6');
         root.style.setProperty('--text-primary', '#172B4D');
         root.style.setProperty('--text-secondary', '#5E6C84');
         root.style.setProperty('--neutral-primary', '#D1D5DB');
@@ -57,7 +59,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.style.setProperty('--bg-primary', '#12161A');
         root.style.setProperty('--bg-secondary', '#181F26');
         root.style.setProperty('--card-bg', '#1F2732');
+        root.style.setProperty('--bg-card', '#1F2732');
         root.style.setProperty('--card-border', '#2E3846');
+        root.style.setProperty('--border-color', '#2E3846');
         root.style.setProperty('--text-primary', '#F7FAFC');
         root.style.setProperty('--text-secondary', '#A0AEC0');
         root.style.setProperty('--neutral-primary', '#374151');
@@ -78,7 +82,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.style.setProperty('--bg-primary', '#F5F3EE');
         root.style.setProperty('--bg-secondary', '#EAE7DC');
         root.style.setProperty('--card-bg', '#FFFFFF');
+        root.style.setProperty('--bg-card', '#FFFFFF');
         root.style.setProperty('--card-border', 'rgba(232, 90, 79, 0.15)');
+        root.style.setProperty('--border-color', 'rgba(232, 90, 79, 0.15)');
         root.style.setProperty('--text-primary', '#2D2D2D');
         root.style.setProperty('--text-secondary', '#6D6D6D');
         root.style.setProperty('--neutral-primary', '#D8C3A5');
@@ -96,7 +102,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.style.setProperty('--bg-primary', '#0F111A');
         root.style.setProperty('--bg-secondary', '#141724');
         root.style.setProperty('--card-bg', '#1A1D2D');
+        root.style.setProperty('--bg-card', '#1A1D2D');
         root.style.setProperty('--card-border', 'rgba(255, 255, 255, 0.08)');
+        root.style.setProperty('--border-color', 'rgba(255, 255, 255, 0.08)');
         root.style.setProperty('--text-primary', '#FFFFFF');
         root.style.setProperty('--text-secondary', '#A5B0C2');
         root.style.setProperty('--neutral-primary', '#282E42');
@@ -301,6 +309,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           styleOverrides: {
             paper: {
               borderRadius: isProf ? '0px' : '20px',
+              backgroundColor: bgPaper,
+              color: textPrimary,
+              border: cardBorder,
+              backgroundImage: 'none',
             },
           },
         },

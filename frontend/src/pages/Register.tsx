@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useThemeSystem, type DesignSystem, type ThemeMode } from '../context/ThemeContext';
 import { trackAction } from '../utils/analytics';
 import { useLampAuthContext } from '../components/LampScene';
+import { getAllCountries, getStatesOfCountry, normalizeCity } from '../utils/locationData';
 
 // In-memory cache preserved across form switching and lamp toggles
 let cachedRegisterFullName = '';
@@ -13,10 +13,6 @@ const Register: React.FC = () => {
   const { isFormActive } = useLampAuthContext();
   const navigate = useNavigate();
   const { register } = useAuth();
-  const { designSystem, setDesignSystem, mode, setMode } = useThemeSystem();
-
-  const [selectedDesign, setSelectedDesign] = useState<DesignSystem>(designSystem);
-  const [selectedMode, setSelectedMode] = useState<ThemeMode>(mode);
 
   const [fullName, setFullName] = useState(cachedRegisterFullName);
   const [email, setEmail] = useState(cachedRegisterEmail);
@@ -24,6 +20,14 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Optional Location state
+  const [country, setCountry] = useState('');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
+
+  const allCountries = useMemo(() => getAllCountries(), []);
+  const availableStates = useMemo(() => getStatesOfCountry(country), [country]);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,13 +70,32 @@ const Register: React.FC = () => {
       return;
     }
 
+    const trimmedCountry = country.trim();
+    const trimmedState = state.trim();
+    const normalizedCity = normalizeCity(city);
+
+    // Validate that selected state belongs to selected country if specified
+    if (trimmedCountry && trimmedState && availableStates.length > 0) {
+      const stateValid = availableStates.some(
+        (s) => s.name.toLowerCase() === trimmedState.toLowerCase() || s.isoCode.toLowerCase() === trimmedState.toLowerCase()
+      );
+      if (!stateValid) {
+        setErrorMessage('Selected state does not belong to the selected country.');
+        return;
+      }
+    }
+
     setSubmitting(true);
     trackAction('register_attempt', { email });
 
     try {
-      await register(fullName.trim(), email.trim(), password);
-      setDesignSystem(selectedDesign);
-      setMode(selectedMode);
+      const locationPayload = trimmedCountry || trimmedState || normalizedCity ? {
+        country: trimmedCountry || undefined,
+        state: trimmedState || undefined,
+        city: normalizedCity || undefined
+      } : undefined;
+
+      await register(fullName.trim(), email.trim(), password, locationPayload);
       trackAction('register_success');
       setSuccessMessage('Account created successfully! Redirecting...');
       setTimeout(() => {
@@ -292,109 +315,117 @@ const Register: React.FC = () => {
           )}
         </div>
 
-        {/* Design System & Theme Mode Experience Selector */}
-        <div className="lamp-field-group" style={{ marginTop: '2px', marginBottom: '8px' }}>
-          <label className="lamp-field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Choose Your Design Experience</span>
-            <span style={{ fontSize: '10px', opacity: 0.7, textTransform: 'none' }}>Changeable anytime</span>
-          </label>
+        {/* Optional Location Information Section */}
+        <div className="lamp-field-group" style={{ marginTop: '12px', marginBottom: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.04em' }}>
+              Location (Optional)
+            </span>
+            <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.65)' }}>
+              For Life Score competition
+            </span>
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
-            {/* Option A: Professional */}
-            <div
-              id="pref-professional"
-              role="button"
-              tabIndex={isFormActive ? 0 : -1}
-              onClick={() => setSelectedDesign('professional')}
-              style={{
-                padding: '10px',
-                border: selectedDesign === 'professional' ? '2px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: selectedDesign === 'professional' ? 'rgba(232, 90, 79, 0.14)' : 'rgba(255, 255, 255, 0.04)',
-                borderRadius: '0px',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#FFFFFF' }}>
-                <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: 'var(--accent-primary)' }} />
-                Professional
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+            {/* Country Dropdown */}
+            <div>
+              <label htmlFor="register-country" className="lamp-field-label" style={{ fontSize: '10.5px' }}>
+                Country
+              </label>
+              <div className="lamp-input-container">
+                <select
+                  id="register-country"
+                  className="lamp-input-field"
+                  style={{
+                    backgroundColor: 'rgba(20, 24, 38, 0.65)',
+                    color: country ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    height: '40px'
+                  }}
+                  disabled={!isFormActive}
+                  value={country}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    setCountry(selected);
+                    setState(''); // Clear incompatible state selection on country change
+                  }}
+                >
+                  <option value="" style={{ background: '#1A1D2D', color: '#FFF' }}>Select Country</option>
+                  {allCountries.map((c) => (
+                    <option key={c.isoCode} value={c.name} style={{ background: '#1A1D2D', color: '#FFF' }}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '10px', lineHeight: 1.3, color: 'rgba(255, 255, 255, 0.75)' }}>
-                Clean, simple, rectangular, and productivity-focused.
-              </p>
             </div>
 
-            {/* Option B: Modern 3D */}
-            <div
-              id="pref-modern3d"
-              role="button"
-              tabIndex={isFormActive ? 0 : -1}
-              onClick={() => setSelectedDesign('modern3d')}
-              style={{
-                padding: '10px',
-                border: selectedDesign === 'modern3d' ? '2px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: selectedDesign === 'modern3d' ? 'rgba(232, 90, 79, 0.14)' : 'rgba(255, 255, 255, 0.04)',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                textAlign: 'left',
-                boxShadow: selectedDesign === 'modern3d' ? '0 4px 12px rgba(232, 90, 79, 0.25)' : 'none',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#FFFFFF' }}>
-                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', background: 'linear-gradient(135deg, #FF6B5B, #4A90E2)' }} />
-                Modern 3D
+            {/* State/Region Dropdown or Field */}
+            <div>
+              <label htmlFor="register-state" className="lamp-field-label" style={{ fontSize: '10.5px' }}>
+                State / Region
+              </label>
+              <div className="lamp-input-container">
+                {availableStates.length > 0 ? (
+                  <select
+                    id="register-state"
+                    className="lamp-input-field"
+                    style={{
+                      backgroundColor: 'rgba(20, 24, 38, 0.65)',
+                      color: state ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      height: '40px'
+                    }}
+                    disabled={!isFormActive}
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                  >
+                    <option value="" style={{ background: '#1A1D2D', color: '#FFF' }}>Select State / Region</option>
+                    {availableStates.map((s) => (
+                      <option key={s.isoCode || s.name} value={s.name} style={{ background: '#1A1D2D', color: '#FFF' }}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="register-state"
+                    type="text"
+                    className="lamp-input-field"
+                    style={{ fontSize: '12px', height: '40px' }}
+                    placeholder={country ? "Enter State / Region" : "Select country first"}
+                    disabled={!isFormActive || !country}
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                  />
+                )}
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '10px', lineHeight: 1.3, color: 'rgba(255, 255, 255, 0.75)' }}>
-                Interactive, dimensional, animated, and visually expressive.
-              </p>
             </div>
           </div>
 
-          {/* Initial Theme Mode Choice */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-            <button
-              type="button"
-              id="pref-mode-light"
-              onClick={() => setSelectedMode('light')}
-              tabIndex={isFormActive ? 0 : -1}
-              style={{
-                flex: 1,
-                padding: '5px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: selectedDesign === 'professional' ? '0px' : '8px',
-                border: selectedMode === 'light' ? '1.5px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: selectedMode === 'light' ? 'rgba(232, 90, 79, 0.15)' : 'transparent',
-                color: selectedMode === 'light' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Light Mode
-            </button>
-            <button
-              type="button"
-              id="pref-mode-dark"
-              onClick={() => setSelectedMode('dark')}
-              tabIndex={isFormActive ? 0 : -1}
-              style={{
-                flex: 1,
-                padding: '5px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: selectedDesign === 'professional' ? '0px' : '8px',
-                border: selectedMode === 'dark' ? '1.5px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: selectedMode === 'dark' ? 'rgba(232, 90, 79, 0.15)' : 'transparent',
-                color: selectedMode === 'dark' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Dark Mode
-            </button>
+          {/* City Field */}
+          <div>
+            <label htmlFor="register-city" className="lamp-field-label" style={{ fontSize: '10.5px' }}>
+              City
+            </label>
+            <div className="lamp-input-container">
+              <input
+                id="register-city"
+                type="text"
+                className="lamp-input-field"
+                style={{ fontSize: '12px', height: '40px' }}
+                placeholder="e.g. Ahmedabad (free text)"
+                disabled={!isFormActive}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
           </div>
+          <span style={{ display: 'block', marginTop: '4px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.55)' }}>
+            You can skip this and add or edit your location anytime from Profile.
+          </span>
         </div>
 
         {/* Primary Coral-Red Create Account Button */}

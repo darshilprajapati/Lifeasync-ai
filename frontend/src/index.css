@@ -46,38 +46,53 @@
   padding: 0;
 }
 
-/* Custom Cursor default for Modern 3D mode (hidden on touch or when Professional is active) */
-html:not([data-design-system="professional"]) * {
+/* Cursor System Rules */
+/* Professional mode: Standard system cursor behavior */
+html[data-design-system="professional"] * {
+  cursor: auto;
+}
+html[data-design-system="professional"] button,
+html[data-design-system="professional"] a,
+html[data-design-system="professional"] [role="button"],
+html[data-design-system="professional"] select,
+html[data-design-system="professional"] .interactive-hover {
+  cursor: pointer;
+}
+html[data-design-system="professional"] input,
+html[data-design-system="professional"] textarea,
+html[data-design-system="professional"] [contenteditable="true"] {
+  cursor: text !important;
+}
+
+/* Modern 3D mode: Hide native cursor everywhere so ONLY Heartbeat Cursor is visible */
+html[data-design-system="modern3d"],
+html[data-design-system="modern3d"] * {
   cursor: none !important;
 }
 
-html:not([data-design-system="professional"]) input,
-html:not([data-design-system="professional"]) textarea {
+/* Retain native text cursor ONLY in text inputs, textareas, and contenteditable in Modern 3D */
+html[data-design-system="modern3d"] input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),
+html[data-design-system="modern3d"] textarea,
+html[data-design-system="modern3d"] [contenteditable="true"] {
   cursor: text !important;
 }
 
-/* Professional Mode: Restore native desktop cursor and sharp business ergonomics */
-[data-design-system="professional"] * {
-  cursor: auto !important;
+/* Drag handles and resize controls in Modern 3D */
+html[data-design-system="modern3d"] [data-draggable="true"],
+html[data-design-system="modern3d"] .drag-handle,
+html[data-design-system="modern3d"] .resize-handle {
+  cursor: grab !important;
 }
 
-[data-design-system="professional"] button,
-[data-design-system="professional"] a,
-[data-design-system="professional"] [role="button"],
-[data-design-system="professional"] select,
-[data-design-system="professional"] .interactive-hover {
-  cursor: pointer !important;
+/* Fallback for touch devices or coarse pointers */
+@media (hover: none), (pointer: coarse) {
+  html[data-design-system="modern3d"],
+  html[data-design-system="modern3d"] * {
+    cursor: auto !important;
+  }
 }
 
-[data-design-system="professional"] input,
-[data-design-system="professional"] textarea {
-  cursor: text !important;
-}
 
-[data-design-system="professional"] .custom-cursor-dot,
-[data-design-system="professional"] .custom-cursor-ring {
-  display: none !important;
-}
 
 html, body {
   background-color: var(--bg-primary);
@@ -127,11 +142,14 @@ input, button, select, textarea {
 [data-design-system="professional"] .MuiChip-root,
 [data-design-system="professional"] .MuiDialog-paper,
 [data-design-system="professional"] .MuiMenu-paper,
+[data-design-system="professional"] .MuiPopover-paper,
 [data-design-system="professional"] .MuiSelect-select,
 [data-design-system="professional"] .lamp-primary-button,
 [data-design-system="professional"] .lamp-input-container,
 [data-design-system="professional"] .lamp-input-field,
-[data-design-system="professional"] .lamp-card-container {
+[data-design-system="professional"] .lamp-card-container,
+[data-design-system="professional"] .lifesync-navbar,
+[data-design-system="professional"] .lifesync-nav-link {
   border-radius: 0px !important;
 }
 
@@ -151,15 +169,20 @@ input, button, select, textarea {
   box-shadow: none !important;
 }
 
-[data-design-system="professional"] .MuiCard-root {
+[data-design-system="professional"] .MuiCard-root,
+[data-design-system="professional"] .MuiPaper-root,
+[data-design-system="professional"] .lifesync-navbar {
   border: 1px solid var(--card-border) !important;
   box-shadow: var(--shadow-soft) !important;
   background-image: none !important;
   backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-[data-design-system="professional"] .MuiCard-root:hover {
+[data-design-system="professional"] .MuiCard-root:hover,
+[data-design-system="professional"] .MuiPaper-elevation:hover {
   transform: none !important;
+  box-shadow: var(--shadow-soft) !important;
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,6 +190,190 @@ input, button, select, textarea {
 /* ------------------------------------------------------------------ */
 [data-design-system="modern3d"] {
   --font-family: 'Josefin Sans', sans-serif;
+  --glass-border-radius: 18px;
+}
+
+/* Modern 3D Glassmorphism - Cards & Surface Papers */
+[data-design-system="modern3d"] .MuiCard-root,
+[data-design-system="modern3d"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+  border-radius: var(--glass-border-radius) !important;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiCard-root,
+[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+  background: rgba(16, 22, 36, 0.72) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiCard-root,
+[data-design-system="modern3d"][data-theme="light"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 8px 28px rgba(142, 141, 138, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Modern 3D Glassmorphism - Sidebar Navbar */
+[data-design-system="modern3d"][data-theme="dark"] .lifesync-navbar {
+  background: rgba(13, 18, 30, 0.76) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .lifesync-navbar {
+  background: rgba(245, 243, 238, 0.82) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 4px 0 20px rgba(142, 141, 138, 0.12) !important;
+}
+
+/* Modern 3D Glassmorphism - Navigation Hover & Transition */
+[data-design-system="modern3d"][data-theme="dark"] .lifesync-nav-link:not(.active):hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #FFFFFF !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .lifesync-nav-link:not(.active):hover {
+  background: rgba(232, 90, 79, 0.08) !important;
+  color: var(--accent-primary) !important;
+}
+
+/* Modern 3D Glassmorphism - Form Inputs, Selects & Textareas */
+[data-design-system="modern3d"][data-theme="dark"] .MuiOutlinedInput-root {
+  background: rgba(18, 24, 38, 0.65) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 111, 38, 0.45) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 12px rgba(255, 111, 38, 0.25) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiOutlinedInput-root {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--accent-primary) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 10px rgba(232, 90, 79, 0.2) !important;
+}
+
+/* Modern 3D Glassmorphism - Popover, Select Menus & Dropdowns */
+[data-design-system="modern3d"][data-theme="dark"] .MuiMenu-paper,
+[data-design-system="modern3d"][data-theme="dark"] .MuiPopover-paper {
+  background: rgba(16, 22, 36, 0.92) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiMenu-paper,
+[data-design-system="modern3d"][data-theme="light"] .MuiPopover-paper {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 14px 36px rgba(142, 141, 138, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Modern 3D Glassmorphism - Modals & Dialogs */
+[data-design-system="modern3d"][data-theme="dark"] .MuiDialog-paper {
+  background: rgba(15, 22, 38, 0.88) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiDialog-paper {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 60px rgba(142, 141, 138, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Modern 3D Glassmorphism - Tooltips */
+[data-design-system="modern3d"][data-theme="dark"] .MuiTooltip-tooltip {
+  background: rgba(16, 24, 40, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+  border-radius: 8px !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiTooltip-tooltip {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(232, 90, 79, 0.25) !important;
+  box-shadow: 0 6px 18px rgba(142, 141, 138, 0.2) !important;
+  border-radius: 8px !important;
+  color: #2D2D2D !important;
+}
+
+/* Modern 3D Glassmorphism - Tables, Headings & Rows */
+[data-design-system="modern3d"][data-theme="dark"] .MuiTableCell-root {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiTableCell-root {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiTableHead-root .MuiTableCell-root {
+  background: rgba(26, 34, 52, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #FFFFFF !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiTableHead-root .MuiTableCell-root {
+  background: rgba(245, 243, 238, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  color: var(--text-primary) !important;
 }
 
 /* 3D Contained Primary Buttons */
@@ -202,18 +409,6 @@ input, button, select, textarea {
   transform: translateY(1px) !important;
 }
 
-/* 3D Cards */
-[data-design-system="modern3d"] .MuiCard-root {
-  border-radius: 18px !important;
-  border: 1px solid var(--card-border) !important;
-  box-shadow: var(--shadow-soft) !important;
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-}
-
-[data-design-system="modern3d"] .MuiCard-root:hover {
-  box-shadow: var(--shadow-hover) !important;
-}
-
 /* Scrollbar customization */
 ::-webkit-scrollbar {
   width: 8px;
@@ -246,69 +441,97 @@ input, button, select, textarea {
   }
 }
 
-/* Custom Cursor markup styling */
-.custom-cursor-dot {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 6px;
-  background-color: var(--accent-primary);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 99999;
+/* Modern 3D Heartbeat Cursor Styling */
+.heartbeat-cursor-inner {
   transform: translate(-50%, -50%);
-  transition: width 0.15s ease, height 0.15s ease, background-color 0.15s ease;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: heartbeatMonitorPulse 1.5s ease-in-out infinite;
+  transform-origin: center center;
 }
 
-.custom-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(232, 90, 79, 0.45);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 99998;
-  transform: translate(-50%, -50%);
-  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1),
-              width 0.2s ease,
-              height 0.2s ease,
-              border-color 0.2s ease,
-              background-color 0.2s ease;
+/* Modern Dark Mode: Restrained coral glow */
+.heartbeat-cursor-container.is-dark .heartbeat-cursor-inner {
+  color: var(--accent-primary, #FF6F26);
+  filter: drop-shadow(0 0 6px rgba(255, 111, 38, 0.55));
 }
 
-/* Custom Cursor States */
-body.cursor-hovering .custom-cursor-ring {
-  width: 44px;
-  height: 44px;
-  border-color: var(--accent-primary);
-  background-color: rgba(232, 90, 79, 0.04);
+/* Modern Light Mode: Subtle clean coral, no unwanted orange spotlight */
+.heartbeat-cursor-container.is-light .heartbeat-cursor-inner {
+  color: var(--accent-primary, #E85A4F);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
 }
 
-body.cursor-hovering .custom-cursor-dot {
-  transform: translate(-50%, -50%) scale(1.3);
+/* Hovering over interactive triggers: distinct responsive pulse */
+.heartbeat-cursor-container.is-hovering .heartbeat-cursor-inner {
+  animation: heartbeatHoverPulse 0.95s ease-in-out infinite;
 }
 
-body.cursor-clicking .custom-cursor-ring {
-  width: 24px;
-  height: 24px;
-  border-color: var(--accent-primary);
-  background-color: rgba(232, 90, 79, 0.10);
+.heartbeat-cursor-container.is-dark.is-hovering .heartbeat-cursor-inner {
+  filter: drop-shadow(0 0 8px rgba(255, 111, 38, 0.75));
+}
+
+/* Clicking active state */
+.heartbeat-cursor-container.is-clicking .heartbeat-cursor-inner {
+  transform: translate(-50%, -50%) scale(0.90) !important;
+  transition: transform 0.08s ease;
+}
+
+/* ECG Heart Monitor pulse: lub-dub double contraction followed by peaceful rest interval */
+@keyframes heartbeatMonitorPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  14% {
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+  28% {
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+  42% {
+    transform: translate(-50%, -50%) scale(1.22);
+  }
+  58% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Interactive element hover pulse */
+@keyframes heartbeatHoverPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1.30);
+  }
+  14% {
+    transform: translate(-50%, -50%) scale(1.48);
+  }
+  28% {
+    transform: translate(-50%, -50%) scale(1.36);
+  }
+  42% {
+    transform: translate(-50%, -50%) scale(1.52);
+  }
+  58% {
+    transform: translate(-50%, -50%) scale(1.30);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.30);
+  }
 }
 
 /* Accessibility: Show default cursor on touch screens or fallback */
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   * {
     cursor: auto !important;
   }
-  .custom-cursor-dot, .custom-cursor-ring {
+  .heartbeat-cursor-container {
     display: none !important;
   }
 }
+
 
 /* Respect user's motion preference */
 @media (prefers-reduced-motion: reduce) {
@@ -329,3 +552,172 @@ input::-ms-clear {
   width: 0;
   height: 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Dark Theme Bindings & Modal/Dialog Protection                      */
+/* ------------------------------------------------------------------ */
+[data-theme="dark"] {
+  --card-bg: #1A1D2D;
+  --bg-card: #1A1D2D;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #FFFFFF;
+  --text-secondary: #A5B0C2;
+}
+
+[data-design-system="professional"][data-theme="dark"] {
+  --card-bg: #1F2732;
+  --bg-card: #1F2732;
+  --card-border: #2E3846;
+  --border-color: #2E3846;
+  --text-primary: #F7FAFC;
+  --text-secondary: #A0AEC0;
+}
+
+[data-theme="dark"] .MuiDialog-paper,
+[data-theme="dark"] .MuiPaper-root {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--card-border) !important;
+}
+
+[data-theme="dark"] .MuiDialogTitle-root {
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--card-border) !important;
+}
+
+[data-theme="dark"] .MuiDialogContent-root {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .MuiDialogActions-root {
+  border-top-color: var(--card-border) !important;
+}
+
+[data-theme="dark"] .MuiInputBase-input {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .MuiInputLabel-root {
+  color: var(--text-secondary) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Modern 3D: Proximity Ripple & Interactive Glow (Section 11)        */
+/* ------------------------------------------------------------------ */
+[data-design-system="modern3d"] .MuiCard-root:hover,
+[data-design-system="modern3d"] .MuiPaper-elevation:hover {
+  box-shadow: 0 14px 34px -4px rgba(255, 111, 38, 0.22), 0 0 0 1px rgba(255, 111, 38, 0.25) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .MuiCard-root:hover,
+[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:hover {
+  box-shadow: 0 18px 40px -6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 111, 38, 0.25), 0 0 0 1px rgba(255, 111, 38, 0.3) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Modern 3D: Sliding & Reveal Transitions (Section 12)                */
+/* ------------------------------------------------------------------ */
+[data-design-system="modern3d"] .MuiButton-root {
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiChip-root {
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiTab-root {
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"] .MuiDialog-paper {
+  animation: modernModalSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes modernModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* LifeSync AI Assistant Chatbot Scoped Theme & Contrast Rules        */
+/* ------------------------------------------------------------------ */
+.lifesync-companion-drawer .MuiDrawer-paper {
+  display: flex !important;
+  flex-direction: column !important;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-design-system="modern3d"][data-theme="dark"] .lifesync-companion-drawer .MuiDrawer-paper {
+  background-color: #0F172A !important;
+  background: linear-gradient(180deg, #101932 0%, #0B1120 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(56, 189, 248, 0.15) !important;
+  color: #FFFFFF !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .lifesync-companion-drawer .MuiDrawer-paper {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(232, 90, 79, 0.2) !important;
+  box-shadow: 0 16px 40px rgba(142, 141, 138, 0.25) !important;
+  color: #2D2D2D !important;
+}
+
+[data-design-system="professional"][data-theme="dark"] .lifesync-companion-drawer .MuiDrawer-paper {
+  background-color: #141A21 !important;
+  background: #141A21 !important;
+  border: 1px solid #2E3846 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  color: #F7FAFC !important;
+}
+
+[data-design-system="professional"][data-theme="light"] .lifesync-companion-drawer .MuiDrawer-paper {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border: 1px solid #DFE1E6 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  color: #172B4D !important;
+}
+
+/* Chat bubble styling isolation from generic .MuiPaper-root */
+.lifesync-chat-bubble {
+  padding: 10px 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* Typing dot animation */
+@keyframes typingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-of-type(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot:nth-of-type(2) {
+  animation-delay: -0.16s;
+}
+
+

@@ -35,4 +35,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="SignCoreAssembly" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="powershell -NoProfile -Command &quot;if (Test-Path '$(TargetPath)') { Set-AuthenticodeSignature -FilePath '$(TargetPath)' -Certificate (Get-ChildItem -Path Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1) -ErrorAction SilentlyContinue | Out-Null }&quot;" IgnoreExitCode="true" />
+  </Target>
 </Project>

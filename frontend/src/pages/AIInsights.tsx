@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Button, Grid, Alert, Stack, Paper } from '@mui/material';
+import { Box, Typography, CardContent, Button, Grid, Alert, Stack, Paper } from '@mui/material';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import InfoIcon from '@mui/icons-material/Info';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
-import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 
 interface AiRecommendation {
   id: number;
@@ -109,16 +110,14 @@ const AIInsights: React.FC = () => {
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ThemeToggle />
             <ReportExporter module="AiInsights" />
-            <Button
+            <IconSlideButton
               variant="contained"
               disabled={generating || loading}
               onClick={handleGenerateInsights}
               startIcon={<AutorenewIcon className={generating ? 'spin-animation' : ''} />}
               sx={{
                 bgcolor: 'var(--accent-primary)',
-                borderRadius: '12px',
                 fontWeight: 600,
                 textTransform: 'none',
                 px: 3,
@@ -128,7 +127,7 @@ const AIInsights: React.FC = () => {
               }}
             >
               {generating ? 'Analyzing habits...' : 'Regenerate Insights'}
-            </Button>
+            </IconSlideButton>
           </Stack>
         </Stack>
         <Typography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 4 }}>
@@ -158,15 +157,11 @@ const AIInsights: React.FC = () => {
               const theme = getCategoryTheme(insight.category);
               return (
                 <Grid size={{ xs: 12, md: 6 }} key={insight.id}>
-                  <Card
+                  <TiltCard
                     sx={{
-                      borderRadius: '16px',
-                      boxShadow: 'var(--shadow-soft)',
                       borderLeft: theme.border,
                       bgcolor: theme.bg,
                       height: '100%',
-                      transition: '0.2s',
-                      '&:hover': { transform: 'translateY(-2px)' }
                     }}
                   >
                     <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -188,7 +183,7 @@ const AIInsights: React.FC = () => {
                         <Typography variant="caption">Generated dynamically from your tracking logs</Typography>
                       </Stack>
                     </CardContent>
-                  </Card>
+                  </TiltCard>
                 </Grid>
               );
             })}

@@ -87,6 +87,9 @@ namespace LifeSyncAI.Core.Services
                 PasswordHash = hashTask.Result,
                 Role = UserRole.User,          // Normal user registration
                 Status = UserStatus.Active,    // Active immediately upon registration
+                City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim().ToUpperInvariant(),
+                State = string.IsNullOrWhiteSpace(dto.State) ? null : dto.State.Trim(),
+                Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim(),
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "SelfRegistration"
             };
@@ -172,6 +175,9 @@ namespace LifeSyncAI.Core.Services
                 PasswordHash = hashTask.Result,
                 Role = UserRole.User,
                 Status = UserStatus.Active,
+                City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim().ToUpperInvariant(),
+                State = string.IsNullOrWhiteSpace(dto.State) ? null : dto.State.Trim(),
+                Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim(),
                 RefreshToken = refreshToken,
                 RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshDays),
                 CreatedAt = DateTime.UtcNow,
@@ -410,7 +416,10 @@ namespace LifeSyncAI.Core.Services
                 Email = user.Email,
                 Role = user.Role.ToString(),
                 Status = user.Status.ToString(),
-                ProfilePhoto = user.ProfilePhoto
+                ProfilePhoto = user.ProfilePhoto,
+                City = user.City,
+                State = user.State,
+                Country = user.Country
             };
         }
     }

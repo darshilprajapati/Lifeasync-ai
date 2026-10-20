@@ -8,7 +8,6 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
-import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 
@@ -34,6 +33,7 @@ import {
   ToggleButtonGroup as MuiToggleButtonGroup
 } from '@mui/material';
 import { useNotification } from '../context/NotificationContext';
+import { useThemeSystem } from '../context/ThemeContext';
 import { WorkoutPlannerDashboard } from '../features/workouts/WorkoutPlannerDashboard';
 
 const parseDateSafe = (dateStr: string) => {
@@ -73,6 +73,9 @@ interface HealthLog {
 
 const Health: React.FC = () => {
   const { notify } = useNotification();
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
   const [logs, setLogs] = useState<HealthLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -398,7 +401,6 @@ const Health: React.FC = () => {
             </MuiTypography>
           </MuiStack>
           <MuiStack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ThemeToggle />
             <ReportExporter module="Health" />
           </MuiStack>
         </MuiStack>
@@ -424,15 +426,15 @@ const Health: React.FC = () => {
               display: 'inline-flex',
               flexDirection: { xs: 'column', sm: 'row' },
               width: { xs: '100%', sm: 'auto' },
-              bgcolor: 'var(--bg-card, #ffffff)',
-              border: '1px solid rgba(0, 0, 0, 0.08)',
-              borderRadius: '14px',
+              bgcolor: isProf ? 'var(--card-bg)' : (isDark ? 'rgba(26, 29, 45, 0.92)' : '#ffffff'),
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 111, 38, 0.15)'),
+              borderRadius: isProf ? '0px' : '14px',
               p: '5px',
               gap: { xs: '4px', sm: '6px' },
-              boxShadow: 'var(--shadow-soft, 0 2px 8px rgba(0,0,0,0.04))',
+              boxShadow: isProf ? 'none' : (isDark ? '0 4px 16px rgba(0,0,0,0.3)' : '0 4px 16px rgba(255, 111, 38, 0.08)'),
               '& .MuiToggleButtonGroup-grouped': {
                 border: 'none !important',
-                borderRadius: '10px !important'
+                borderRadius: isProf ? '0px !important' : '10px !important'
               }
             }}
           >
@@ -455,14 +457,16 @@ const Health: React.FC = () => {
                 color: 'var(--text-secondary, #6b7280)',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(99, 102, 241, 0.06)',
-                  color: 'var(--accent-primary, #6366f1)'
+                  bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(255, 111, 38, 0.08)',
+                  color: 'var(--accent-primary, #FF6F26)'
                 },
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(99, 102, 241, 0.12) !important',
-                  color: 'var(--accent-primary, #6366f1) !important',
+                  background: isProf 
+                    ? 'var(--accent-primary, #FF6F26) !important'
+                    : 'linear-gradient(135deg, #FF6F26 0%, #FFA048 100%) !important',
+                  color: '#ffffff !important',
                   fontWeight: 700,
-                  boxShadow: '0 1px 3px rgba(99, 102, 241, 0.15)'
+                  boxShadow: isProf ? 'none' : '0 4px 12px rgba(255, 111, 38, 0.35)'
                 }
               }}
             >
@@ -489,14 +493,16 @@ const Health: React.FC = () => {
                 color: 'var(--text-secondary, #6b7280)',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(99, 102, 241, 0.06)',
-                  color: 'var(--accent-primary, #6366f1)'
+                  bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(255, 111, 38, 0.08)',
+                  color: 'var(--accent-primary, #FF6F26)'
                 },
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(99, 102, 241, 0.12) !important',
-                  color: 'var(--accent-primary, #6366f1) !important',
+                  background: isProf 
+                    ? 'var(--accent-primary, #FF6F26) !important'
+                    : 'linear-gradient(135deg, #FF6F26 0%, #FFA048 100%) !important',
+                  color: '#ffffff !important',
                   fontWeight: 700,
-                  boxShadow: '0 1px 3px rgba(99, 102, 241, 0.15)'
+                  boxShadow: isProf ? 'none' : '0 4px 12px rgba(255, 111, 38, 0.35)'
                 }
               }}
             >

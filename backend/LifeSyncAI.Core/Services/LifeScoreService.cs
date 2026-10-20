@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using LifeSyncAI.Core.Contracts.Interfaces.Services;
 using LifeSyncAI.Core.Database;
 using LifeSyncAI.Core.DTO.Output.LifeScore;
+using LifeSyncAI.Core.Enums;
 using LifeSyncAI.Core.Responses;
 
 namespace LifeSyncAI.Core.Services
@@ -235,6 +236,234 @@ namespace LifeSyncAI.Core.Services
             catch (Exception ex)
             {
                 return ApiResponse<List<HistoricalLifeScoreDto>>.Fail($"Failed to load historical scores: {ex.Message}");
+            }
+        }
+
+        public async Task<double> GetCumulativeTotalLifeScoreAsync(int userId)
+        {
+            try
+            {
+                var plannerDates = await _context.PlannerEvents
+                    .Where(e => e.UserId == userId)
+                    .Select(e => e.EndTime.Date)
+                    .Distinct()
+                    .ToListAsync();
+
+                var healthDates = await _context.HealthLogs
+                    .Where(h => h.UserId == userId)
+                    .Select(h => h.LogDate.Date)
+                    .Distinct()
+                    .ToListAsync();
+
+                var penaltyDates = await _context.UserNotificationLogs
+                    .Where(n => n.UserId == userId && n.NotificationType == "MissedDeadlinePenalty")
+                    .Select(n => n.SentAt.Date)
+                    .Distinct()
+                    .ToListAsync();
+
+                var activeDates = new HashSet<DateTime>(plannerDates);
+                foreach (var d in healthDates) activeDates.Add(d);
+                foreach (var d in penaltyDates) activeDates.Add(d);
+                activeDates.Add(DateTime.UtcNow.Date);
+
+                double total = 0.0;
+                foreach (var date in activeDates)
+                {
+                    var dayScoreResult = await GetDailyLifeScoreAsync(userId, date);
+                    if (dayScoreResult.IsSuccess && dayScoreResult.Data != null)
+                    {
+                        total += dayScoreResult.Data.FinalScore;
+                    }
+                }
+
+                return Math.Round(total, 1);
+            }
+            catch
+            {
+                return 0.0;
+            }
+        }
+
+        public async Task<ApiResponse<LeaderboardResponseDto>> GetLeaderboardAsync(int currentUserId, string scope, int page = 1, int pageSize = 20)
+        {
+            try
+            {
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 20;
+
+                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == currentUserId && !u.IsDeleted);
+                if (currentUser == null)
+                {
+                    return ApiResponse<LeaderboardResponseDto>.Fail("User not found.");
+                }
+
+                string normScope = (scope ?? "city").Trim().ToLowerInvariant();
+                if (normScope != "city" && normScope != "state" && normScope != "country")
+                {
+                    normScope = "city";
+                }
+
+                // Check location eligibility for the requested scope
+                bool hasLocation = false;
+                string scopeValue = string.Empty;
+
+                if (normScope == "city")
+                {
+                    hasLocation = !string.IsNullOrWhiteSpace(currentUser.City) && !string.IsNullOrWhiteSpace(currentUser.Country);
+                    scopeValue = currentUser.City?.Trim() ?? string.Empty;
+                }
+                else if (normScope == "state")
+                {
+                    hasLocation = !string.IsNullOrWhiteSpace(currentUser.State) && !string.IsNullOrWhiteSpace(currentUser.Country);
+                    scopeValue = currentUser.State?.Trim() ?? string.Empty;
+                }
+                else if (normScope == "country")
+                {
+                    hasLocation = !string.IsNullOrWhiteSpace(currentUser.Country);
+                    scopeValue = currentUser.Country?.Trim() ?? string.Empty;
+                }
+
+                // If user doesn't have location completed, return hasLocation = false
+                if (!hasLocation)
+                {
+                    var emptyResponse = new LeaderboardResponseDto
+                    {
+                        Scope = normScope,
+                        ScopeValue = scopeValue,
+                        HasLocation = false,
+                        CurrentUserRank = 0,
+                        CurrentUserTotalScore = await GetCumulativeTotalLifeScoreAsync(currentUserId),
+                        TopRankings = new List<LeaderboardEntryDto>(),
+                        TotalParticipants = 0,
+                        Page = page,
+                        PageSize = pageSize,
+                        TotalPages = 1
+                    };
+                    return ApiResponse<LeaderboardResponseDto>.Success(emptyResponse, "Location required to participate in competition.");
+                }
+
+                // Query all active, non-deleted users matching the normalized location scope
+                var usersQuery = _context.Users
+                    .Where(u => !u.IsDeleted && u.Status == UserStatus.Active);
+
+                List<Models.User> eligibleUsers;
+
+                if (normScope == "city")
+                {
+                    string targetCity = currentUser.City!.Trim().ToUpperInvariant();
+                    eligibleUsers = await usersQuery
+                        .Where(u => u.City != null && u.City.Trim().ToUpper() == targetCity)
+                        .ToListAsync();
+
+                    if (!string.IsNullOrWhiteSpace(currentUser.Country))
+                    {
+                        string targetCountry = currentUser.Country.Trim().ToUpperInvariant();
+                        eligibleUsers = eligibleUsers
+                            .Where(u => u.Country != null && u.Country.Trim().ToUpper() == targetCountry)
+                            .ToList();
+                    }
+                    if (!string.IsNullOrWhiteSpace(currentUser.State))
+                    {
+                        string targetState = currentUser.State.Trim().ToUpperInvariant();
+                        eligibleUsers = eligibleUsers
+                            .Where(u => u.State != null && u.State.Trim().ToUpper() == targetState)
+                            .ToList();
+                    }
+                }
+                else if (normScope == "state")
+                {
+                    string targetState = currentUser.State!.Trim().ToUpperInvariant();
+                    eligibleUsers = await usersQuery
+                        .Where(u => u.State != null && u.State.Trim().ToUpper() == targetState)
+                        .ToListAsync();
+
+                    if (!string.IsNullOrWhiteSpace(currentUser.Country))
+                    {
+                        string targetCountry = currentUser.Country.Trim().ToUpperInvariant();
+                        eligibleUsers = eligibleUsers
+                            .Where(u => u.Country != null && u.Country.Trim().ToUpper() == targetCountry)
+                            .ToList();
+                    }
+                }
+                else // country
+                {
+                    string targetCountry = currentUser.Country!.Trim().ToUpperInvariant();
+                    eligibleUsers = await usersQuery
+                        .Where(u => u.Country != null && u.Country.Trim().ToUpper() == targetCountry)
+                        .ToListAsync();
+                }
+
+                if (!eligibleUsers.Any(u => u.Id == currentUserId))
+                {
+                    eligibleUsers.Add(currentUser);
+                }
+
+                // Calculate cumulative score for each eligible user
+                var scoreTasks = eligibleUsers.Select(async u => new
+                {
+                    User = u,
+                    TotalScore = await GetCumulativeTotalLifeScoreAsync(u.Id)
+                });
+
+                var userScores = await Task.WhenAll(scoreTasks);
+
+                // Sort: TotalScore descending, then by user Id ascending (deterministic tie-breaking)
+                var sorted = userScores
+                    .OrderByDescending(x => x.TotalScore)
+                    .ThenBy(x => x.User.Id)
+                    .ToList();
+
+                var rankedEntries = new List<LeaderboardEntryDto>();
+                int currentRank = 1;
+                for (int i = 0; i < sorted.Count; i++)
+                {
+                    if (i > 0 && sorted[i].TotalScore < sorted[i - 1].TotalScore)
+                    {
+                        currentRank = i + 1;
+                    }
+
+                    rankedEntries.Add(new LeaderboardEntryDto
+                    {
+                        Rank = currentRank,
+                        DisplayName = sorted[i].User.FullName,
+                        TotalLifeScore = sorted[i].TotalScore,
+                        IsCurrentUser = sorted[i].User.Id == currentUserId,
+                        City = sorted[i].User.City,
+                        State = sorted[i].User.State,
+                        Country = sorted[i].User.Country
+                    });
+                }
+
+                var currentUserEntry = rankedEntries.FirstOrDefault(r => r.IsCurrentUser);
+                int userRank = currentUserEntry?.Rank ?? 1;
+                double userScore = currentUserEntry?.TotalLifeScore ?? 0.0;
+
+                int totalCount = rankedEntries.Count;
+                int totalPages = Math.Max(1, (int)Math.Ceiling((double)totalCount / pageSize));
+                var pagedRankings = rankedEntries
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var response = new LeaderboardResponseDto
+                {
+                    Scope = normScope,
+                    ScopeValue = scopeValue,
+                    HasLocation = true,
+                    CurrentUserRank = userRank,
+                    CurrentUserTotalScore = userScore,
+                    TopRankings = pagedRankings,
+                    TotalParticipants = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                return ApiResponse<LeaderboardResponseDto>.Success(response, "Leaderboard retrieved successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<LeaderboardResponseDto>.Fail($"Failed to load competition leaderboard: {ex.Message}");
             }
         }
     }

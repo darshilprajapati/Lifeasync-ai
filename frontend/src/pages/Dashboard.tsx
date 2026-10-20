@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Grid,
-  Card,
   CardContent,
   Button,
   Stack,
@@ -14,21 +13,24 @@ import {
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
-import ThemeToggle from '../components/ThemeToggle';
 import { motion } from 'framer-motion';
 import { cardVariants, containerVariants } from '../animations';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import PsychologyIcon from '@mui/icons-material/Psychology';
 import LocalDrinkIcon from '@mui/icons-material/LocalDrink';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HistoryIcon from '@mui/icons-material/History';
 import LockIcon from '@mui/icons-material/Lock';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import { useThemeSystem } from '../context/ThemeContext';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import LifeScoreCompetitionCard from '../components/LifeScoreCompetitionCard';
 
 const parseDateSafe = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -62,12 +64,6 @@ interface HealthLog {
   logDate: string;
 }
 
-interface AiRecommendation {
-  id: number;
-  insightText: string;
-  category: string;
-}
-
 interface HistoricalScore {
   date: string;
   score: number;
@@ -80,6 +76,9 @@ interface HistoricalScore {
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
 
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(0);
@@ -90,7 +89,6 @@ const Dashboard: React.FC = () => {
   const [todaysWorkout, setTodaysWorkout] = useState(0);
   const [completedTasks, setCompletedTasks] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
-  const [latestInsight, setLatestInsight] = useState<string | null>(null);
 
   // Life Score & Penalty State
   const [lifeScore, setLifeScore] = useState(0);
@@ -106,11 +104,10 @@ const Dashboard: React.FC = () => {
       const today = new Date();
 
       // Trigger parallel API loading including backend LifeScore calculations
-      const [finRes, healthRes, plannerRes, insightsRes, scoreRes, historyRes] = await Promise.all([
+      const [finRes, healthRes, plannerRes, scoreRes, historyRes] = await Promise.all([
         apiClient.get('/api/finance/summary').catch(() => null),
         apiClient.get('/api/health').catch(() => null),
         apiClient.get('/api/planner').catch(() => null),
-        apiClient.get('/api/insights').catch(() => null),
         apiClient.get('/api/lifescore/today').catch(() => null),
         apiClient.get('/api/lifescore/history?days=7').catch(() => null),
       ]);
@@ -178,12 +175,7 @@ const Dashboard: React.FC = () => {
       }
 
       // 4. Insights
-      if (insightsRes && insightsRes.data.isSuccess) {
-        const list = insightsRes.data.data as AiRecommendation[];
-        if (list.length > 0) {
-          setLatestInsight(list[0].insightText);
-        }
-      }
+      // Insights can be retrieved on AI Insights module
 
       // 5. Life Score Calculation (Server authority first, client fallback)
       if (scoreRes && scoreRes.data.isSuccess && scoreRes.data.data) {
@@ -240,6 +232,9 @@ const Dashboard: React.FC = () => {
         setHistoricalScores(historyRes.data.data);
       }
       setSelectedDate(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -409,10 +404,10 @@ const Dashboard: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    p: 1,
-                    borderRadius: '8px',
-                    bgcolor: 'var(--bg-secondary)',
-                    border: '1px solid rgba(0,0,0,0.03)'
+                    p: 1.2,
+                    borderRadius: isProf ? '0px !important' : '10px',
+                    bgcolor: isProf ? 'var(--card-bg)' : (isDark ? 'rgba(255, 255, 255, 0.03)' : 'var(--bg-secondary)'),
+                    border: isProf ? '1px solid var(--card-border)' : '1px solid rgba(255, 111, 38, 0.12)'
                   }}
                 >
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -454,13 +449,13 @@ const Dashboard: React.FC = () => {
                       fontWeight: 700,
                       bgcolor: 'rgba(255, 99, 71, 0.12)',
                       color: 'var(--accent-primary)',
-                      borderRadius: '6px'
+                      borderRadius: isProf ? '0px !important' : '6px'
                     }}
                   />
                 )}
               </Stack>
               {selectedDate && (
-                <Button size="small" onClick={fetchDashboardData} sx={{ fontSize: '11px', textTransform: 'none', py: 0 }}>
+                <Button size="small" onClick={fetchDashboardData} sx={{ fontSize: '11px', textTransform: 'none', py: 0, borderRadius: isProf ? '0px !important' : '6px' }}>
                   Back to Today
                 </Button>
               )}
@@ -492,6 +487,7 @@ const Dashboard: React.FC = () => {
                         fontWeight: 600,
                         fontSize: '11px',
                         height: '24px',
+                        borderRadius: isProf ? '0px !important' : '8px',
                         borderWidth: isSelected ? 2 : 1
                       }}
                     />
@@ -514,6 +510,7 @@ const Dashboard: React.FC = () => {
                         opacity: 0.45,
                         fontSize: '10.5px',
                         height: '24px',
+                        borderRadius: isProf ? '0px !important' : '8px',
                         borderStyle: 'dashed',
                         borderColor: 'rgba(150, 150, 150, 0.3)',
                         cursor: 'not-allowed',
@@ -543,26 +540,26 @@ const Dashboard: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ThemeToggle />
-            <Button
+            <IconSlideButton
               variant="outlined"
               onClick={fetchDashboardData}
+              startIcon={<RefreshIcon />}
               sx={{
-                textTransform: 'none',
-                borderRadius: '12px',
-                borderColor: '#E85A4F',
-                color: '#E85A4F',
-                fontWeight: 600,
-                px: 3,
-                py: 1,
+                borderRadius: isProf ? '0px !important' : '12px',
+                borderColor: isProf ? 'var(--card-border)' : 'rgba(232, 90, 79, 0.4)',
+                color: 'var(--accent-primary)',
+                fontWeight: 650,
+                px: 2.5,
+                py: 0.9,
+                bgcolor: 'var(--card-bg)',
                 '&:hover': {
-                  bgcolor: '#FDF7F7',
-                  borderColor: '#E85A4F'
+                  bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(232, 90, 79, 0.08)',
+                  borderColor: 'var(--accent-primary)'
                 }
               }}
             >
               Refresh
-            </Button>
+            </IconSlideButton>
             <ReportExporter module="All" buttonVariant="contained" buttonColor="primary" />
           </Stack>
         </Stack>
@@ -575,46 +572,44 @@ const Dashboard: React.FC = () => {
               {/* Card 1: Life Score Card */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{
-                    position: 'relative',
-                    borderRadius: '18px',
-                    boxShadow: 'var(--shadow-soft)',
-                    bgcolor: 'var(--card-bg)',
-                    color: 'var(--text-primary)',
-                    height: '100%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'var(--shadow-hover)',
-                      transition: 'var(--transition-smooth)'
-                    }
-                  }}>
-                    {/* Realistic 3D Glass Container Reflections */}
-                    <Box sx={{
-                      position: 'absolute',
-                      top: '8px',
-                      left: '8px',
-                      bottom: '8px',
-                      width: '4px',
-                      background: 'linear-gradient(90deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)',
-                      borderRadius: '2px',
-                      zIndex: 3,
-                      pointerEvents: 'none',
-                    }} />
-                    <Box sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: '50%',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 65%)',
-                      zIndex: 3,
-                      pointerEvents: 'none',
-                    }} />
+                  <TiltCard
+                    sx={{
+                      position: 'relative',
+                      color: 'var(--text-primary)',
+                      height: '100%',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {/* Realistic 3D Glass Container Reflections (Modern 3D only) */}
+                    {!isProf && (
+                      <>
+                        <Box sx={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: '8px',
+                          bottom: '8px',
+                          width: '4px',
+                          background: 'linear-gradient(90deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)',
+                          borderRadius: '2px',
+                          zIndex: 3,
+                          pointerEvents: 'none',
+                        }} />
+                        <Box sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '50%',
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 65%)',
+                          zIndex: 3,
+                          pointerEvents: 'none',
+                        }} />
+                      </>
+                    )}
 
                     {/* Fluid Progress Level Indicator */}
                     <Box sx={{
@@ -633,10 +628,10 @@ const Dashboard: React.FC = () => {
 
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, zIndex: 2, position: 'relative' }}>
                       <FavoriteIcon sx={{ color: penaltyPoints > 0 ? '#ef4444' : '#E85A4F', fontSize: '32px', mb: 1.5 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 0.5 }}>
+                      <Typography variant="subtitle2" sx={{ color: 'var(--text-secondary)', mb: 0.5 }}>
                         {selectedDate ? `Life Score (${selectedDate})` : 'Daily Life Score'}
                       </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', textShadow: '0 1px 2px rgba(255,255,255,0.8)' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', textShadow: isDark ? 'none' : '0 1px 2px rgba(255,255,255,0.8)' }}>
                         {lifeScore.toFixed(1)} / 100
                       </Typography>
 
@@ -646,86 +641,62 @@ const Dashboard: React.FC = () => {
                             size="small"
                             label={`−${penaltyPoints} pts penalty`}
                             color="error"
-                            sx={{ mt: 1, height: '22px', fontSize: '11px', fontWeight: 700 }}
+                            sx={{ mt: 1, height: '22px', fontSize: '11px', fontWeight: 700, borderRadius: isProf ? '0px !important' : '6px' }}
                           />
                         </Tooltip>
                       )}
                     </CardContent>
-                  </Card>
+                  </TiltCard>
                 </motion.div>
               </Grid>
 
               {/* Card 2: Net Balance */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{
-                    height: '100%',
-                    borderRadius: '18px',
-                    boxShadow: 'var(--shadow-soft)',
-                    bgcolor: 'var(--card-bg)',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'var(--shadow-hover)',
-                      transition: 'var(--transition-smooth)'
-                    }
-                  }} onClick={() => navigate('/finance')}>
+                  <TiltCard
+                    sx={{ height: '100%', cursor: 'pointer' }}
+                    onClick={() => navigate('/finance')}
+                  >
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
                       <AccountBalanceWalletIcon sx={{ color: '#E85A4F', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Net Balance</Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 600, color: balance >= 0 ? '#4CAF50' : '#E85A4F' }}>
+                      <Typography variant="subtitle2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>Net Balance</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: balance >= 0 ? '#10B981' : '#E85A4F' }}>
                         ${balance.toFixed(2)}
                       </Typography>
                     </CardContent>
-                  </Card>
+                  </TiltCard>
                 </motion.div>
               </Grid>
 
               {/* Card 3: Hydration Score */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{
-                    height: '100%',
-                    borderRadius: '18px',
-                    boxShadow: 'var(--shadow-soft)',
-                    bgcolor: 'var(--card-bg)',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'var(--shadow-hover)',
-                      transition: 'var(--transition-smooth)'
-                    }
-                  }} onClick={() => navigate('/health')}>
+                  <TiltCard
+                    sx={{ height: '100%', cursor: 'pointer' }}
+                    onClick={() => navigate('/health')}
+                  >
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
                       <LocalDrinkIcon sx={{ color: '#00BCD4', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Today's Water</Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <Typography variant="subtitle2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>Today's Water</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                         {todaysWater} / 2000 ml
                       </Typography>
                     </CardContent>
-                  </Card>
+                  </TiltCard>
                 </motion.div>
               </Grid>
 
               {/* Card 4: Planner Tasks */}
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{
-                    height: '100%',
-                    borderRadius: '18px',
-                    boxShadow: 'var(--shadow-soft)',
-                    bgcolor: 'var(--card-bg)',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'var(--shadow-hover)',
-                      transition: 'var(--transition-smooth)'
-                    }
-                  }} onClick={() => navigate('/planner')}>
+                  <TiltCard
+                    sx={{ height: '100%', cursor: 'pointer' }}
+                    onClick={() => navigate('/planner')}
+                  >
                     <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
                       <EventAvailableIcon sx={{ color: '#4A90E2', fontSize: '32px', mb: 2 }} />
-                      <Typography variant="subtitle2" sx={{ color: '#8E8D8A', mb: 1 }}>Today's Tasks</Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <Typography variant="subtitle2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>Today's Tasks</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                         {completedTasks} / {totalTasks}
                       </Typography>
                       {missedDeadlinesCount > 0 && (
@@ -734,36 +705,22 @@ const Dashboard: React.FC = () => {
                         </Typography>
                       )}
                     </CardContent>
-                  </Card>
+                  </TiltCard>
                 </motion.div>
               </Grid>
 
-              {/* Row 2: AI Habit Recommendations and Score Feedback split */}
+              {/* Row 2: Life Score Competition Leaderboard and Score Feedback split */}
               <Grid size={{ xs: 12, md: 8 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{ borderRadius: '18px', boxShadow: 'var(--shadow-soft)', bgcolor: 'var(--bg-secondary)', border: '1px solid var(--neutral-primary)', height: '100%', display: 'flex', alignItems: 'center' }}>
-                    <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, width: '100%' }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#E85A4F', mb: 1, display: 'flex', alignItems: 'center' }}>
-                          <PsychologyIcon sx={{ mr: 1 }} /> AI Habit Intelligence
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: 'var(--text-primary)', fontStyle: 'italic' }}>
-                          {latestInsight ? `"${latestInsight}"` : '"No data patterns generated yet. Run a Life Area Assessment inside AI Insights to load recommendations."'}
-                        </Typography>
-                      </Box>
-                      <Button variant="contained" sx={{ bgcolor: '#E85A4F', color: 'white', borderRadius: '12px', px: 3, py: 1, textTransform: 'none', fontWeight: 600, '&:hover': { bgcolor: '#E98074' } }} onClick={() => navigate('/insights')}>
-                        View Insights
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <LifeScoreCompetitionCard />
                 </motion.div>
               </Grid>
 
               <Grid size={{ xs: 12, md: 4 }}>
                 <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <Card sx={{ borderRadius: '18px', boxShadow: 'var(--shadow-soft)', bgcolor: 'var(--card-bg)', border: '1px solid rgba(0,0,0,0.05)', p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <TiltCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {renderLifeScoreFeedback()}
-                  </Card>
+                  </TiltCard>
                 </motion.div>
               </Grid>
             </Grid>

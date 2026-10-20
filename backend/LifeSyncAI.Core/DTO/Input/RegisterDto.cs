@@ -15,5 +15,9 @@ namespace LifeSyncAI.Core.DTO.Input
         [Required(ErrorMessage = "Password is required.")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters long.")]
         public string Password { get; set; } = string.Empty;
+
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string? Country { get; set; }
     }
 }

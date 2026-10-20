@@ -30,6 +30,7 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import AddIcon from '@mui/icons-material/Add';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useNotification } from '../../../context/NotificationContext';
+import { useThemeSystem } from '../../../context/ThemeContext';
 import type { Exercise } from '../types/workout';
 import { workoutService } from '../services/workoutService';
 import { ExerciseDemonstrationMedia } from './ExerciseDemonstrationMedia';
@@ -52,6 +53,9 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
   initialCategory = 'All'
 }) => {
   const { notify } = useNotification();
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
@@ -199,10 +203,11 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
       slotProps={{
         paper: {
           sx: {
-            borderRadius: '20px',
-            bgcolor: 'var(--bg-card, #ffffff)',
+            borderRadius: isProf ? '0px !important' : '20px',
+            bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+            color: 'var(--text-primary)',
             backgroundImage: 'none',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
+            border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
             maxHeight: '90vh'
           }
         }
@@ -215,7 +220,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)'
+          borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
         }}
       >
         <Box>
@@ -351,18 +356,23 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
             <Grid key={ex.id} size={{ xs: 12, sm: 6, md: 4 }}>
               <Box
                 sx={{
-                  borderRadius: '16px',
-                  border: ex.isCustom ? '1px solid rgba(236, 72, 153, 0.35)' : '1px solid rgba(0, 0, 0, 0.08)',
-                  bgcolor: 'var(--bg-card, #ffffff)',
+                  borderRadius: isProf ? '0px !important' : '16px',
+                  border: ex.isCustom 
+                    ? '1px solid rgba(236, 72, 153, 0.35)' 
+                    : '1px solid var(--card-border)',
+                  bgcolor: isProf 
+                    ? (isDark ? '#26303F' : '#ffffff') 
+                    : (isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff'),
+                  color: 'var(--text-primary)',
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
                   height: '100%',
-                  boxShadow: 'var(--shadow-soft, 0 2px 8px rgba(0,0,0,0.04))',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  boxShadow: isProf ? 'none' : '0 2px 10px rgba(0,0,0,0.04)',
+                  transition: isProf ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease',
                   '&:hover': {
-                    transform: 'translateY(-3px)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)'
+                    transform: isProf ? 'none' : 'translateY(-3px)',
+                    boxShadow: isProf ? 'none' : '0 8px 24px rgba(255, 111, 38, 0.12)'
                   }
                 }}
               >
@@ -402,6 +412,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                             height: 20,
                             fontSize: '10px',
                             fontWeight: 800,
+                            borderRadius: isProf ? '0px' : '6px',
                             bgcolor: 'rgba(236, 72, 153, 0.12)',
                             color: '#ec4899',
                             border: '1px solid rgba(236, 72, 153, 0.3)'
@@ -411,7 +422,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                       <Chip
                         label={ex.difficultyLevel}
                         size="small"
-                        sx={{ height: 20, fontSize: '10px', fontWeight: 700 }}
+                        sx={{ height: 20, fontSize: '10px', fontWeight: 700, borderRadius: isProf ? '0px' : '6px' }}
                       />
                       <Chip
                         icon={ex.requiresEquipment ? <FitnessCenterIcon sx={{ fontSize: '11px !important' }} /> : undefined}
@@ -421,8 +432,9 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                           height: 20,
                           fontSize: '10px',
                           fontWeight: 600,
-                          bgcolor: ex.requiresEquipment ? 'rgba(99, 102, 241, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                          color: ex.requiresEquipment ? 'var(--accent-primary)' : '#10b981'
+                          borderRadius: isProf ? '0px' : '6px',
+                          bgcolor: ex.requiresEquipment ? 'rgba(255, 111, 38, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          color: ex.requiresEquipment ? '#FF6F26' : '#10b981'
                         }}
                       />
                     </Stack>
@@ -446,12 +458,21 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                     }}
                     startIcon={actionType === 'replace' ? <SwapHorizIcon /> : <AddIcon />}
                     sx={{
-                      borderRadius: '10px',
+                      borderRadius: isProf ? '0px' : '10px',
                       textTransform: 'none',
                       fontWeight: 700,
                       py: 0.8,
-                      bgcolor: 'var(--accent-primary, #6366f1)',
-                      '&:hover': { bgcolor: '#4f46e5' }
+                      background: isProf 
+                        ? 'var(--accent-primary, #FF6F26)' 
+                        : 'linear-gradient(135deg, #FF6F26 0%, #FFA048 100%)',
+                      color: '#ffffff',
+                      boxShadow: isProf ? 'none' : '0 4px 12px rgba(255, 111, 38, 0.3)',
+                      '&:hover': {
+                        background: isProf 
+                          ? '#e05307' 
+                          : 'linear-gradient(135deg, #FF5B0D 0%, #FF9030 100%)',
+                        boxShadow: isProf ? 'none' : '0 6px 16px rgba(255, 111, 38, 0.4)'
+                      }
                     }}
                   >
                     {actionType === 'replace' ? 'Replace with This' : 'Add to Workout'}
@@ -483,10 +504,11 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: '20px',
-              bgcolor: 'var(--bg-card, #ffffff)',
+              borderRadius: isProf ? '0px !important' : '20px',
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+              color: 'var(--text-primary)',
               backgroundImage: 'none',
-              border: '1px solid rgba(0, 0, 0, 0.08)'
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)')
             }
           }
         }}

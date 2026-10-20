@@ -9,6 +9,7 @@ import {
   Alert
 } from '@mui/material';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
+import { useThemeSystem } from '../../../context/ThemeContext';
 
 interface BodyFocusBalanceWidgetProps {
   distribution?: Record<string, number>;
@@ -19,7 +20,7 @@ const MUSCLE_GROUPS = ['Back', 'Chest', 'Shoulders', 'Legs', 'Cardio', 'Core', '
 
 const MUSCLE_COLORS: Record<string, string> = {
   Back: '#3b82f6',
-  Chest: '#ef4444',
+  Chest: '#FF6F26',
   Shoulders: '#f59e0b',
   Legs: '#10b981',
   Cardio: '#06b6d4',
@@ -31,6 +32,9 @@ export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
   distribution,
   completedDistribution
 }) => {
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+
   const data = completedDistribution || distribution || {};
   const totalVolume = Object.values(data).reduce((acc, v) => acc + (v || 0), 0);
   const isEmpty = totalVolume === 0;
@@ -38,17 +42,22 @@ export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
   return (
     <Card
       sx={{
-        borderRadius: '16px',
-        bgcolor: 'var(--bg-card, #ffffff)',
-        boxShadow: 'var(--shadow-soft, 0 4px 16px rgba(0,0,0,0.06))',
-        border: '1px solid rgba(0,0,0,0.08)',
+        borderRadius: isProf ? '0px' : '20px',
+        bgcolor: isProf
+          ? 'var(--card-bg)'
+          : (mode === 'dark' ? 'rgba(26, 29, 45, 0.88)' : 'rgba(255, 255, 255, 0.85)'),
+        backdropFilter: isProf ? 'none' : 'blur(16px)',
+        boxShadow: isProf ? 'none' : '0 10px 30px rgba(0,0,0,0.06)',
+        border: isProf
+          ? '1px solid var(--card-border)'
+          : (mode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255, 111, 38, 0.12)'),
         height: '100%'
       }}
     >
       <CardContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
         <Box>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-            <AccessibilityNewIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+            <AccessibilityNewIcon sx={{ color: '#FF6F26', fontSize: 20 }} />
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
               Body Focus & Balance
             </Typography>
@@ -67,7 +76,7 @@ export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
                 py: 0.5,
                 px: 1.5,
                 fontSize: '12px',
-                borderRadius: '8px',
+                borderRadius: isProf ? '0px' : '8px',
                 bgcolor: 'rgba(235, 94, 40, 0.08)',
                 color: 'var(--text-primary)',
                 border: '1px dashed rgba(235, 94, 40, 0.3)'
@@ -96,11 +105,11 @@ export const BodyFocusBalanceWidget: React.FC<BodyFocusBalanceWidgetProps> = ({
                     value={pct}
                     sx={{
                       height: 6,
-                      borderRadius: 3,
+                      borderRadius: isProf ? '0px' : 3,
                       bgcolor: 'rgba(0,0,0,0.05)',
                       '& .MuiLinearProgress-bar': {
                         bgcolor: color,
-                        borderRadius: 3
+                        borderRadius: isProf ? '0px' : 3
                       }
                     }}
                   />

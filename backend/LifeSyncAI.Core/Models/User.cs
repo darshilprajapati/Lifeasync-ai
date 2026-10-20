@@ -20,6 +20,11 @@ namespace LifeSyncAI.Core.Models
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
+        // Location fields for competition eligibility
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string? Country { get; set; }
+
         // OTP fields for Forgot Password / MFA
         public string? Otp { get; set; }
         public DateTime? OtpExpiryTime { get; set; }

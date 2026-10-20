@@ -10,5 +10,7 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
     {
         Task<ApiResponse<DailyLifeScoreDto>> GetDailyLifeScoreAsync(int userId, DateTime targetDate);
         Task<ApiResponse<List<HistoricalLifeScoreDto>>> GetHistoricalScoresAsync(int userId, DateTime clientDate, int days = 7);
+        Task<double> GetCumulativeTotalLifeScoreAsync(int userId);
+        Task<ApiResponse<LeaderboardResponseDto>> GetLeaderboardAsync(int currentUserId, string scope, int page = 1, int pageSize = 20);
     }
 }

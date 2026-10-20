@@ -269,6 +269,9 @@ namespace LifeSyncAI.Core.Services
 
                 user.FullName = dto.FullName;
                 user.ProfilePhoto = dto.ProfilePhoto;
+                if (dto.City != null) user.City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim().ToUpperInvariant();
+                if (dto.State != null) user.State = string.IsNullOrWhiteSpace(dto.State) ? null : dto.State.Trim();
+                if (dto.Country != null) user.Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim();
                 
                 user.UpdatedAt = DateTime.UtcNow;
                 user.UpdatedBy = "Self";
@@ -292,7 +295,10 @@ namespace LifeSyncAI.Core.Services
                 Email = user.Email,
                 Role = user.Role.ToString(),
                 Status = user.Status.ToString(),
-                ProfilePhoto = user.ProfilePhoto
+                ProfilePhoto = user.ProfilePhoto,
+                City = user.City,
+                State = user.State,
+                Country = user.Country
             };
         }
     }

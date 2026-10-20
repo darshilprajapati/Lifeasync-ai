@@ -24,6 +24,8 @@ import { useThemeSystem } from '../context/ThemeContext';
 import CompanionChatDrawer from '../components/CompanionChatDrawer';
 import LogoLoader from '../components/LogoLoader';
 import { trackAction } from '../utils/analytics';
+import { ModernSpotlightLayer } from '../components/modern3d/ModernSpotlightLayer';
+import { ModernRippleDistortionCanvas } from '../components/modern3d/ModernRippleDistortionCanvas';
 
 // Sidebar Item Structure
 interface SidebarItem {
@@ -37,12 +39,14 @@ const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { designSystem } = useThemeSystem();
+  const { designSystem, mode } = useThemeSystem();
   const isProf = designSystem === 'professional';
+  const isModernDark = designSystem === 'modern3d' && mode === 'dark';
   const [collapsed, setCollapsed] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [pageChanging, setPageChanging] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const contentContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Draggable Docking Navigation Panel States (reverted to single active dock position)
   const [dockPosition, setDockPosition] = useState<'left' | 'right' | 'top' | 'bottom'>(() => {
@@ -228,8 +232,8 @@ const AppLayout: React.FC = () => {
             padding: '0 8px',
             width: '100%',
           }}>
-            {/* Logo + Brand Name */}
-            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Logo + Brand Name (In Modern Dark, hidden here because permanent high-z-index logo layer renders it) */}
+            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: isModernDark ? 0 : 1 }}>
               <Box
                 component="img"
                 src="/logo.jpg"
@@ -337,16 +341,21 @@ const AppLayout: React.FC = () => {
             const linkContent = (
               <NavLink
                 to={item.path}
+                className="lifesync-nav-link"
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: isItemCollapsed ? '0px' : '12px',
                   padding: '12px',
-                  borderRadius: isProf ? '0px' : '12px',
+                  borderRadius: isProf ? '0px' : '14px',
                   textDecoration: 'none',
-                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  backgroundColor: isActive
-                    ? (isProf ? 'rgba(217, 83, 30, 0.08)' : 'rgba(232, 90, 79, 0.12)')
+                  color: isActive
+                    ? (isProf ? 'var(--accent-primary)' : '#FFFFFF')
+                    : 'var(--text-secondary)',
+                  background: isActive
+                    ? (isProf
+                        ? 'rgba(217, 83, 30, 0.08)'
+                        : 'linear-gradient(135deg, #FF6F26 0%, #FFA048 100%)')
                     : 'transparent',
                   borderLeft: isProf && dockPosition === 'left'
                     ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
@@ -361,7 +370,7 @@ const AppLayout: React.FC = () => {
                     ? (isActive ? '3px solid var(--accent-primary)' : '3px solid transparent')
                     : 'none',
                   boxShadow: !isProf && isActive
-                    ? '0 4px 14px rgba(232, 90, 79, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25)'
+                    ? '0 6px 18px rgba(255, 111, 38, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4)'
                     : 'none',
                   transition: isProf ? 'background-color 0.15s ease' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                   justifyContent: isItemCollapsed ? 'center' : 'flex-start',
@@ -534,6 +543,7 @@ const AppLayout: React.FC = () => {
     const isSidebar = dockPosition === 'left' || dockPosition === 'right';
     return (
       <motion.div
+        className="lifesync-navbar"
         animate={
           isSidebar
             ? { width: collapsed ? '80px' : '260px', height: '100%' }
@@ -584,6 +594,57 @@ const AppLayout: React.FC = () => {
       overflow: 'hidden',
       position: 'relative'
     }}>
+
+      {/* Permanent LifeSync Logo & Brand Mark (Sole Permanent Visibility Exception per Section 2) */}
+      {!navHidden && isModernDark && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: dockPosition === 'top' ? 14 : 20,
+            left: dockPosition === 'right' ? 'auto' : (collapsed ? 26 : 18),
+            right: dockPosition === 'right' ? (collapsed ? 26 : 24) : 'auto',
+            bottom: dockPosition === 'bottom' ? 16 : 'auto',
+            zIndex: 1100, // Permanently above the spotlight reveal mask (zIndex: 900)
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            transition: 'all 0.25s ease'
+          }}
+        >
+          <Box
+            component="img"
+            src="/logo.jpg"
+            alt="LifeSync AI"
+            sx={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: '1.5px solid var(--accent-primary)',
+              boxShadow: '0 2px 8px rgba(255, 111, 38, 0.4)'
+            }}
+          />
+          {!collapsed && (
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                fontSize: '18px',
+                color: 'var(--text-primary)',
+                letterSpacing: '0.05em',
+                textShadow: mode === 'dark' ? '0 2px 6px rgba(0,0,0,0.8)' : 'none'
+              }}
+            >
+              LIFESYNC
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {/* True Application-Wide Spotlight Reveal Mask (Modern Night Mode only) */}
+      <ModernSpotlightLayer />
 
       {/* Floating Drag & Dock Zone Overlay Indicators (Active during dragging) */}
       {isDragging && (
@@ -699,7 +760,26 @@ const AppLayout: React.FC = () => {
       {/* Main View Container */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         {/* Main Content (router renders active route component here with transition cross-fade) */}
-        <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'var(--bg-secondary)', position: 'relative' }}>
+        <Box
+          ref={contentContainerRef}
+          component="main"
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            bgcolor: 'var(--bg-secondary)',
+            position: 'relative',
+            backgroundImage: !isProf && mode === 'light' ? 'url(/modern-bg.png)' : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: 'fixed'
+          }}
+        >
+          {/* Modern 3D WebGL Liquid Ripple Distortion Canvas */}
+          <ModernRippleDistortionCanvas containerRef={contentContainerRef} />
+
           <AnimatePresence mode="wait">
             {pageChanging ? (
               <Box
@@ -709,7 +789,7 @@ const AppLayout: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.18, ease: 'easeInOut' }}
-                sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+                sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative', zIndex: 3 }}
               >
                 <LogoLoader />
               </Box>
@@ -721,7 +801,7 @@ const AppLayout: React.FC = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', height: '100%' }}
+                sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden', height: '100%', position: 'relative', zIndex: 3 }}
               >
                 <Outlet />
               </Box>
