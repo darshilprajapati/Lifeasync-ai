@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, Box, Typography } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
-import CustomCursor from './components/CustomCursor';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider as LifeSyncThemeProvider } from './context/ThemeContext';
@@ -217,7 +216,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LifeSyncThemeProvider>
         <CssBaseline />
-        <CustomCursor />
         <AuthProvider>
           <NotificationProvider>
             <BrowserRouter>

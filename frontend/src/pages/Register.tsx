@@ -5,6 +5,7 @@ import { trackAction } from '../utils/analytics';
 import { useLampAuthContext } from '../components/LampScene';
 import { getAllCountries, getStatesOfCountry, normalizeCity } from '../utils/locationData';
 import { useNotification } from '../context/NotificationContext';
+import { useThemeSystem, type DesignSystem, type ThemeMode } from '../context/ThemeContext';
 
 // In-memory cache preserved across form switching and lamp toggles
 let cachedRegisterFullName = '';
@@ -15,6 +16,17 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
   const { notify } = useNotification();
+  const { designSystem, setDesignSystem, mode, setMode } = useThemeSystem();
+
+  // Appearance Selection during registration (client-side only; applied upon successful registration)
+  const [selectedDesign, setSelectedDesign] = useState<DesignSystem>(() => {
+    const saved = localStorage.getItem('lifesync_design_system');
+    return (saved === 'professional' || saved === 'modern3d') ? saved : (designSystem || 'modern3d');
+  });
+  const [selectedMode, setSelectedMode] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem('lifesync_theme');
+    return (saved === 'light' || saved === 'dark') ? saved : (mode || 'dark');
+  });
 
   // Multi-step registration flow: Step 1 (Credentials) -> Step 2 (Optional Location)
   const [step, setStep] = useState<1 | 2>(1);
@@ -129,6 +141,17 @@ const Register: React.FC = () => {
       } : undefined;
 
       await register(fullName.trim(), email.trim(), password, locationPayload);
+
+      // Apply chosen appearance immediately after successful registration
+      try {
+        setDesignSystem(selectedDesign);
+        setMode(selectedMode);
+        localStorage.setItem('lifesync_design_system', selectedDesign);
+        localStorage.setItem('lifesync_theme', selectedMode);
+      } catch (err) {
+        console.error('Failed to set appearance preference:', err);
+      }
+
       trackAction('register_success');
       notify.success('Account created successfully! Redirecting...');
       setSuccessMessage('Account created successfully! Redirecting...');
@@ -417,6 +440,226 @@ const Register: React.FC = () => {
             {touched.confirmPassword && confirmPassword && !passwordsMatch && (
               <span className="lamp-error-text" style={{ fontSize: '11px' }}>Passwords do not match</span>
             )}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* Choose Your Appearance (Design System & Theme Mode)                       */}
+          {/* ========================================================================= */}
+          <div className="lamp-field-group" style={{ gap: '8px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label className="lamp-field-label" style={{ fontSize: '12px', margin: 0, fontWeight: 600 }}>
+                Choose Your Appearance
+              </label>
+              <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.55)' }}>
+                Configurable anytime in Profile
+              </span>
+            </div>
+
+            {/* Design System: Professional vs Modern 3D */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {/* Professional Card */}
+              <button
+                id="register-pref-professional"
+                type="button"
+                role="radio"
+                aria-checked={selectedDesign === 'professional'}
+                onClick={() => setSelectedDesign('professional')}
+                disabled={!isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  textAlign: 'left',
+                  padding: '9px 11px',
+                  borderRadius: '10px',
+                  background: selectedDesign === 'professional'
+                    ? 'rgba(255, 94, 77, 0.16)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  border: selectedDesign === 'professional'
+                    ? '1.5px solid #FF5E4D'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: selectedDesign === 'professional'
+                    ? '0 0 12px rgba(255, 94, 77, 0.25)'
+                    : 'none',
+                  cursor: isFormActive ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  color: '#FFFFFF'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '3px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={selectedDesign === 'professional' ? '#FF5E4D' : 'rgba(255, 255, 255, 0.7)'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="1" />
+                      <line x1="3" y1="9" x2="21" y2="9" />
+                      <line x1="9" y1="21" x2="9" y2="9" />
+                    </svg>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>Professional</span>
+                  </div>
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      border: selectedDesign === 'professional' ? '4px solid #FF5E4D' : '1.5px solid rgba(255, 255, 255, 0.35)',
+                      background: selectedDesign === 'professional' ? '#FFFFFF' : 'transparent',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.68)', lineHeight: 1.3 }}>
+                  Clean, flat, minimal interface.
+                </span>
+              </button>
+
+              {/* Modern 3D Card */}
+              <button
+                id="register-pref-modern3d"
+                type="button"
+                role="radio"
+                aria-checked={selectedDesign === 'modern3d'}
+                onClick={() => setSelectedDesign('modern3d')}
+                disabled={!isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  textAlign: 'left',
+                  padding: '9px 11px',
+                  borderRadius: '10px',
+                  background: selectedDesign === 'modern3d'
+                    ? 'rgba(255, 94, 77, 0.16)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  border: selectedDesign === 'modern3d'
+                    ? '1.5px solid #FF5E4D'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: selectedDesign === 'modern3d'
+                    ? '0 0 12px rgba(255, 94, 77, 0.25)'
+                    : 'none',
+                  cursor: isFormActive ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  color: '#FFFFFF'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '3px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={selectedDesign === 'modern3d' ? '#FF5E4D' : 'rgba(255, 255, 255, 0.7)'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                      <line x1="12" y1="22.08" x2="12" y2="12" />
+                    </svg>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>Modern 3D</span>
+                  </div>
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      border: selectedDesign === 'modern3d' ? '4px solid #FF5E4D' : '1.5px solid rgba(255, 255, 255, 0.35)',
+                      background: selectedDesign === 'modern3d' ? '#FFFFFF' : 'transparent',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.68)', lineHeight: 1.3 }}>
+                  Glassmorphism, dimensional surfaces, and enhanced visual effects.
+                </span>
+              </button>
+            </div>
+
+            {/* Theme Mode Selector: Light vs Dark */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '1px' }}>
+              {/* Light Mode Button */}
+              <button
+                id="register-mode-light"
+                type="button"
+                role="radio"
+                aria-checked={selectedMode === 'light'}
+                onClick={() => setSelectedMode('light')}
+                disabled={!isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  background: selectedMode === 'light'
+                    ? 'rgba(255, 94, 77, 0.22)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  border: selectedMode === 'light'
+                    ? '1.5px solid #FF5E4D'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  color: selectedMode === 'light' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.75)',
+                  cursor: isFormActive ? 'pointer' : 'default',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+                <span>Light Mode</span>
+                {selectedMode === 'light' && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FF5E4D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Dark Mode Button */}
+              <button
+                id="register-mode-dark"
+                type="button"
+                role="radio"
+                aria-checked={selectedMode === 'dark'}
+                onClick={() => setSelectedMode('dark')}
+                disabled={!isFormActive}
+                tabIndex={isFormActive ? 0 : -1}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  background: selectedMode === 'dark'
+                    ? 'rgba(255, 94, 77, 0.22)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  border: selectedMode === 'dark'
+                    ? '1.5px solid #FF5E4D'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  color: selectedMode === 'dark' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.75)',
+                  cursor: isFormActive ? 'pointer' : 'default',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <span>Dark Mode</span>
+                {selectedMode === 'dark' && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FF5E4D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Step 1 Next Button */}

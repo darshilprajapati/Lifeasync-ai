@@ -46,38 +46,19 @@
   padding: 0;
 }
 
-/* Cursor System Rules */
-/* Professional mode: Standard system cursor behavior */
-html[data-design-system="professional"] * {
-  cursor: auto;
-}
-html[data-design-system="professional"] button,
-html[data-design-system="professional"] a,
-html[data-design-system="professional"] [role="button"],
-html[data-design-system="professional"] select,
-html[data-design-system="professional"] .interactive-hover {
+/* Standard Native Cursor Rules */
+button,
+a,
+[role="button"],
+select,
+.interactive-hover {
   cursor: pointer;
 }
-html[data-design-system="professional"] input,
-html[data-design-system="professional"] textarea,
-html[data-design-system="professional"] [contenteditable="true"] {
-  cursor: text !important;
-}
 
-/* Modern 3D mode: Custom Magnetic Cursor is the ONLY visible cursor */
-@media (hover: hover) and (pointer: fine) {
-  html[data-design-system="modern3d"],
-  html[data-design-system="modern3d"] body,
-  html[data-design-system="modern3d"] body * {
-    cursor: none !important;
-  }
-
-  /* Form inputs, textareas, and editable fields retain native text cursor */
-  html[data-design-system="modern3d"] input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),
-  html[data-design-system="modern3d"] textarea,
-  html[data-design-system="modern3d"] [contenteditable="true"] {
-    cursor: text !important;
-  }
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
 }
 
 
@@ -430,66 +411,6 @@ input, button, select, textarea {
   }
 }
 
-/* Modern 3D Magnetic Cursor Styling */
-.magnetic-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  pointer-events: none !important;
-  z-index: 99999;
-  border: 1.5px solid var(--accent-primary, #E85A4F);
-  background: rgba(232, 90, 79, 0.06);
-  scale: 1;
-  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
-              height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
-              scale 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
-              background-color 0.22s ease,
-              border-color 0.22s ease,
-              opacity 0.15s ease;
-  will-change: transform;
-}
-
-.magnetic-cursor-ring.is-dark {
-  border-color: rgba(255, 111, 38, 0.5);
-  background: rgba(255, 111, 38, 0.08);
-  box-shadow: 0 0 10px rgba(255, 111, 38, 0.25);
-}
-
-.magnetic-cursor-ring.is-hovering {
-  width: 38px;
-  height: 38px;
-  background: rgba(232, 90, 79, 0.12);
-  border-color: var(--accent-primary, #E85A4F);
-}
-
-.magnetic-cursor-ring.is-dark.is-hovering {
-  background: rgba(255, 111, 38, 0.16);
-  border-color: #FF6F26;
-  box-shadow: 0 0 14px rgba(255, 111, 38, 0.4);
-}
-
-.magnetic-cursor-ring.is-clicking {
-  scale: 0.82;
-}
-
-/* Professional mode: ensure magnetic cursor is strictly hidden */
-[data-design-system="professional"] .magnetic-cursor-ring {
-  display: none !important;
-}
-
-/* Accessibility: Show default cursor on touch screens or fallback */
-@media (hover: none), (pointer: coarse) {
-  * {
-    cursor: auto !important;
-  }
-  .magnetic-cursor-ring {
-    display: none !important;
-  }
-}
-
 /* Respect user's motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -499,20 +420,6 @@ input, button, select, textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-  .magnetic-cursor-ring {
-    display: none !important;
-  }
-  html[data-design-system="modern3d"],
-  html[data-design-system="modern3d"] body,
-  html[data-design-system="modern3d"] body * {
-    cursor: auto !important;
-  }
-  html[data-design-system="modern3d"] button,
-  html[data-design-system="modern3d"] a,
-  html[data-design-system="modern3d"] [role="button"],
-  html[data-design-system="modern3d"] select {
-    cursor: pointer !important;
   }
 }
 
