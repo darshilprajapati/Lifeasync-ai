@@ -2,22 +2,24 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useThemeSystem } from '../context/ThemeContext';
 
 /**
- * CustomCursor — Modern 3D Heartbeat Cursor
+ * CustomCursor — Modern 3D Magnetic Cursor
  *
- * Implements:
- * 1. Active ONLY in Modern 3D mode. In Professional mode, returns null (native cursor preserved).
- * 2. Clean, recognizable heart-shaped pointer with LifeSync coral/orange accent color.
- * 3. Natural heartbeat pulse animation inspired by an ECG heart monitor rhythm (lub-dub pulse followed by calm rest).
- * 4. Responsive pulse boost when hovering over interactive elements (buttons, links, triggers).
- * 5. Direct zero-lag pointer tracking updating in real-time on pointermove (no trailing offset or latency).
+ * Requirements:
+ * 1. Active ONLY in Modern 3D mode. In Professional mode, returns null.
+ * 2. Subtle, smooth magnetic attraction effect on eligible interactive elements
+ *    (buttons, links, navigation items, interactive cards).
+ * 3. Element translates subtly towards cursor on approach and returns smoothly on leave.
+ * 4. Elegant magnetic cursor ring (no heartbeat, no heart icon, no duplicate cursor).
+ * 5. Respects prefers-reduced-motion and touch devices (auto-disabled).
  * 6. Non-blocking (pointer-events: none), does not interfere with clicks, drags, or selection.
- * 7. Automatically hides over text inputs, textareas, and drag handles so native text/grab cursors function without clutter.
- * 8. Graceful fallback on touch devices and respects prefers-reduced-motion.
+ * 7. Automatically hides over text inputs so native text cursors function cleanly.
  */
 const CustomCursor: React.FC = () => {
   const { designSystem, mode } = useThemeSystem();
-  const cursorRef = useRef<HTMLDivElement>(null);
-  const [isOverNativeControl, setIsOverNativeControl] = useState(false);
+  const ringRef = useRef<HTMLDivElement>(null);
+  const activeTargetRef = useRef<HTMLElement | null>(null);
+
+  const [isOverTextInput, setIsOverTextInput] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -25,44 +27,90 @@ const CustomCursor: React.FC = () => {
   const isModern = designSystem === 'modern3d';
 
   useEffect(() => {
-    if (!isModern) return;
+    if (!isModern) {
+      // Clean up any remaining magnetic transform if user switched to professional
+      if (activeTargetRef.current) {
+        activeTargetRef.current.style.transform = '';
+        activeTargetRef.current = null;
+      }
+      return;
+    }
 
-    // Touch device detection: disable custom cursor on touch-only devices
+    // Touch device detection: disable on touch-only devices
     if ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) {
       return;
     }
+
+    // Respect reduced motion
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const resetMagnet = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.style.transform = '';
+      el.style.transition = 'transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    };
 
     const onPointerMove = (e: PointerEvent) => {
       const x = e.clientX;
       const y = e.clientY;
 
-      // Direct transform update: instantaneous tracking with zero latency and zero offset
-      if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       }
 
       if (!isVisible) setIsVisible(true);
 
       const target = e.target as HTMLElement | null;
-      if (target) {
-        // Check if cursor is over a text input, textarea, select, contenteditable, or drag handle
-        const isTextInput = !!target.closest(
-          'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]'
-        );
-        const isDragControl = !!target.closest('.drag-handle, [data-draggable="true"], .resize-handle');
-        setIsOverNativeControl(isTextInput || isDragControl);
+      if (!target) return;
 
-        // Check if cursor is over an interactive button/link/action
-        const interactiveEl = target.closest(
-          'button, a, [role="button"], input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], .interactive-hover'
-        );
-        setIsHovering(!!interactiveEl);
+      // Check if cursor is over a text input or editable field
+      const isTextInput = !!target.closest(
+        'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]'
+      );
+      setIsOverTextInput(isTextInput);
+
+      // Check for eligible interactive magnetic target
+      const interactiveEl = target.closest(
+        'button, a, [role="button"], .MuiButton-root, .MuiIconButton-root, .MuiChip-root, .lifesync-nav-link, .interactive-magnetic'
+      ) as HTMLElement | null;
+
+      if (interactiveEl) {
+        setIsHovering(true);
+
+        // Apply subtle magnetic pull to the element
+        const rect = interactiveEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const deltaX = (x - centerX) * 0.18;
+        const deltaY = (y - centerY) * 0.18;
+
+        interactiveEl.style.transform = `translate3d(${deltaX.toFixed(1)}px, ${deltaY.toFixed(1)}px, 0)`;
+        interactiveEl.style.transition = 'transform 0.1s ease-out';
+
+        if (activeTargetRef.current && activeTargetRef.current !== interactiveEl) {
+          resetMagnet(activeTargetRef.current);
+        }
+        activeTargetRef.current = interactiveEl;
+      } else {
+        setIsHovering(false);
+        if (activeTargetRef.current) {
+          resetMagnet(activeTargetRef.current);
+          activeTargetRef.current = null;
+        }
       }
     };
 
     const onPointerDown = () => setIsClicking(true);
     const onPointerUp = () => setIsClicking(false);
-    const onPointerLeave = () => setIsVisible(false);
+    const onPointerLeave = () => {
+      setIsVisible(false);
+      if (activeTargetRef.current) {
+        resetMagnet(activeTargetRef.current);
+        activeTargetRef.current = null;
+      }
+    };
     const onPointerEnter = () => setIsVisible(true);
 
     window.addEventListener('pointermove', onPointerMove, { passive: true });
@@ -77,44 +125,28 @@ const CustomCursor: React.FC = () => {
       window.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('mouseleave', onPointerLeave);
       document.removeEventListener('mouseenter', onPointerEnter);
+      if (activeTargetRef.current) {
+        resetMagnet(activeTargetRef.current);
+        activeTargetRef.current = null;
+      }
     };
   }, [isModern, isVisible]);
 
-  // Professional mode retains native cursor completely
+  // Professional mode retains native cursor with zero custom rendering
   if (!isModern) return null;
 
   const isDark = mode === 'dark';
-  const showCursor = isVisible && !isOverNativeControl;
+  const showRing = isVisible && !isOverTextInput;
 
   return (
     <div
-      ref={cursorRef}
-      className={`heartbeat-cursor-container ${isHovering ? 'is-hovering' : ''} ${isClicking ? 'is-clicking' : ''} ${isDark ? 'is-dark' : 'is-light'}`}
+      ref={ringRef}
+      className={`magnetic-cursor-ring ${isHovering ? 'is-hovering' : ''} ${isClicking ? 'is-clicking' : ''} ${isDark ? 'is-dark' : 'is-light'}`}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        pointerEvents: 'none',
-        zIndex: 99999,
-        opacity: showCursor ? 1 : 0,
-        transition: 'opacity 0.12s ease',
-        willChange: 'transform'
+        opacity: showRing ? 1 : 0,
       }}
       aria-hidden="true"
-    >
-      <div className="heartbeat-cursor-inner">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ display: 'block' }}
-        >
-          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-        </svg>
-      </div>
-    </div>
+    />
   );
 };
 

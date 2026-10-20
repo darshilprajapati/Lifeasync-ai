@@ -205,7 +205,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 32px;
+  padding: 20px 24px;
   box-sizing: border-box;
   background: transparent;
   transition: background-color 0.65s cubic-bezier(0.4, 0, 0.2, 1);
@@ -213,7 +213,7 @@
 
 .lamp-card-wrapper {
   width: 100%;
-  max-width: 460px;
+  max-width: 450px;
   display: flex;
   justify-content: center;
 }
@@ -224,11 +224,13 @@
    ========================================================================== */
 .lamp-auth-card {
   width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background: rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(28px) saturate(140%);
   -webkit-backdrop-filter: blur(28px) saturate(140%);
-  border-radius: 24px;
-  padding: 44px 38px;
+  border-radius: 22px;
+  padding: 30px 32px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   box-sizing: border-box;

@@ -59,14 +59,13 @@ const Profile: React.FC = () => {
   const allCountries = useMemo(() => getAllCountries(), []);
   const availableStates = useMemo(() => getStatesOfCountry(country), [country]);
 
+  const isDark = mode === 'dark';
+  const isProf = designSystem === 'professional';
+
   // Appearance draft state (Draft-and-Apply flow: changes preview locally and apply globally on clicking Save)
   const [prefDesign, setPrefDesign] = useState<DesignSystem>(designSystem);
   const [prefMode, setPrefMode] = useState<ThemeMode>(mode);
   const [appearanceSaved, setAppearanceSaved] = useState(false);
-
-  // Profile-scoped preview calculations
-  const isProfPreview = prefDesign === 'professional';
-  const isDarkPreview = prefMode === 'dark';
 
   // General & Stats state
   const [stats, setStats] = useState<Dictionary<number>>({});
@@ -289,10 +288,10 @@ const Profile: React.FC = () => {
               fontWeight: 800,
               fontSize: '11px',
               height: 26,
-              bgcolor: isDarkPreview ? 'rgba(255, 111, 38, 0.15)' : 'rgba(232, 90, 79, 0.1)',
+              bgcolor: isDark ? 'rgba(255, 111, 38, 0.15)' : 'rgba(232, 90, 79, 0.1)',
               color: 'var(--accent-primary)',
               border: '1px solid rgba(255, 111, 38, 0.3)',
-              borderRadius: isProfPreview ? '0px !important' : '8px'
+              borderRadius: isProf ? '0px !important' : '8px'
             }}
           />
         </Stack>
@@ -306,10 +305,8 @@ const Profile: React.FC = () => {
               <Stack spacing={1.5} sx={{ height: '100%', justifyContent: 'space-between' }}>
                 {/* 1. Personal Information Card */}
                 <TiltCard
-                  overrideDesignSystem={prefDesign}
-                  overrideMode={prefMode}
                   sx={{
-                    borderRadius: isProfPreview ? '0px !important' : '14px',
+                    borderRadius: isProf ? '0px !important' : '14px',
                     p: '14px 16px'
                   }}
                 >
@@ -322,111 +319,109 @@ const Profile: React.FC = () => {
                         label={user?.role || 'User'}
                         size="small"
                         color={user?.role === 'Admin' ? 'primary' : 'default'}
-                        sx={{ height: 20, fontSize: '10px', fontWeight: 700, borderRadius: isProfPreview ? '0px !important' : '6px' }}
+                        sx={{ height: 20, fontSize: '10px', fontWeight: 700, borderRadius: isProf ? '0px !important' : '6px' }}
                       />
                       <Chip
                         label={user?.status || 'Active'}
                         size="small"
                         color="success"
                         variant="outlined"
-                        sx={{ height: 20, fontSize: '10px', fontWeight: 700, borderRadius: isProfPreview ? '0px !important' : '6px' }}
+                        sx={{ height: 20, fontSize: '10px', fontWeight: 700, borderRadius: isProf ? '0px !important' : '6px' }}
                       />
                     </Stack>
                   </Stack>
 
-                    <form onSubmit={handleSaveProfile}>
-                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1 }}>
-                        {/* Compact Avatar */}
-                        <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                          <Avatar
-                            src={profilePhoto || undefined}
-                            sx={{
-                              width: 54,
-                              height: 54,
-                              bgcolor: 'var(--accent-secondary)',
-                              fontSize: '20px',
-                              fontWeight: 700,
-                              border: '2px solid white',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                            }}
-                          >
-                            {!profilePhoto && (fullName.charAt(0).toUpperCase() || 'U')}
-                          </Avatar>
-                          <Button
-                            component="label"
-                            size="small"
-                            sx={{
-                              position: 'absolute',
-                              bottom: -2,
-                              right: -2,
-                              minWidth: 22,
-                              width: 22,
-                              height: 22,
-                              borderRadius: '50%',
-                              bgcolor: 'var(--accent-primary)',
-                              color: 'white',
-                              p: 0,
-                              '&:hover': { bgcolor: 'var(--accent-secondary)' }
-                            }}
-                          >
-                            <PhotoCameraIcon sx={{ fontSize: 11 }} />
-                            <input type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
-                          </Button>
-                        </Box>
+                  <form onSubmit={handleSaveProfile}>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1 }}>
+                      {/* Compact Avatar */}
+                      <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                        <Avatar
+                          src={profilePhoto || undefined}
+                          sx={{
+                            width: 54,
+                            height: 54,
+                            bgcolor: 'var(--accent-secondary)',
+                            fontSize: '20px',
+                            fontWeight: 700,
+                            border: '2px solid white',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          {!profilePhoto && (fullName.charAt(0).toUpperCase() || 'U')}
+                        </Avatar>
+                        <Button
+                          component="label"
+                          size="small"
+                          sx={{
+                            position: 'absolute',
+                            bottom: -2,
+                            right: -2,
+                            minWidth: 22,
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            bgcolor: 'var(--accent-primary)',
+                            color: 'white',
+                            p: 0,
+                            '&:hover': { bgcolor: 'var(--accent-secondary)' }
+                          }}
+                        >
+                          <PhotoCameraIcon sx={{ fontSize: 11 }} />
+                          <input type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
+                        </Button>
+                      </Box>
 
-                        <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
-                          <TextField
-                            label="Full Name"
-                            required
-                            fullWidth
-                            size="small"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            slotProps={{ input: { sx: { fontSize: '12.5px', height: 34 } } }}
-                          />
-                          <TextField
-                            label="Email Address"
-                            disabled
-                            fullWidth
-                            size="small"
-                            value={email}
-                            slotProps={{ input: { readOnly: true, sx: { fontSize: '12.5px', height: 34 } } }}
-                          />
-                        </Stack>
+                      <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                        <TextField
+                          label="Full Name"
+                          required
+                          fullWidth
+                          size="small"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          slotProps={{ input: { sx: { fontSize: '12.5px', height: 34 } } }}
+                        />
+                        <TextField
+                          label="Email Address"
+                          disabled
+                          fullWidth
+                          size="small"
+                          value={email}
+                          slotProps={{ input: { readOnly: true, sx: { fontSize: '12.5px', height: 34 } } }}
+                        />
                       </Stack>
+                    </Stack>
 
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        size="small"
-                        disabled={savingProfile || (fullName.trim() === user?.fullName && profilePhoto === (user?.profilePhoto || null))}
-                        startIcon={<SaveIcon sx={{ fontSize: '14px !important' }} />}
-                        sx={{
-                          bgcolor: 'var(--accent-primary)',
-                          borderRadius: isProfPreview ? '0px !important' : '8px',
-                          fontWeight: 700,
-                          fontSize: '11.5px',
-                          py: 0.4,
-                          px: 1.5,
-                          textTransform: 'none',
-                          float: 'right',
-                          boxShadow: isProfPreview ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.25)',
-                          '&:hover': { bgcolor: 'var(--accent-secondary)' }
-                        }}
-                      >
-                        {savingProfile ? 'Saving...' : 'Update Profile'}
-                      </Button>
-                      <Box sx={{ clear: 'both' }} />
-                    </form>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="small"
+                      disabled={savingProfile || (fullName.trim() === user?.fullName && profilePhoto === (user?.profilePhoto || null))}
+                      startIcon={<SaveIcon sx={{ fontSize: '14px !important' }} />}
+                      sx={{
+                        bgcolor: 'var(--accent-primary)',
+                        borderRadius: isProf ? '0px !important' : '8px',
+                        fontWeight: 700,
+                        fontSize: '11.5px',
+                        py: 0.4,
+                        px: 1.5,
+                        textTransform: 'none',
+                        float: 'right',
+                        boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.25)',
+                        '&:hover': { bgcolor: 'var(--accent-secondary)' }
+                      }}
+                    >
+                      {savingProfile ? 'Saving...' : 'Update Profile'}
+                    </Button>
+                    <Box sx={{ clear: 'both' }} />
+                  </form>
                 </TiltCard>
 
                 {/* 2. Workspace Activity Statistics */}
                 <TiltCard
-                  overrideDesignSystem={prefDesign}
-                  overrideMode={prefMode}
                   sx={{
                     p: '14px 16px',
-                    borderRadius: isProfPreview ? '0px !important' : '14px',
+                    borderRadius: isProf ? '0px !important' : '14px',
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
@@ -446,15 +441,15 @@ const Profile: React.FC = () => {
                         <Box
                           sx={{
                             p: 0.75,
-                            borderRadius: isProfPreview ? '0px !important' : '8px',
-                            bgcolor: isDarkPreview ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.5)',
-                            backdropFilter: isProfPreview ? 'none' : 'blur(8px)',
-                            border: isProfPreview
+                            borderRadius: isProf ? '0px !important' : '8px',
+                            bgcolor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.5)',
+                            backdropFilter: isProf ? 'none' : 'blur(8px)',
+                            border: isProf
                               ? '1px solid var(--card-border)'
-                              : isDarkPreview
+                              : isDark
                                 ? '1px solid rgba(255, 255, 255, 0.08)'
                                 : '1px solid rgba(255, 255, 255, 0.7)',
-                            boxShadow: isProfPreview ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.03)',
+                            boxShadow: isProf ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.03)',
                             textAlign: 'center'
                           }}
                         >
@@ -471,11 +466,11 @@ const Profile: React.FC = () => {
                       <Box
                         sx={{
                           p: 0.75,
-                          borderRadius: isProfPreview ? '0px !important' : '8px',
-                          bgcolor: isDarkPreview ? 'rgba(255, 111, 38, 0.15)' : 'rgba(232, 90, 79, 0.1)',
-                          backdropFilter: isProfPreview ? 'none' : 'blur(8px)',
-                          border: isProfPreview ? '1px solid rgba(255, 111, 38, 0.3)' : '1px solid rgba(255, 111, 38, 0.4)',
-                          boxShadow: isProfPreview ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.15)',
+                          borderRadius: isProf ? '0px !important' : '8px',
+                          bgcolor: isDark ? 'rgba(255, 111, 38, 0.15)' : 'rgba(232, 90, 79, 0.1)',
+                          backdropFilter: isProf ? 'none' : 'blur(8px)',
+                          border: isProf ? '1px solid rgba(255, 111, 38, 0.3)' : '1px solid rgba(255, 111, 38, 0.4)',
+                          boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.15)',
                           textAlign: 'center'
                         }}
                       >
@@ -498,11 +493,9 @@ const Profile: React.FC = () => {
                 {/* 3. Location (Optional) Card */}
                 <TiltCard
                   id="profile-location-section"
-                  overrideDesignSystem={prefDesign}
-                  overrideMode={prefMode}
                   sx={{
                     p: '14px 16px',
-                    borderRadius: isProfPreview ? '0px !important' : '14px'
+                    borderRadius: isProf ? '0px !important' : '14px'
                   }}
                 >
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -516,7 +509,7 @@ const Profile: React.FC = () => {
                       label={isLocationComplete ? 'LifeSync Arena Active' : 'Location Incomplete'}
                       size="small"
                       color={isLocationComplete ? 'success' : 'warning'}
-                      sx={{ height: 20, fontSize: '10px', fontWeight: 800, borderRadius: isProfPreview ? '0px !important' : '6px' }}
+                      sx={{ height: 20, fontSize: '10px', fontWeight: 800, borderRadius: isProf ? '0px !important' : '6px' }}
                     />
                   </Stack>
 
@@ -542,8 +535,8 @@ const Profile: React.FC = () => {
                             sx={{
                               fontSize: '12.5px',
                               height: 34,
-                              borderRadius: isProfPreview ? '0px !important' : '8px',
-                              bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
+                              borderRadius: isProf ? '0px !important' : '8px',
+                              bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
                             }}
                           >
                             <MenuItem value="" sx={{ fontSize: '12.5px' }}>
@@ -570,8 +563,8 @@ const Profile: React.FC = () => {
                               sx={{
                                 fontSize: '12.5px',
                                 height: 34,
-                                borderRadius: isProfPreview ? '0px !important' : '8px',
-                                bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
+                                borderRadius: isProf ? '0px !important' : '8px',
+                                bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
                               }}
                             >
                               <MenuItem value="" sx={{ fontSize: '12.5px' }}>
@@ -598,8 +591,8 @@ const Profile: React.FC = () => {
                                 sx: {
                                   fontSize: '12.5px',
                                   height: 34,
-                                  borderRadius: isProfPreview ? '0px !important' : '8px',
-                                  bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
+                                  borderRadius: isProf ? '0px !important' : '8px',
+                                  bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
                                 }
                               }
                             }}
@@ -621,8 +614,8 @@ const Profile: React.FC = () => {
                               sx: {
                                 fontSize: '12.5px',
                                 height: 34,
-                                borderRadius: isProfPreview ? '0px !important' : '8px',
-                                bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
+                                borderRadius: isProf ? '0px !important' : '8px',
+                                bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)'),
                               }
                             }
                           }}
@@ -642,16 +635,16 @@ const Profile: React.FC = () => {
                           sx={{
                             borderColor: 'var(--card-border)',
                             color: 'var(--text-secondary)',
-                            borderRadius: isProfPreview ? '0px !important' : '8px',
+                            borderRadius: isProf ? '0px !important' : '8px',
                             fontWeight: 600,
                             fontSize: '11px',
                             py: 0.4,
                             px: 1.25,
                             textTransform: 'none',
-                            bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.5)'),
+                            bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.5)'),
                             '&:hover': {
                               borderColor: 'var(--accent-primary)',
-                              bgcolor: isProfPreview ? 'transparent' : (isDarkPreview ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.8)')
+                              bgcolor: isProf ? 'transparent' : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.8)')
                             }
                           }}
                         >
@@ -667,13 +660,13 @@ const Profile: React.FC = () => {
                         startIcon={<LocationOnIcon sx={{ fontSize: '14px !important' }} />}
                         sx={{
                           bgcolor: 'var(--accent-primary)',
-                          borderRadius: isProfPreview ? '0px !important' : '8px',
+                          borderRadius: isProf ? '0px !important' : '8px',
                           fontWeight: 700,
                           fontSize: '11.5px',
                           py: 0.4,
                           px: 1.5,
                           textTransform: 'none',
-                          boxShadow: isProfPreview ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.25)',
+                          boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.25)',
                           '&:hover': { bgcolor: 'var(--accent-secondary)' }
                         }}
                       >
@@ -686,11 +679,9 @@ const Profile: React.FC = () => {
                 {/* 4. Appearance Settings Card */}
                 <TiltCard
                   id="profile-appearance-card"
-                  overrideDesignSystem={prefDesign}
-                  overrideMode={prefMode}
                   sx={{
                     p: '14px 16px',
-                    borderRadius: isProfPreview ? '0px !important' : '14px',
+                    borderRadius: isProf ? '0px !important' : '14px',
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
@@ -720,7 +711,7 @@ const Profile: React.FC = () => {
                           cursor: 'pointer',
                           border: prefDesign === 'professional' ? '2px solid var(--accent-primary)' : '1px solid var(--card-border)',
                           bgcolor: prefDesign === 'professional'
-                            ? (isDarkPreview ? 'rgba(217, 83, 30, 0.16)' : 'rgba(217, 83, 30, 0.08)')
+                            ? (isDark ? 'rgba(217, 83, 30, 0.16)' : 'rgba(217, 83, 30, 0.08)')
                             : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
@@ -754,13 +745,13 @@ const Profile: React.FC = () => {
                           cursor: 'pointer',
                           border: prefDesign === 'modern3d'
                             ? '2px solid var(--accent-primary)'
-                            : isProfPreview ? '1px solid var(--card-border)' : '1px solid rgba(255, 111, 38, 0.25)',
+                            : isProf ? '1px solid var(--card-border)' : '1px solid rgba(255, 111, 38, 0.25)',
                           bgcolor: prefDesign === 'modern3d'
-                            ? (isDarkPreview ? 'rgba(255, 111, 38, 0.2)' : 'rgba(255, 111, 38, 0.12)')
-                            : (isDarkPreview ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.5)'),
-                          backdropFilter: isProfPreview ? 'none' : 'blur(8px)',
+                            ? (isDark ? 'rgba(255, 111, 38, 0.2)' : 'rgba(255, 111, 38, 0.12)')
+                            : (isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.5)'),
+                          backdropFilter: isProf ? 'none' : 'blur(8px)',
                           boxShadow: prefDesign === 'modern3d'
-                            ? (isProfPreview ? 'none' : '0 4px 14px rgba(255, 111, 38, 0.25)')
+                            ? (isProf ? 'none' : '0 4px 14px rgba(255, 111, 38, 0.25)')
                             : 'none',
                           display: 'flex',
                           alignItems: 'center',
@@ -800,11 +791,11 @@ const Profile: React.FC = () => {
                         py: 0.4,
                         fontSize: '11.5px',
                         fontWeight: 700,
-                        borderRadius: isProfPreview ? '0px !important' : '8px',
+                        borderRadius: isProf ? '0px !important' : '8px',
                         bgcolor: prefMode === 'light' ? 'var(--accent-primary)' : 'transparent',
                         color: prefMode === 'light' ? '#FFFFFF' : 'var(--text-primary)',
                         borderColor: prefMode === 'light' ? 'transparent' : 'var(--card-border)',
-                        boxShadow: prefMode === 'light' && !isProfPreview ? '0 2px 8px rgba(255, 111, 38, 0.25)' : 'none',
+                        boxShadow: prefMode === 'light' && !isProf ? '0 2px 8px rgba(255, 111, 38, 0.25)' : 'none',
                         textTransform: 'none'
                       }}
                     >
@@ -821,11 +812,11 @@ const Profile: React.FC = () => {
                         py: 0.4,
                         fontSize: '11.5px',
                         fontWeight: 700,
-                        borderRadius: isProfPreview ? '0px !important' : '8px',
+                        borderRadius: isProf ? '0px !important' : '8px',
                         bgcolor: prefMode === 'dark' ? 'var(--accent-primary)' : 'transparent',
                         color: prefMode === 'dark' ? '#FFFFFF' : 'var(--text-primary)',
                         borderColor: prefMode === 'dark' ? 'transparent' : 'var(--card-border)',
-                        boxShadow: prefMode === 'dark' && !isProfPreview ? '0 2px 8px rgba(255, 111, 38, 0.25)' : 'none',
+                        boxShadow: prefMode === 'dark' && !isProf ? '0 2px 8px rgba(255, 111, 38, 0.25)' : 'none',
                         textTransform: 'none'
                       }}
                     >
@@ -843,12 +834,12 @@ const Profile: React.FC = () => {
                     onClick={handleSaveAppearance}
                     sx={{
                       bgcolor: 'var(--accent-primary)',
-                      borderRadius: isProfPreview ? '0px !important' : '8px',
+                      borderRadius: isProf ? '0px !important' : '8px',
                       fontWeight: 800,
                       fontSize: '11.5px',
                       py: 0.5,
                       textTransform: 'none',
-                      boxShadow: isProfPreview ? 'none' : '0 4px 14px rgba(255, 111, 38, 0.35)',
+                      boxShadow: isProf ? 'none' : '0 4px 14px rgba(255, 111, 38, 0.35)',
                       '&:hover': { bgcolor: 'var(--accent-secondary)' }
                     }}
                   >

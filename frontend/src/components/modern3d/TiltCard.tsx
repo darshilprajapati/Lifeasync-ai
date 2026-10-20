@@ -91,9 +91,12 @@ export const TiltCard: React.FC<TiltCardProps> = ({
         sx={{
           borderRadius: '0px !important',
           bgcolor: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          boxShadow: 'none',
-          backgroundImage: 'none',
+          border: '1px solid var(--card-border) !important',
+          boxShadow: 'none !important',
+          backgroundImage: 'none !important',
+          backdropFilter: 'none !important',
+          WebkitBackdropFilter: 'none !important',
+          transform: 'none !important',
           transition: 'background-color 0.15s ease, border-color 0.15s ease',
           ...sx
         }}

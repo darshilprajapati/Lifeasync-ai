@@ -64,32 +64,25 @@ html[data-design-system="professional"] [contenteditable="true"] {
   cursor: text !important;
 }
 
-/* Modern 3D mode: Hide native cursor everywhere so ONLY Heartbeat Cursor is visible */
-html[data-design-system="modern3d"],
-html[data-design-system="modern3d"] * {
-  cursor: none !important;
+/* Modern 3D mode: Clean native pointer with subtle magnetic attraction on eligible interactive elements */
+html[data-design-system="modern3d"] button,
+html[data-design-system="modern3d"] a,
+html[data-design-system="modern3d"] [role="button"],
+html[data-design-system="modern3d"] select,
+html[data-design-system="modern3d"] .interactive-hover {
+  cursor: pointer;
 }
 
-/* Retain native text cursor ONLY in text inputs, textareas, and contenteditable in Modern 3D */
-html[data-design-system="modern3d"] input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),
+html[data-design-system="modern3d"] input,
 html[data-design-system="modern3d"] textarea,
 html[data-design-system="modern3d"] [contenteditable="true"] {
-  cursor: text !important;
+  cursor: text;
 }
 
-/* Drag handles and resize controls in Modern 3D */
 html[data-design-system="modern3d"] [data-draggable="true"],
 html[data-design-system="modern3d"] .drag-handle,
 html[data-design-system="modern3d"] .resize-handle {
-  cursor: grab !important;
-}
-
-/* Fallback for touch devices or coarse pointers */
-@media (hover: none), (pointer: coarse) {
-  html[data-design-system="modern3d"],
-  html[data-design-system="modern3d"] * {
-    cursor: auto !important;
-  }
+  cursor: grab;
 }
 
 
@@ -441,85 +434,53 @@ input, button, select, textarea {
   }
 }
 
-/* Modern 3D Heartbeat Cursor Styling */
-.heartbeat-cursor-inner {
+/* Modern 3D Magnetic Cursor Styling */
+.magnetic-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  border: 1.5px solid var(--accent-primary, #E85A4F);
+  background: rgba(232, 90, 79, 0.06);
   transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: heartbeatMonitorPulse 1.5s ease-in-out infinite;
-  transform-origin: center center;
+  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.22s ease,
+              border-color 0.22s ease,
+              opacity 0.15s ease;
+  will-change: transform;
 }
 
-/* Modern Dark Mode: Restrained coral glow */
-.heartbeat-cursor-container.is-dark .heartbeat-cursor-inner {
-  color: var(--accent-primary, #FF6F26);
-  filter: drop-shadow(0 0 6px rgba(255, 111, 38, 0.55));
+.magnetic-cursor-ring.is-dark {
+  border-color: rgba(255, 111, 38, 0.5);
+  background: rgba(255, 111, 38, 0.08);
+  box-shadow: 0 0 10px rgba(255, 111, 38, 0.25);
 }
 
-/* Modern Light Mode: Subtle clean coral, no unwanted orange spotlight */
-.heartbeat-cursor-container.is-light .heartbeat-cursor-inner {
-  color: var(--accent-primary, #E85A4F);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+.magnetic-cursor-ring.is-hovering {
+  width: 38px;
+  height: 38px;
+  background: rgba(232, 90, 79, 0.12);
+  border-color: var(--accent-primary, #E85A4F);
 }
 
-/* Hovering over interactive triggers: distinct responsive pulse */
-.heartbeat-cursor-container.is-hovering .heartbeat-cursor-inner {
-  animation: heartbeatHoverPulse 0.95s ease-in-out infinite;
+.magnetic-cursor-ring.is-dark.is-hovering {
+  background: rgba(255, 111, 38, 0.16);
+  border-color: #FF6F26;
+  box-shadow: 0 0 14px rgba(255, 111, 38, 0.4);
 }
 
-.heartbeat-cursor-container.is-dark.is-hovering .heartbeat-cursor-inner {
-  filter: drop-shadow(0 0 8px rgba(255, 111, 38, 0.75));
+.magnetic-cursor-ring.is-clicking {
+  transform: translate(-50%, -50%) scale(0.82);
 }
 
-/* Clicking active state */
-.heartbeat-cursor-container.is-clicking .heartbeat-cursor-inner {
-  transform: translate(-50%, -50%) scale(0.90) !important;
-  transition: transform 0.08s ease;
-}
-
-/* ECG Heart Monitor pulse: lub-dub double contraction followed by peaceful rest interval */
-@keyframes heartbeatMonitorPulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  14% {
-    transform: translate(-50%, -50%) scale(1.18);
-  }
-  28% {
-    transform: translate(-50%, -50%) scale(1.04);
-  }
-  42% {
-    transform: translate(-50%, -50%) scale(1.22);
-  }
-  58% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Interactive element hover pulse */
-@keyframes heartbeatHoverPulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1.30);
-  }
-  14% {
-    transform: translate(-50%, -50%) scale(1.48);
-  }
-  28% {
-    transform: translate(-50%, -50%) scale(1.36);
-  }
-  42% {
-    transform: translate(-50%, -50%) scale(1.52);
-  }
-  58% {
-    transform: translate(-50%, -50%) scale(1.30);
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.30);
-  }
+/* Professional mode: ensure magnetic cursor is strictly hidden */
+[data-design-system="professional"] .magnetic-cursor-ring {
+  display: none !important;
 }
 
 /* Accessibility: Show default cursor on touch screens or fallback */
@@ -527,7 +488,7 @@ input, button, select, textarea {
   * {
     cursor: auto !important;
   }
-  .heartbeat-cursor-container {
+  .magnetic-cursor-ring {
     display: none !important;
   }
 }
