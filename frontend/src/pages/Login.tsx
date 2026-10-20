@@ -53,10 +53,16 @@ const Login: React.FC = () => {
       const destination = (location.state as any)?.from?.pathname || '/';
       navigate(destination, { replace: true });
     } catch (err: any) {
-      const serverMsg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Invalid email or password. Please try again.';
+      let serverMsg = 'Unable to connect to the authentication service. Please check your internet connection or try again later.';
+      if (err?.response?.data?.message) {
+        serverMsg = err.response.data.message;
+      } else if (err?.response?.status === 400 || err?.response?.status === 401) {
+        serverMsg = 'Invalid email or password. Please try again.';
+      } else if (err?.response?.status >= 500) {
+        serverMsg = 'The server encountered an error while processing your login. Please try again in a moment.';
+      } else if (err?.message && err.message !== 'Network Error') {
+        serverMsg = err.message;
+      }
       setErrorMessage(serverMsg);
     } finally {
       setSubmitting(false);

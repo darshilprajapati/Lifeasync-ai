@@ -34,9 +34,6 @@ namespace LifeSyncAI.Core.Database
             if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ||
                 provider.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase))
             {
-                // Production Neon uses EF Core migrations (Never EnsureCreated())
-                await context.Database.MigrateAsync();
-
                 try
                 {
                     await context.Database.ExecuteSqlRawAsync(@"
@@ -204,6 +201,16 @@ namespace LifeSyncAI.Core.Database
                     {
                         Console.WriteLine($"[DatabaseSeeder] Note on PostgreSQL column addition: {ex.Message}");
                     }
+                }
+
+                // Ensure EF Core migrations run and update the migration history table
+                try
+                {
+                    await context.Database.MigrateAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DatabaseSeeder] Note on EF Core MigrateAsync: {ex.Message}");
                 }
             }
             else if (provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))

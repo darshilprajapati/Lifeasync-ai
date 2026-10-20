@@ -56,6 +56,9 @@ namespace LifeSyncAI.API.Controllers
                     provider.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase))
                 {
                     await _context.Database.ExecuteSqlRawAsync(@"
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""City"" text;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""State"" text;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""Country"" text;
                         ALTER TABLE ""PlannerEvents"" ADD COLUMN IF NOT EXISTS ""ReminderTime"" timestamp without time zone;
                     ");
                 }

@@ -30,33 +30,49 @@ namespace LifeSyncAI.API.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Register([FromBody] RegisterDto dto)
         {
-            var result = await _authService.RegisterWithSessionAsync(dto);
-            if (!result.IsSuccess)
+            try
             {
-                return BadRequest(ApiResponse<UserDto>.Fail(result.Message));
+                var result = await _authService.RegisterWithSessionAsync(dto);
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(ApiResponse<UserDto>.Fail(result.Message));
+                }
+
+                // Automatically issue authentication cookies upon successful registration
+                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
+
+                return Ok(ApiResponse<UserDto>.Success(result.Data.User, result.Message));
             }
-
-            // Automatically issue authentication cookies upon successful registration
-            SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-
-            return Ok(ApiResponse<UserDto>.Success(result.Data.User, result.Message));
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Unexpected error occurred during user registration.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<UserDto>.Fail("An unexpected server error occurred during registration. Please try again."));
+            }
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Login([FromBody] LoginDto dto)
         {
-            var result = await _authService.LoginAsync(dto);
-            if (!result.IsSuccess)
+            try
             {
-                return BadRequest(result);
+                var result = await _authService.LoginAsync(dto);
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(result);
+                }
+
+                // Set tokens in HttpOnly Cookies
+                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
+
+                // Return user details without exposing tokens in response body
+                var response = ApiResponse<UserDto>.Success(result.Data.User, result.Message);
+                return Ok(response);
             }
-
-            // Set tokens in HttpOnly Cookies
-            SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-
-            // Return user details without exposing tokens in response body
-            var response = ApiResponse<UserDto>.Success(result.Data.User, result.Message);
-            return Ok(response);
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Unexpected error occurred during user login.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<UserDto>.Fail("An unexpected server error occurred during login. Please try again."));
+            }
         }
 
         [HttpPost("refresh")]

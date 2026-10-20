@@ -249,6 +249,25 @@ namespace LifeSyncAI.API
                 // so that preflight OPTIONS requests are handled immediately with 204 No Content and appropriate CORS headers
                 app.UseCors("CorsPolicy");
 
+                // 3. Global Exception Handler: Guarantees standardized JSON response and preserves CORS headers on unhandled errors
+                app.UseExceptionHandler(errorApp =>
+                {
+                    errorApp.Run(async httpContext =>
+                    {
+                        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                        httpContext.Response.ContentType = "application/json";
+
+                        var exceptionHandlerPathFeature = httpContext.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+                        if (exceptionHandlerPathFeature?.Error != null)
+                        {
+                            Log.Error(exceptionHandlerPathFeature.Error, "Unhandled API Exception on path {Path}", httpContext.Request.Path);
+                        }
+
+                        var errorResponse = LifeSyncAI.Core.Responses.ApiResponse<string>.Fail("An unexpected server error occurred. Please try again later.");
+                        await httpContext.Response.WriteAsJsonAsync(errorResponse);
+                    });
+                });
+
                 // Auto-Migrate and Seed Database at Startup
                 using (var scope = app.Services.CreateScope())
                 {
