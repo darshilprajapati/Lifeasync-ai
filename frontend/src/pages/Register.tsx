@@ -151,15 +151,55 @@ const Register: React.FC = () => {
     <>
       {/* Header and Step Progress Badge */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <div>
-          <h1 className="lamp-card-title" style={{ fontSize: '22px', marginBottom: '2px' }}>
-            {step === 1 ? 'Create Account' : 'Location'}
-          </h1>
-          <p className="lamp-card-subtitle" style={{ fontSize: '13px', marginBottom: '14px' }}>
-            {step === 1
-              ? 'Start your wellness & productivity journey.'
-              : 'You can skip this and add or edit your location anytime from Profile.'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+          {step === 2 && (
+            <button
+              id="register-back-arrow-btn"
+              type="button"
+              onClick={handleBackStep}
+              aria-label="Back to account details"
+              title="Back to account details"
+              disabled={submitting || !isFormActive}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                cursor: 'pointer',
+                marginTop: '1px',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)';
+                e.currentTarget.style.borderColor = 'rgba(255, 94, 77, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </button>
+          )}
+          <div>
+            <h1 className="lamp-card-title" style={{ fontSize: '22px', marginBottom: '2px' }}>
+              {step === 1 ? 'Create Account' : 'Location'}
+            </h1>
+            <p className="lamp-card-subtitle" style={{ fontSize: '13px', marginBottom: '14px' }}>
+              {step === 1
+                ? 'Start your wellness & productivity journey.'
+                : 'You can skip this and add or edit your location anytime from Profile.'}
+            </p>
+          </div>
         </div>
         <span
           style={{
@@ -499,70 +539,54 @@ const Register: React.FC = () => {
             </div>
           </div>
 
-          {/* Actions: Back, Skip for now, Create Account */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+          {/* Skip location text link above primary button */}
+          <div className="lamp-actions-row" style={{ marginTop: '2px', marginBottom: '2px', justifyContent: 'flex-end' }}>
             <button
-              id="register-back-btn"
-              type="button"
-              onClick={handleBackStep}
-              className="lamp-primary-button"
-              style={{
-                flex: '0 0 28%',
-                height: '44px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#FFFFFF',
-                boxShadow: 'none',
-                fontSize: '13px'
-              }}
-              disabled={submitting || !isFormActive}
-            >
-              Back
-            </button>
-
-            <button
-              id="register-skip-btn"
+              id="register-skip-link"
               type="button"
               onClick={() => executeRegistration(false)}
-              className="lamp-primary-button"
+              className="lamp-link-accent"
               style={{
-                flex: 1,
-                height: '44px',
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                color: '#FFFFFF',
-                boxShadow: 'none',
-                fontSize: '13px'
+                background: 'transparent',
+                border: 'none',
+                padding: '0',
+                fontFamily: 'inherit',
+                fontSize: '12.5px',
+                cursor: isFormActive && !submitting ? 'pointer' : 'default',
               }}
               disabled={submitting || !isFormActive}
+              tabIndex={isFormActive ? 0 : -1}
             >
-              Skip and Submit
-            </button>
-
-            <button
-              id="register-submit-btn"
-              type="button"
-              onClick={() => executeRegistration(true)}
-              className="lamp-primary-button"
-              style={{
-                flex: 1.2,
-                height: '44px',
-                fontSize: '13.5px'
-              }}
-              disabled={submitting || !isFormActive}
-            >
-              {submitting ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spinRing 1s linear infinite' }}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
-                  </svg>
-                  <span>Creating…</span>
-                </>
-              ) : (
-                'Create Account'
-              )}
+              Skip location and create account
             </button>
           </div>
+
+          {/* Primary Create Account Button */}
+          <button
+            id="register-submit-btn"
+            type="button"
+            onClick={() => executeRegistration(true)}
+            className="lamp-primary-button"
+            style={{
+              width: '100%',
+              height: '46px',
+              fontSize: '14.5px',
+              marginTop: '4px'
+            }}
+            disabled={submitting || !isFormActive}
+            tabIndex={isFormActive ? 0 : -1}
+          >
+            {submitting ? (
+              <>
+                <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spinRing 1s linear infinite' }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                </svg>
+                <span>Creating…</span>
+              </>
+            ) : (
+              'Create Account'
+            )}
+          </button>
         </div>
       )}
 
