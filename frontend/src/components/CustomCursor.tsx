@@ -19,6 +19,10 @@ const CustomCursor: React.FC = () => {
   const ringRef = useRef<HTMLDivElement>(null);
   const activeTargetRef = useRef<HTMLElement | null>(null);
 
+  const isVisibleRef = useRef(false);
+  const isHoveringRef = useRef(false);
+  const isOverTextInputRef = useRef(false);
+
   const [isOverTextInput, setIsOverTextInput] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
@@ -35,6 +39,8 @@ const CustomCursor: React.FC = () => {
       }
       return;
     }
+
+    if (typeof window === 'undefined') return;
 
     // Touch device detection: disable on touch-only devices
     if ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) {
@@ -57,10 +63,13 @@ const CustomCursor: React.FC = () => {
       const y = e.clientY;
 
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        ringRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
       }
 
-      if (!isVisible) setIsVisible(true);
+      if (!isVisibleRef.current) {
+        isVisibleRef.current = true;
+        setIsVisible(true);
+      }
 
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -69,7 +78,10 @@ const CustomCursor: React.FC = () => {
       const isTextInput = !!target.closest(
         'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]'
       );
-      setIsOverTextInput(isTextInput);
+      if (isOverTextInputRef.current !== isTextInput) {
+        isOverTextInputRef.current = isTextInput;
+        setIsOverTextInput(isTextInput);
+      }
 
       // Check for eligible interactive magnetic target
       const interactiveEl = target.closest(
@@ -77,7 +89,10 @@ const CustomCursor: React.FC = () => {
       ) as HTMLElement | null;
 
       if (interactiveEl) {
-        setIsHovering(true);
+        if (!isHoveringRef.current) {
+          isHoveringRef.current = true;
+          setIsHovering(true);
+        }
 
         // Apply subtle magnetic pull to the element
         const rect = interactiveEl.getBoundingClientRect();
@@ -94,7 +109,10 @@ const CustomCursor: React.FC = () => {
         }
         activeTargetRef.current = interactiveEl;
       } else {
-        setIsHovering(false);
+        if (isHoveringRef.current) {
+          isHoveringRef.current = false;
+          setIsHovering(false);
+        }
         if (activeTargetRef.current) {
           resetMagnet(activeTargetRef.current);
           activeTargetRef.current = null;
@@ -105,19 +123,24 @@ const CustomCursor: React.FC = () => {
     const onPointerDown = () => setIsClicking(true);
     const onPointerUp = () => setIsClicking(false);
     const onPointerLeave = () => {
+      isVisibleRef.current = false;
       setIsVisible(false);
       if (activeTargetRef.current) {
         resetMagnet(activeTargetRef.current);
         activeTargetRef.current = null;
       }
     };
-    const onPointerEnter = () => setIsVisible(true);
+    const onPointerEnter = () => {
+      isVisibleRef.current = true;
+      setIsVisible(true);
+    };
 
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointerup', onPointerUp);
     document.addEventListener('mouseleave', onPointerLeave);
     document.addEventListener('mouseenter', onPointerEnter);
+    window.addEventListener('blur', onPointerLeave);
 
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
@@ -125,15 +148,19 @@ const CustomCursor: React.FC = () => {
       window.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('mouseleave', onPointerLeave);
       document.removeEventListener('mouseenter', onPointerEnter);
+      window.removeEventListener('blur', onPointerLeave);
       if (activeTargetRef.current) {
         resetMagnet(activeTargetRef.current);
         activeTargetRef.current = null;
       }
     };
-  }, [isModern, isVisible]);
+  }, [isModern]);
 
-  // Professional mode retains native cursor with zero custom rendering
-  if (!isModern) return null;
+  // Professional mode, touch screens, and reduced motion retain native cursor with zero custom rendering
+  const isTouch = typeof window !== 'undefined' && 'ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches;
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!isModern || isTouch || prefersReducedMotion) return null;
 
   const isDark = mode === 'dark';
   const showRing = isVisible && !isOverTextInput;

@@ -64,26 +64,22 @@ html[data-design-system="professional"] [contenteditable="true"] {
   cursor: text !important;
 }
 
-/* Modern 3D mode: Clean native pointer with subtle magnetic attraction on eligible interactive elements */
-html[data-design-system="modern3d"] button,
-html[data-design-system="modern3d"] a,
-html[data-design-system="modern3d"] [role="button"],
-html[data-design-system="modern3d"] select,
-html[data-design-system="modern3d"] .interactive-hover {
-  cursor: pointer;
+/* Modern 3D mode: Custom Magnetic Cursor is the ONLY visible cursor */
+@media (hover: hover) and (pointer: fine) {
+  html[data-design-system="modern3d"],
+  html[data-design-system="modern3d"] body,
+  html[data-design-system="modern3d"] body * {
+    cursor: none !important;
+  }
+
+  /* Form inputs, textareas, and editable fields retain native text cursor */
+  html[data-design-system="modern3d"] input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),
+  html[data-design-system="modern3d"] textarea,
+  html[data-design-system="modern3d"] [contenteditable="true"] {
+    cursor: text !important;
+  }
 }
 
-html[data-design-system="modern3d"] input,
-html[data-design-system="modern3d"] textarea,
-html[data-design-system="modern3d"] [contenteditable="true"] {
-  cursor: text;
-}
-
-html[data-design-system="modern3d"] [data-draggable="true"],
-html[data-design-system="modern3d"] .drag-handle,
-html[data-design-system="modern3d"] .resize-handle {
-  cursor: grab;
-}
 
 
 
@@ -442,13 +438,14 @@ input, button, select, textarea {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  pointer-events: none;
+  pointer-events: none !important;
   z-index: 99999;
   border: 1.5px solid var(--accent-primary, #E85A4F);
   background: rgba(232, 90, 79, 0.06);
-  transform: translate(-50%, -50%);
+  scale: 1;
   transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
               height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              scale 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
               background-color 0.22s ease,
               border-color 0.22s ease,
               opacity 0.15s ease;
@@ -475,7 +472,7 @@ input, button, select, textarea {
 }
 
 .magnetic-cursor-ring.is-clicking {
-  transform: translate(-50%, -50%) scale(0.82);
+  scale: 0.82;
 }
 
 /* Professional mode: ensure magnetic cursor is strictly hidden */
@@ -493,7 +490,6 @@ input, button, select, textarea {
   }
 }
 
-
 /* Respect user's motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -503,6 +499,20 @@ input, button, select, textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .magnetic-cursor-ring {
+    display: none !important;
+  }
+  html[data-design-system="modern3d"],
+  html[data-design-system="modern3d"] body,
+  html[data-design-system="modern3d"] body * {
+    cursor: auto !important;
+  }
+  html[data-design-system="modern3d"] button,
+  html[data-design-system="modern3d"] a,
+  html[data-design-system="modern3d"] [role="button"],
+  html[data-design-system="modern3d"] select {
+    cursor: pointer !important;
   }
 }
 
