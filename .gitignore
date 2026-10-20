@@ -84,5 +84,21 @@ __pycache__/
 *.suo
 *.userosscache
 *.sln.docstates
-*.VisualState.xml
 ActiveDevelopments/
+
+# ------------------------------------------
+# Local Agent Tooling & Scratchpads
+# ------------------------------------------
+.agent/
+.agents/
+.gemini/
+.gsd/
+scratch/
+scripts/
+adapters/
+GSD-STYLE.md
+PROJECT_RULES.md
+VERSION
+model_capabilities.yaml
+
+

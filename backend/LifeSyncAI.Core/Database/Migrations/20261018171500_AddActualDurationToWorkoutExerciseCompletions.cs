@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace LifeSyncAI.Core.Database.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261018171500_AddActualDurationToWorkoutExerciseCompletions")]
     public partial class AddActualDurationToWorkoutExerciseCompletions : Migration
     {
         /// <inheritdoc />

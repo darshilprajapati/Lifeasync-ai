@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { trackAction } from '../utils/analytics';
 import { useLampAuthContext } from '../components/LampScene';
 import { getAllCountries, getStatesOfCountry, normalizeCity } from '../utils/locationData';
+import { useNotification } from '../context/NotificationContext';
 
 // In-memory cache preserved across form switching and lamp toggles
 let cachedRegisterFullName = '';
@@ -13,6 +14,7 @@ const Register: React.FC = () => {
   const { isFormActive } = useLampAuthContext();
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { notify } = useNotification();
 
   // Multi-step registration flow: Step 1 (Credentials) -> Step 2 (Optional Location)
   const [step, setStep] = useState<1 | 2>(1);
@@ -61,22 +63,27 @@ const Register: React.FC = () => {
 
     if (!fullName.trim()) {
       setErrorMessage('Please enter your full name.');
+      notify.warning('Please enter your full name.');
       return;
     }
     if (!email.trim() || !emailIsValid) {
       setErrorMessage('Please provide a valid email address.');
+      notify.warning('Please provide a valid email address.');
       return;
     }
     if (!password) {
       setErrorMessage('Please create a secure password.');
+      notify.warning('Please create a secure password.');
       return;
     }
     if (password.length < 6) {
       setErrorMessage('Password must be at least 6 characters.');
+      notify.warning('Password must be at least 6 characters.');
       return;
     }
     if (!passwordsMatch) {
       setErrorMessage('Passwords do not match.');
+      notify.warning('Passwords do not match.');
       return;
     }
 
@@ -106,6 +113,7 @@ const Register: React.FC = () => {
       );
       if (!stateValid) {
         setErrorMessage('Selected state does not belong to the selected country.');
+        notify.warning('Selected state does not belong to the selected country.');
         return;
       }
     }
@@ -122,6 +130,7 @@ const Register: React.FC = () => {
 
       await register(fullName.trim(), email.trim(), password, locationPayload);
       trackAction('register_success');
+      notify.success('Account created successfully! Redirecting...');
       setSuccessMessage('Account created successfully! Redirecting...');
       setTimeout(() => {
         navigate('/');
@@ -132,6 +141,7 @@ const Register: React.FC = () => {
         err?.message ||
         'Registration failed. Please check your details and try again.';
       setErrorMessage(serverMsg);
+      notify.error(serverMsg);
     } finally {
       setSubmitting(false);
     }
@@ -143,12 +153,12 @@ const Register: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
         <div>
           <h1 className="lamp-card-title" style={{ fontSize: '22px', marginBottom: '2px' }}>
-            {step === 1 ? 'Create Account' : 'Location (Optional)'}
+            {step === 1 ? 'Create Account' : 'Location'}
           </h1>
           <p className="lamp-card-subtitle" style={{ fontSize: '13px', marginBottom: '14px' }}>
             {step === 1
               ? 'Start your wellness & productivity journey.'
-              : 'Add your location to unlock LifeSync Arena leaderboards.'}
+              : 'You can skip this and add or edit your location anytime from Profile.'}
           </p>
         </div>
         <span
@@ -378,7 +388,7 @@ const Register: React.FC = () => {
             style={{ height: '44px', marginTop: '6px' }}
             tabIndex={isFormActive ? 0 : -1}
           >
-            <span>Next: Location (Optional)</span>
+            <span>Next</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />
@@ -388,14 +398,10 @@ const Register: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* STEP 2: Optional Location (Country, State, City)                          */}
+      {/* STEP 2: Location (Country, State, City)                                   */}
       {/* ========================================================================= */}
       {step === 2 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <p style={{ fontSize: '12px', lineHeight: 1.45, color: 'rgba(255, 255, 255, 0.8)', margin: '0 0 4px 0' }}>
-            Optional — add your location to join LifeSync Arena rankings. You can skip this and update it later in Profile.
-          </p>
-
           {/* Country Selection */}
           <div className="lamp-field-group" style={{ gap: '4px' }}>
             <label htmlFor="register-country" className="lamp-field-label" style={{ fontSize: '12px' }}>
@@ -530,7 +536,7 @@ const Register: React.FC = () => {
               }}
               disabled={submitting || !isFormActive}
             >
-              Skip for now
+              Skip and Submit
             </button>
 
             <button

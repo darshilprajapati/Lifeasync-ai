@@ -129,6 +129,13 @@ namespace LifeSyncAI.Core.Database
                 userNotifIndex.HasFilter("\"IsSuccess\" = true");
             }
 
+            // Exercise custom user ownership relationship
+            modelBuilder.Entity<Exercise>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Workout entity relationships
             modelBuilder.Entity<UserWorkoutPlan>()
                 .HasOne<User>()

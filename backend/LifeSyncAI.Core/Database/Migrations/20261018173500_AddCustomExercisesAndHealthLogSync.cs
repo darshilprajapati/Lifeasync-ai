@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace LifeSyncAI.Core.Database.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261018173500_AddCustomExercisesAndHealthLogSync")]
     public partial class AddCustomExercisesAndHealthLogSync : Migration
     {
         /// <inheritdoc />
