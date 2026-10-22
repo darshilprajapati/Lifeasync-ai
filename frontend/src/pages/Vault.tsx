@@ -293,36 +293,52 @@ const Vault: React.FC = () => {
             mb: 3,
             p: { xs: 2.5, md: 3.5 },
             borderRadius: 'var(--radius-card)',
-            background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-            color: '#FFFFFF',
-            boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)',
+            bgcolor: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            boxShadow: 'var(--shadow-soft)',
+            position: 'relative',
           }}
         >
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, gap: 2 }}
           >
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px', mb: 0.8 }}>
-                Welcome to CipherVault
-              </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9, maxWidth: '600px', fontSize: '15px' }}>
-                Your private credentials, passwords, notes, and keys are protected with military-grade AES-256-GCM encryption.
-              </Typography>
-            </Box>
+            <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center' }}>
+              <Box
+                sx={{
+                  bgcolor: 'rgba(59, 130, 246, 0.12)',
+                  color: '#2563EB',
+                  p: 2,
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ShieldIcon sx={{ fontSize: 36 }} />
+              </Box>
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px', mb: 0.6, color: 'var(--text-primary)' }}>
+                  Welcome to CipherVault
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'var(--text-secondary)', maxWidth: '650px', fontSize: '14.5px', lineHeight: 1.5 }}>
+                  Your private credentials, passwords, notes, and keys are protected with military-grade AES-256-GCM encryption.
+                </Typography>
+              </Box>
+            </Stack>
 
             <Chip
-              icon={<ShieldIcon sx={{ color: '#FFFFFF !important' }} />}
-              label="AES-256 Encrypted"
+              icon={<VerifiedUserIcon sx={{ color: '#2563EB !important', fontSize: '18px !important' }} />}
+              label="AES-256 Protected"
               sx={{
-                bgcolor: 'rgba(255, 255, 255, 0.2)',
-                color: '#FFFFFF',
+                bgcolor: 'rgba(59, 130, 246, 0.08)',
+                color: '#2563EB',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
                 fontWeight: 700,
                 fontSize: '13px',
                 py: 2,
-                px: 1,
+                px: 1.2,
                 borderRadius: '12px',
-                backdropFilter: 'blur(10px)',
               }}
             />
           </Stack>
@@ -473,9 +489,32 @@ const Vault: React.FC = () => {
               <Typography variant="h3" sx={{ fontWeight: 800, color: '#3B82F6', mb: 0.5 }}>
                 {counts.passwords}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                Store & manage passwords securely
-              </Typography>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                  Store & manage passwords securely
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateDialog('Login');
+                  }}
+                  sx={{
+                    color: '#3B82F6',
+                    borderColor: 'rgba(59, 130, 246, 0.3)',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    fontSize: '11px',
+                    px: 1,
+                    py: 0.2,
+                    borderRadius: '8px',
+                    '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.08)', borderColor: '#3B82F6' },
+                  }}
+                >
+                  + Add
+                </Button>
+              </Stack>
             </Card>
           </Grid>
 
@@ -505,9 +544,32 @@ const Vault: React.FC = () => {
               <Typography variant="h3" sx={{ fontWeight: 800, color: 'var(--accent-primary)', mb: 0.5 }}>
                 {counts.notes}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                Encrypted notes & sensitive recovery keys
-              </Typography>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                  Encrypted notes & sensitive keys
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateDialog('Note');
+                  }}
+                  sx={{
+                    color: 'var(--accent-primary)',
+                    borderColor: 'rgba(232, 90, 79, 0.3)',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    fontSize: '11px',
+                    px: 1,
+                    py: 0.2,
+                    borderRadius: '8px',
+                    '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
+                  }}
+                >
+                  + Add
+                </Button>
+              </Stack>
             </Card>
           </Grid>
 
@@ -537,9 +599,32 @@ const Vault: React.FC = () => {
               <Typography variant="h3" sx={{ fontWeight: 800, color: '#10B981', mb: 0.5 }}>
                 {counts.links}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                Encrypted bookmarks & private URLs
-              </Typography>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                  Encrypted bookmarks & URLs
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateDialog('Link');
+                  }}
+                  sx={{
+                    color: '#10B981',
+                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    fontSize: '11px',
+                    px: 1,
+                    py: 0.2,
+                    borderRadius: '8px',
+                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981' },
+                  }}
+                >
+                  + Add
+                </Button>
+              </Stack>
             </Card>
           </Grid>
         </Grid>

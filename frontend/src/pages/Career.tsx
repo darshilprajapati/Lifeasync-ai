@@ -225,8 +225,8 @@ const Career: React.FC = () => {
     setCategory('Development');
     setJobType('Full-time');
     setWorkplaceType('Remote');
-    setLocation('San Francisco, CA');
-    setSalary('$120k - $150k');
+    setLocation('');
+    setSalary('');
     setUrl('');
     setDialogOpen(true);
   };
@@ -1269,7 +1269,7 @@ const Career: React.FC = () => {
                   size="small"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. San Francisco, CA or Remote"
+                  placeholder="e.g. Bengaluru, India or Remote"
                 />
                 <TextField
                   label="Salary Range"
@@ -1277,7 +1277,7 @@ const Career: React.FC = () => {
                   size="small"
                   value={salary}
                   onChange={(e) => setSalary(e.target.value)}
-                  placeholder="e.g. $140,000 - $170,000"
+                  placeholder="e.g. ₹15,00,000 - ₹20,00,000 / year"
                 />
               </Stack>
 

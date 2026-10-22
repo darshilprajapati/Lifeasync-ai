@@ -25,11 +25,23 @@ namespace LifeSyncAI.Core.Services
         {
             try
             {
-                var apps = await _context.JobApplications
-                    .Include(a => a.StageHistories)
-                    .Where(a => a.UserId == userId)
-                    .OrderByDescending(a => a.AppliedDate)
-                    .ToListAsync();
+                List<JobApplication> apps;
+                try
+                {
+                    apps = await _context.JobApplications
+                        .Include(a => a.StageHistories)
+                        .Where(a => a.UserId == userId)
+                        .OrderByDescending(a => a.AppliedDate)
+                        .ToListAsync();
+                }
+                catch (Exception ex) when (ex.Message.Contains("JobApplicationStageHistories", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Fallback if stage history table has not yet been migrated
+                    apps = await _context.JobApplications
+                        .Where(a => a.UserId == userId)
+                        .OrderByDescending(a => a.AppliedDate)
+                        .ToListAsync();
+                }
 
                 var dtos = apps.Select(a => new JobApplicationDto
                 {
@@ -46,7 +58,7 @@ namespace LifeSyncAI.Core.Services
                     Salary = a.Salary,
                     Url = a.Url,
                     UserId = a.UserId,
-                    StageHistories = a.StageHistories
+                    StageHistories = (a.StageHistories ?? Enumerable.Empty<JobApplicationStageHistory>())
                         .OrderBy(h => h.TransitionDate)
                         .Select(h => new JobApplicationStageHistoryDto
                         {
@@ -249,32 +261,50 @@ namespace LifeSyncAI.Core.Services
                         UserId = app.UserId
                     };
 
-                    _context.JobApplicationStageHistories.Add(transition);
-                    app.Status = newStatus;
-                    await _context.SaveChangesAsync();
+                    try
+                    {
+                        _context.JobApplicationStageHistories.Add(transition);
+                        app.Status = newStatus;
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("JobApplicationStageHistories", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _context.Entry(transition).State = EntityState.Detached;
+                        app.Status = newStatus;
+                        await _context.SaveChangesAsync();
+                    }
                 }
                 else if (!string.IsNullOrWhiteSpace(note))
                 {
-                    // If status didn't change but a note was submitted for this stage, append or update note
-                    var latestHistory = app.StageHistories.OrderByDescending(h => h.TransitionDate).FirstOrDefault();
-                    if (latestHistory != null && string.IsNullOrEmpty(latestHistory.Note))
+                    try
                     {
-                        latestHistory.Note = note.Trim();
-                    }
-                    else
-                    {
-                        var noteRecord = new JobApplicationStageHistory
+                        // If status didn't change but a note was submitted for this stage, append or update note
+                        var latestHistory = (app.StageHistories ?? Enumerable.Empty<JobApplicationStageHistory>())
+                            .OrderByDescending(h => h.TransitionDate)
+                            .FirstOrDefault();
+                        if (latestHistory != null && string.IsNullOrEmpty(latestHistory.Note))
                         {
-                            JobApplicationId = app.Id,
-                            FromStage = app.Status,
-                            ToStage = app.Status,
-                            TransitionDate = DateTime.UtcNow,
-                            Note = note.Trim(),
-                            UserId = app.UserId
-                        };
-                        _context.JobApplicationStageHistories.Add(noteRecord);
+                            latestHistory.Note = note.Trim();
+                        }
+                        else
+                        {
+                            var noteRecord = new JobApplicationStageHistory
+                            {
+                                JobApplicationId = app.Id,
+                                FromStage = app.Status,
+                                ToStage = app.Status,
+                                TransitionDate = DateTime.UtcNow,
+                                Note = note.Trim(),
+                                UserId = app.UserId
+                            };
+                            _context.JobApplicationStageHistories.Add(noteRecord);
+                        }
+                        await _context.SaveChangesAsync();
                     }
-                    await _context.SaveChangesAsync();
+                    catch (Exception ex) when (ex.Message.Contains("JobApplicationStageHistories", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Ignore stage history note if table not yet migrated
+                    }
                 }
 
                 return ApiResponse<bool>.Success(true, "Job application status updated successfully.");

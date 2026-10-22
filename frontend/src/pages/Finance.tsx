@@ -91,6 +91,16 @@ export interface FinanceSummary {
   projectedYearlyRecurring: number;
 }
 
+export const formatINR = (val: number, includeDecimals: boolean = true): string => {
+  if (val === undefined || val === null || isNaN(val)) return '₹0.00';
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: includeDecimals ? 2 : 0,
+    maximumFractionDigits: includeDecimals ? 2 : 0,
+  }).format(val);
+};
+
 type DateFilterOption = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 
 const DONUT_COLORS = ['#E85A4F', '#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#14B8A6', '#EC4899'];
@@ -508,7 +518,8 @@ const Finance: React.FC = () => {
     const exportRows = logRecords.map((t) => ({
       ID: t.id,
       Description: t.description,
-      Amount: t.amount,
+      'Amount (₹)': t.amount,
+      Currency: 'INR',
       Type: t.type,
       Category: t.category,
       Date: new Date(t.date).toLocaleDateString(),
@@ -723,7 +734,7 @@ const Finance: React.FC = () => {
                     <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
                   </Stack>
                   <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
-                    ${summary.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatINR(summary.balance)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Combined net holdings across all accounts
@@ -749,7 +760,7 @@ const Finance: React.FC = () => {
                     <TrendingUpIcon sx={{ color: '#10B981', fontSize: 20 }} />
                   </Stack>
                   <Typography variant="h4" sx={{ fontWeight: 800, color: '#10B981', mb: 0.5 }}>
-                    +${periodAnalytics.income.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    +{formatINR(periodAnalytics.income)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Inflow for selected period
@@ -775,7 +786,7 @@ const Finance: React.FC = () => {
                     <TrendingDownIcon sx={{ color: '#EF4444', fontSize: 20 }} />
                   </Stack>
                   <Typography variant="h4" sx={{ fontWeight: 800, color: '#EF4444', mb: 0.5 }}>
-                    -${periodAnalytics.expense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    -{formatINR(periodAnalytics.expense)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Outflow for selected period
@@ -808,7 +819,7 @@ const Finance: React.FC = () => {
                       mb: 0.5,
                     }}
                   >
-                    {periodAnalytics.netFlow >= 0 ? '+' : ''}${periodAnalytics.netFlow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {periodAnalytics.netFlow >= 0 ? '+' : ''}{formatINR(periodAnalytics.netFlow)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Savings Rate: {periodAnalytics.savingsRate.toFixed(1)}%
@@ -941,7 +952,7 @@ const Finance: React.FC = () => {
                               </Typography>
                             </Stack>
                             <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
-                              ${c.value.toLocaleString()} ({c.percent}%)
+                              {formatINR(c.value, false)} ({c.percent}%)
                             </Typography>
                           </Stack>
                         ))}
@@ -1018,7 +1029,7 @@ const Finance: React.FC = () => {
                             {b.category}
                           </Typography>
                           <Typography variant="caption" sx={{ fontWeight: 700, color: b.pct >= 90 ? '#EF4444' : 'var(--text-secondary)' }}>
-                            ${b.spent} / ${b.budget} ({b.pct}%)
+                            {formatINR(b.spent, false)} / {formatINR(b.budget, false)} ({b.pct}%)
                           </Typography>
                         </Stack>
                         <LinearProgress
@@ -1095,7 +1106,7 @@ const Finance: React.FC = () => {
                             </Box>
                             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#EF4444' }}>
-                                -${item.amount.toFixed(2)}
+                                -{formatINR(item.amount)}
                               </Typography>
                               <IconButton
                                 size="small"
@@ -1196,7 +1207,7 @@ const Finance: React.FC = () => {
                               />
                             </TableCell>
                             <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
-                              {isIncome ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {isIncome ? '+' : '-'}{formatINR(t.amount)}
                             </TableCell>
                             <TableCell align="center">
                               <IconButton size="small" onClick={() => openEditDialog(t)} sx={{ p: 0.5 }}>
@@ -1251,13 +1262,18 @@ const Finance: React.FC = () => {
               />
 
               <TextField
-                label="Amount ($)"
+                label="Amount (₹ INR)"
                 required
                 fullWidth
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                slotProps={{ htmlInput: { min: '0.01', step: '0.01' } }}
+                slotProps={{
+                  htmlInput: { min: '0.01', step: '0.01' },
+                  input: {
+                    startAdornment: <Typography sx={{ mr: 1, color: 'var(--text-secondary)', fontWeight: 700 }}>₹</Typography>,
+                  },
+                }}
               />
 
               <FormControl fullWidth size="small">
@@ -1346,13 +1362,18 @@ const Finance: React.FC = () => {
               />
 
               <TextField
-                label="Amount ($)"
+                label="Amount (₹ INR)"
                 required
                 fullWidth
                 type="number"
                 value={recAmount}
                 onChange={(e) => setRecAmount(e.target.value)}
-                slotProps={{ htmlInput: { min: '0.01', step: '0.01' } }}
+                slotProps={{
+                  htmlInput: { min: '0.01', step: '0.01' },
+                  input: {
+                    startAdornment: <Typography sx={{ mr: 1, color: 'var(--text-secondary)', fontWeight: 700 }}>₹</Typography>,
+                  },
+                }}
               />
 
               <FormControl fullWidth size="small">
@@ -1595,7 +1616,7 @@ const Finance: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
-                          {isIncome ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {isIncome ? '+' : '-'}{formatINR(t.amount)}
                         </TableCell>
                       </TableRow>
                     );

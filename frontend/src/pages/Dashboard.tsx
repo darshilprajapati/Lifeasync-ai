@@ -31,6 +31,7 @@ import { useThemeSystem } from '../context/ThemeContext';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import LifeScoreCompetitionCard from '../components/LifeScoreCompetitionCard';
+import { formatINR } from './Finance';
 
 const parseDateSafe = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -352,7 +353,7 @@ const Dashboard: React.FC = () => {
     if (financeRem > 0) {
       boosts.push({
         label: 'Finance Balance',
-        current: `Net balance: $${balance.toFixed(2)}`,
+        current: `Net balance: ${formatINR(balance)}`,
         remainingPoints: financeRem,
         icon: <AccountBalanceWalletIcon sx={{ color: balance >= 0 ? '#4CAF50' : '#E85A4F', fontSize: '16px' }} />
       });
@@ -661,7 +662,7 @@ const Dashboard: React.FC = () => {
                       <AccountBalanceWalletIcon sx={{ color: '#E85A4F', fontSize: '32px', mb: 2 }} />
                       <Typography variant="subtitle2" sx={{ color: 'var(--text-secondary)', mb: 1 }}>Net Balance</Typography>
                       <Typography variant="h5" sx={{ fontWeight: 700, color: balance >= 0 ? '#10B981' : '#E85A4F' }}>
-                        ${balance.toFixed(2)}
+                        {formatINR(balance)}
                       </Typography>
                     </CardContent>
                   </TiltCard>

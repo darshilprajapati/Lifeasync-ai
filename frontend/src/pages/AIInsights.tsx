@@ -41,6 +41,7 @@ import { trackAction } from '../utils/analytics';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import { useAuth } from '../context/AuthContext';
+import { formatINR } from './Finance';
 
 interface AiRecommendation {
   id: number;
@@ -408,7 +409,7 @@ const AIInsights: React.FC = () => {
                     />
                   </Stack>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', my: 0.5 }}>
-                    ${monthlyExpense.toLocaleString()}
+                    {formatINR(monthlyExpense, false)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Total Expenses
