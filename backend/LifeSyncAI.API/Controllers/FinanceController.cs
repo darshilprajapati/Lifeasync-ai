@@ -40,10 +40,20 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<TransactionDto>>> UpdateTransaction(int id, [FromBody] UpdateTransactionDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _financeService.UpdateTransactionAsync(id, dto, userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteTransaction(int id)
         {
-            var result = await _financeService.DeleteTransactionAsync(id);
+            var userId = GetUserId();
+            var result = await _financeService.DeleteTransactionAsync(id, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -78,7 +88,8 @@ namespace LifeSyncAI.API.Controllers
         [HttpDelete("recurring/{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteRecurringItem(int id)
         {
-            var result = await _financeService.DeleteRecurringItemAsync(id);
+            var userId = GetUserId();
+            var result = await _financeService.DeleteRecurringItemAsync(id, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

@@ -84,13 +84,54 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<bool>> DeleteTransactionAsync(int id)
+        public async Task<ApiResponse<TransactionDto>> UpdateTransactionAsync(int id, UpdateTransactionDto dto, int userId)
+        {
+            try
+            {
+                var transaction = await _context.Transactions.FindAsync(id);
+                if (transaction == null || transaction.UserId != userId)
+                {
+                    return ApiResponse<TransactionDto>.Fail("Transaction not found or access denied.");
+                }
+
+                transaction.Description = dto.Description.Trim();
+                transaction.Amount = dto.Amount;
+                transaction.Type = dto.Type.Trim();
+                transaction.Date = dto.Date;
+                transaction.Category = dto.Category.Trim();
+
+                await _context.SaveChangesAsync();
+
+                var updatedDto = new TransactionDto
+                {
+                    Id = transaction.Id,
+                    Description = transaction.Description,
+                    Amount = transaction.Amount,
+                    Type = transaction.Type,
+                    Date = transaction.Date,
+                    Category = transaction.Category,
+                    UserId = userId
+                };
+
+                return ApiResponse<TransactionDto>.Success(updatedDto, "Transaction updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<TransactionDto>.Fail($"Failed to update transaction: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> DeleteTransactionAsync(int id, int userId = 0)
         {
             try
             {
                 var transaction = await _context.Transactions.FindAsync(id);
                 if (transaction != null)
                 {
+                    if (userId > 0 && transaction.UserId != userId)
+                    {
+                        return ApiResponse<bool>.Fail("Transaction not found or access denied.");
+                    }
                     _context.Transactions.Remove(transaction);
                     await _context.SaveChangesAsync();
                 }
@@ -205,12 +246,13 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<bool>> DeleteRecurringItemAsync(int id)
+        public async Task<ApiResponse<bool>> DeleteRecurringItemAsync(int id, int userId = 0)
         {
             try
             {
                 var item = await _context.RecurringItems.FindAsync(id);
                 if (item == null) return ApiResponse<bool>.Fail("Recurring commitment not found.");
+                if (userId > 0 && item.UserId != userId) return ApiResponse<bool>.Fail("Access denied.");
 
                 _context.RecurringItems.Remove(item);
                 await _context.SaveChangesAsync();

@@ -1,42 +1,89 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, TextField, IconButton, Select, MenuItem, InputLabel, FormControl, Grid, Alert, Stack, Tab, Tabs, Chip } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  TextField,
+  IconButton,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Grid,
+  Alert,
+  Stack,
+  Chip,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TablePagination,
+  LinearProgress,
+} from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import ReceiptIcon from '@mui/icons-material/Receipt';
+import SavingsIcon from '@mui/icons-material/Savings';
+import HistoryIcon from '@mui/icons-material/History';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from 'recharts';
+
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
-import ReportExporter from '../components/ReportExporter';
 import apiClient from '../api/apiClient';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { trackAction } from '../utils/analytics';
-import { TiltCard } from '../components/modern3d/TiltCard';
-import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { useNotification } from '../context/NotificationContext';
+import { exportToExcel } from '../utils/excelExport';
 
-interface Transaction {
+export interface Transaction {
   id: number;
   description: string;
   amount: number;
-  type: string;
+  type: string; // 'Income' | 'Expense'
   date: string;
   category: string;
+  userId?: number;
 }
 
-interface RecurringItem {
+export interface RecurringItem {
   id: number;
   description: string;
   amount: number;
-  type: string; // 'Loan', 'EMI', 'Bill'
-  frequency: string; // 'Monthly', 'Yearly'
+  type: string; // 'Loan' | 'EMI' | 'Bill'
+  frequency: string; // 'Monthly' | 'Yearly'
   dueDate: string;
   isPaid: boolean;
 }
 
-interface FinanceSummary {
+export interface FinanceSummary {
   totalIncome: number;
   totalExpense: number;
   balance: number;
@@ -44,7 +91,58 @@ interface FinanceSummary {
   projectedYearlyRecurring: number;
 }
 
+type DateFilterOption = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+
+const DONUT_COLORS = ['#E85A4F', '#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#14B8A6', '#EC4899'];
+
+const isDateInPeriod = (
+  dateStr: string,
+  filter: DateFilterOption,
+  customStart?: string,
+  customEnd?: string
+): boolean => {
+  if (filter === 'all' || !dateStr) return true;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return true;
+  const now = new Date();
+
+  if (filter === 'today') {
+    return d.toDateString() === now.toDateString();
+  }
+  if (filter === 'yesterday') {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return d.toDateString() === y.toDateString();
+  }
+  if (filter === 'this_week') {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+  if (filter === 'this_month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }
+  if (filter === 'this_year') {
+    return d.getFullYear() === now.getFullYear();
+  }
+  if (filter === 'custom' && customStart && customEnd) {
+    const s = new Date(customStart);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(customEnd);
+    e.setHours(23, 59, 59, 999);
+    return d >= s && d <= e;
+  }
+  return true;
+};
+
 const Finance: React.FC = () => {
+  const { notify } = useNotification();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>({
@@ -52,29 +150,45 @@ const Finance: React.FC = () => {
     totalExpense: 0,
     balance: 0,
     projectedMonthlyRecurring: 0,
-    projectedYearlyRecurring: 0
+    projectedYearlyRecurring: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState(0); // 0 = Ledger & Analytics, 1 = Bills & Loans Tracker
+  // Filters
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>('this_month');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Transaction Form fields
+  // Transaction Modal State (Create / Edit)
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [type, setType] = useState('Expense');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
+  const [type, setType] = useState<'Income' | 'Expense'>('Expense');
+  const [category, setCategory] = useState('Food');
+  const [txDate, setTxDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Recurring Commitment Form fields
+  // Recurring Commitment Modal State
+  const [recDialogOpen, setRecDialogOpen] = useState(false);
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
-  const [recType, setRecType] = useState('Bill');
-  const [recFrequency, setRecFrequency] = useState('Monthly');
+  const [recType, setRecType] = useState<'Bill' | 'Loan' | 'EMI'>('Bill');
+  const [recFrequency, setRecFrequency] = useState<'Monthly' | 'Yearly'>('Monthly');
   const [recDueDate, setRecDueDate] = useState('');
   const [recSubmitting, setRecSubmitting] = useState(false);
+
+  // Finance Log State
+  const [logOpen, setLogOpen] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [logTypeFilter, setLogTypeFilter] = useState<string>('All');
+  const [logDateFilter, setLogDateFilter] = useState<DateFilterOption>('all');
+  const [logCustomStart, setLogCustomStart] = useState('');
+  const [logCustomEnd, setLogCustomEnd] = useState('');
+  const [logPage, setLogPage] = useState(0);
+  const [logRowsPerPage, setLogRowsPerPage] = useState(10);
 
   const fetchFinanceData = async () => {
     try {
@@ -82,14 +196,16 @@ const Finance: React.FC = () => {
       const [transRes, sumRes, recRes] = await Promise.all([
         apiClient.get('/api/finance'),
         apiClient.get('/api/finance/summary'),
-        apiClient.get('/api/finance/recurring')
+        apiClient.get('/api/finance/recurring'),
       ]);
 
       if (transRes.data.isSuccess) setTransactions(transRes.data.data);
       if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
       if (recRes.data.isSuccess) setRecurringItems(recRes.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load financial records.');
+      const msg = err.response?.data?.message || err.message || 'Failed to load financial records.';
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }
@@ -99,30 +215,192 @@ const Finance: React.FC = () => {
     fetchFinanceData();
   }, []);
 
-  const handleAddTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!description || !amount || !type || !category || !date) return;
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await apiClient.post('/api/finance', {
-        description,
-        amount: parseFloat(amount),
-        type,
-        date: new Date(date).toISOString(),
-        category
+  // Filtered transactions for the dashboard view
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchPeriod = isDateInPeriod(t.date, dateFilter, customStart, customEnd);
+      if (!matchPeriod) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const descMatch = t.description.toLowerCase().includes(q);
+        const catMatch = t.category.toLowerCase().includes(q);
+        if (!descMatch && !catMatch) return false;
+      }
+      return true;
+    });
+  }, [transactions, dateFilter, customStart, customEnd, searchQuery]);
+
+  // Derived Analytics from filtered records
+  const periodAnalytics = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    filteredTransactions.forEach((t) => {
+      if (t.type.toLowerCase() === 'income') income += t.amount;
+      else expense += t.amount;
+    });
+
+    const netFlow = income - expense;
+    const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
+
+    return {
+      income,
+      expense,
+      netFlow,
+      savingsRate,
+    };
+  }, [filteredTransactions]);
+
+  // Spending Breakdown chart data (Expenses grouped by Category)
+  const categoryChartData = useMemo(() => {
+    const map: Record<string, number> = {};
+    let totalExpense = 0;
+
+    filteredTransactions
+      .filter((t) => t.type.toLowerCase() === 'expense')
+      .forEach((t) => {
+        const cat = t.category || 'Other';
+        map[cat] = (map[cat] || 0) + t.amount;
+        totalExpense += t.amount;
       });
 
-      if (res.data.isSuccess) {
-        trackAction('transaction_created', { module: 'finance', action: 'create' });
-        await fetchFinanceData();
-        setDescription('');
-        setAmount('');
-        setCategory('');
-        setDate('');
+    return Object.entries(map).map(([name, value]) => ({
+      name,
+      value: Math.round(value * 100) / 100,
+      percent: totalExpense > 0 ? Math.round((value / totalExpense) * 100) : 0,
+    }));
+  }, [filteredTransactions]);
+
+  // Income vs Expense Trend (group by Month or Day)
+  const incomeVsExpenseData = useMemo(() => {
+    const monthMap: Record<string, { month: string; income: number; expense: number }> = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Initialize recent 6 months
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      monthMap[key] = { month: key, income: 0, expense: 0 };
+    }
+
+    transactions.forEach((t) => {
+      const d = new Date(t.date);
+      if (isNaN(d.getTime())) return;
+      const key = `${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+      if (monthMap[key]) {
+        if (t.type.toLowerCase() === 'income') monthMap[key].income += t.amount;
+        else monthMap[key].expense += t.amount;
+      }
+    });
+
+    return Object.values(monthMap);
+  }, [transactions]);
+
+  // Monthly Net Cash Flow bar chart
+  const cashFlowData = useMemo(() => {
+    return incomeVsExpenseData.map((m) => ({
+      month: m.month,
+      cashFlow: Math.round((m.income - m.expense) * 100) / 100,
+      isPositive: m.income >= m.expense,
+    }));
+  }, [incomeVsExpenseData]);
+
+  // Budget Planner progress (Standard categories vs actual spend)
+  const budgetProgressData = useMemo(() => {
+    const targets: Record<string, number> = {
+      Food: 600,
+      Shopping: 400,
+      Entertainment: 300,
+      Utilities: 250,
+      Transport: 200,
+    };
+
+    const actuals: Record<string, number> = {};
+    filteredTransactions
+      .filter((t) => t.type.toLowerCase() === 'expense')
+      .forEach((t) => {
+        const cat = t.category || 'Other';
+        actuals[cat] = (actuals[cat] || 0) + t.amount;
+      });
+
+    return Object.entries(targets).map(([cat, budget]) => {
+      const spent = actuals[cat] || 0;
+      const pct = Math.min(Math.round((spent / budget) * 100), 100);
+      return {
+        category: cat,
+        spent,
+        budget,
+        pct,
+      };
+    });
+  }, [filteredTransactions]);
+
+  // Transaction CRUD handlers
+  const openCreateDialog = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    setType('Expense');
+    setCategory('Food');
+    setTxDate(new Date().toISOString().slice(0, 10));
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (t: Transaction) => {
+    setEditingId(t.id);
+    setDescription(t.description);
+    setAmount(String(t.amount));
+    setType(t.type.toLowerCase() === 'income' ? 'Income' : 'Expense');
+    setCategory(t.category);
+    setTxDate(new Date(t.date).toISOString().slice(0, 10));
+    setDialogOpen(true);
+  };
+
+  const handleSaveTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const numAmount = parseFloat(amount);
+    if (!description.trim() || isNaN(numAmount) || numAmount <= 0 || !txDate) return;
+
+    setSubmitting(true);
+    try {
+      if (editingId) {
+        const res = await apiClient.put(`/api/finance/${editingId}`, {
+          description: description.trim(),
+          amount: numAmount,
+          type,
+          category: category.trim(),
+          date: new Date(txDate).toISOString(),
+        });
+        if (res.data.isSuccess) {
+          trackAction('finance_transaction_updated', { module: 'finance', action: 'edit' });
+          notify.success('Transaction updated successfully.');
+          setTransactions((prev) => prev.map((t) => (t.id === editingId ? res.data.data : t)));
+          setDialogOpen(false);
+          // Refresh summary
+          const sumRes = await apiClient.get('/api/finance/summary');
+          if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+        }
+      } else {
+        const res = await apiClient.post('/api/finance', {
+          description: description.trim(),
+          amount: numAmount,
+          type,
+          category: category.trim(),
+          date: new Date(txDate).toISOString(),
+        });
+        if (res.data.isSuccess) {
+          trackAction('finance_transaction_created', { module: 'finance', action: 'create' });
+          notify.success('Transaction recorded successfully.');
+          setTransactions((prev) => [res.data.data, ...prev]);
+          setDialogOpen(false);
+          // Refresh summary
+          const sumRes = await apiClient.get('/api/finance/summary');
+          if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+        }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to record transaction.');
+      notify.error(err.response?.data?.message || 'Failed to save transaction.');
     } finally {
       setSubmitting(false);
     }
@@ -132,565 +410,1222 @@ const Finance: React.FC = () => {
     try {
       const res = await apiClient.delete(`/api/finance/${id}`);
       if (res.data.isSuccess) {
-        trackAction('transaction_deleted', { module: 'finance', action: 'delete' });
-        await fetchFinanceData();
+        trackAction('finance_transaction_deleted', { module: 'finance', action: 'delete' });
+        notify.success('Transaction removed.');
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
+        const sumRes = await apiClient.get('/api/finance/summary');
+        if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete transaction.');
+      notify.error(err.response?.data?.message || 'Failed to delete transaction.');
     }
   };
 
-  const handleAddRecurringItem = async (e: React.FormEvent) => {
+  // Recurring commitment handlers
+  const handleSaveRecurring = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recDescription || !recAmount || !recType || !recFrequency || !recDueDate) return;
-    setError(null);
+    const numAmount = parseFloat(recAmount);
+    if (!recDescription.trim() || isNaN(numAmount) || numAmount <= 0 || !recDueDate) return;
+
     setRecSubmitting(true);
     try {
       const res = await apiClient.post('/api/finance/recurring', {
-        description: recDescription,
-        amount: parseFloat(recAmount),
+        description: recDescription.trim(),
+        amount: numAmount,
         type: recType,
         frequency: recFrequency,
-        dueDate: new Date(recDueDate).toISOString()
+        dueDate: new Date(recDueDate).toISOString(),
       });
-
       if (res.data.isSuccess) {
-        trackAction('recurring_item_created', { module: 'finance', action: 'create_recurring', item_type: recType, frequency: recFrequency });
-        await fetchFinanceData();
+        notify.success('Recurring commitment added.');
+        setRecurringItems((prev) => [...prev, res.data.data]);
+        setRecDialogOpen(false);
         setRecDescription('');
         setRecAmount('');
-        setRecDueDate('');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to record commitment.');
+      notify.error(err.response?.data?.message || 'Failed to add recurring commitment.');
     } finally {
       setRecSubmitting(false);
     }
   };
 
-  const handleDeleteRecurringItem = async (id: number) => {
+  const handleDeleteRecurring = async (id: number) => {
     try {
       const res = await apiClient.delete(`/api/finance/recurring/${id}`);
       if (res.data.isSuccess) {
-        trackAction('recurring_item_deleted', { module: 'finance', action: 'delete_recurring' });
-        await fetchFinanceData();
+        notify.success('Recurring commitment deleted.');
+        setRecurringItems((prev) => prev.filter((r) => r.id !== id));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete commitment.');
+      notify.error(err.response?.data?.message || 'Failed to delete recurring commitment.');
     }
   };
 
-  const handlePayRecurringItem = async (id: number) => {
+  const handlePayRecurring = async (id: number) => {
     try {
-      setError(null);
       const res = await apiClient.post(`/api/finance/recurring/${id}/pay`);
       if (res.data.isSuccess) {
-        trackAction('recurring_item_paid', { module: 'finance', action: 'pay_recurring' });
-        await fetchFinanceData();
+        notify.success('Recurring payment logged as transaction.');
+        setTransactions((prev) => [res.data.data, ...prev]);
+        setRecurringItems((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, isPaid: true } : r))
+        );
+        const sumRes = await apiClient.get('/api/finance/summary');
+        if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to process payment.');
+      notify.error(err.response?.data?.message || 'Failed to process recurring payment.');
     }
   };
 
-  const chartData = [
-    {
-      name: 'Summary',
-      Income: summary.totalIncome,
-      Expense: summary.totalExpense,
-    }
-  ];
+  // Log filter calculations and Excel Export
+  const logRecords = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchPeriod = isDateInPeriod(t.date, logDateFilter, logCustomStart, logCustomEnd);
+      if (!matchPeriod) return false;
 
-  const getRecurringTypeColor = (type: string) => {
-    switch (type) {
-      case 'Loan': return '#FF9800'; // orange
-      case 'EMI': return '#9C27B0'; // purple
-      case 'Bill': return '#2196F3'; // blue
-      default: return '#6D6D6D';
-    }
-  };
+      if (logTypeFilter !== 'All') {
+        if (logTypeFilter.toLowerCase() !== t.type.toLowerCase()) return false;
+      }
 
-  const isDueSoon = (dateStr: string) => {
-    const due = new Date(dateStr);
-    const today = new Date();
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 3;
+      if (logSearch.trim()) {
+        const q = logSearch.toLowerCase();
+        const descMatch = t.description.toLowerCase().includes(q);
+        const catMatch = t.category.toLowerCase().includes(q);
+        if (!descMatch && !catMatch) return false;
+      }
+      return true;
+    });
+  }, [transactions, logDateFilter, logCustomStart, logCustomEnd, logTypeFilter, logSearch]);
+
+  const pagedLogRecords = useMemo(() => {
+    const start = logPage * logRowsPerPage;
+    return logRecords.slice(start, start + logRowsPerPage);
+  }, [logRecords, logPage, logRowsPerPage]);
+
+  const handleExportFinanceExcel = () => {
+    const exportRows = logRecords.map((t) => ({
+      ID: t.id,
+      Description: t.description,
+      Amount: t.amount,
+      Type: t.type,
+      Category: t.category,
+      Date: new Date(t.date).toLocaleDateString(),
+    }));
+
+    exportToExcel(
+      exportRows,
+      `LifeSync_Finance_Log_${new Date().toISOString().slice(0, 10)}`,
+      'Transactions'
+    );
+    notify.success(`Exported ${exportRows.length} transactions matching active filters.`);
   };
 
   return (
     <PageWrapper>
-      <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 32 }} />
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-              Personal Finance Tracker
+      <Box sx={{ padding: { xs: '16px', md: '28px' }, height: '100%', overflowY: 'auto', bgcolor: 'var(--bg-primary)' }}>
+        {/* Header */}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, mb: 2.5, gap: 2 }}
+        >
+          <Box>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
+              <Box
+                sx={{
+                  bgcolor: 'rgba(232, 90, 79, 0.12)',
+                  p: 1,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 26 }} />
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                Finance
+              </Typography>
+            </Stack>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+              Cashly-style analytics dashboard. Monitor cash flow, budgets, and transactions in real time.
             </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ReportExporter module="Finance" />
+          </Box>
+
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              startIcon={<HistoryIcon />}
+              onClick={() => {
+                setLogPage(0);
+                setLogOpen(true);
+              }}
+              sx={{
+                borderColor: 'var(--card-border)',
+                color: 'var(--text-primary)',
+                bgcolor: 'var(--card-bg)',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-button)',
+                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
+              }}
+            >
+              Finance Log
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => setRecDialogOpen(true)}
+              sx={{
+                borderColor: 'var(--card-border)',
+                color: 'var(--text-primary)',
+                bgcolor: 'var(--card-bg)',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-button)',
+              }}
+            >
+              + Recurring Bill
+            </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openCreateDialog}
+              sx={{
+                bgcolor: 'var(--accent-primary)',
+                color: '#FFFFFF',
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 2.5,
+                borderRadius: 'var(--radius-button)',
+                boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
+                '&:hover': { bgcolor: 'var(--accent-secondary)' },
+              }}
+            >
+              Add Transaction
+            </Button>
           </Stack>
         </Stack>
-        <Typography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 4 }}>
-          Log incomes, track expenses, monitor balance allocations, and analyze budgets.
-        </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: '12px' }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
-        {/* Summary & Projection Cards Row */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TiltCard sx={{ borderLeft: '5px solid #4CAF50' }}>
-              <CardContent>
-                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: '#8D8D8D', fontWeight: 600 }}>Total Income</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#4CAF50', mt: 1 }}>
-                      ${summary.totalIncome.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <TrendingUpIcon sx={{ color: '#4CAF50', fontSize: 40 }} />
-                </Stack>
-              </CardContent>
-            </TiltCard>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TiltCard sx={{ borderLeft: '5px solid #E85A4F' }}>
-              <CardContent>
-                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: '#8D8D8D', fontWeight: 600 }}>Total Expenses</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#E85A4F', mt: 1 }}>
-                      ${summary.totalExpense.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <TrendingDownIcon sx={{ color: '#E85A4F', fontSize: 40 }} />
-                </Stack>
-              </CardContent>
-            </TiltCard>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TiltCard sx={{ borderLeft: '5px solid var(--accent-primary)', bgcolor: 'rgba(232, 90, 79, 0.04)' }}>
-              <CardContent>
-                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: '#8D8D8D', fontWeight: 600 }}>Net Balance</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--accent-primary)', mt: 1 }}>
-                      ${summary.balance.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 40 }} />
-                </Stack>
-              </CardContent>
-            </TiltCard>
-          </Grid>
-          
-          {/* Commitment Projections */}
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TiltCard sx={{ borderLeft: '5px solid #2196F3', bgcolor: 'rgba(33, 150, 243, 0.04)' }}>
-              <CardContent>
-                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: '#8D8D8D', fontWeight: 600 }}>Committed Monthly Cost (Bills & EMIs)</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#2196F3', mt: 1 }}>
-                      ${(summary.projectedMonthlyRecurring || 0).toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <CalendarMonthIcon sx={{ color: '#2196F3', fontSize: 40 }} />
-                </Stack>
-              </CardContent>
-            </TiltCard>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TiltCard sx={{ borderLeft: '5px solid #9C27B0', bgcolor: 'rgba(156, 39, 176, 0.04)' }}>
-              <CardContent>
-                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: '#8D8D8D', fontWeight: 600 }}>Committed Yearly Cost (Bills & EMIs)</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#9C27B0', mt: 1 }}>
-                      ${(summary.projectedYearlyRecurring || 0).toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <ReceiptIcon sx={{ color: '#9C27B0', fontSize: 40 }} />
-                </Stack>
-              </CardContent>
-            </TiltCard>
-          </Grid>
-        </Grid>
-
-        {/* Tab Selector */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
-          <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)} textColor="inherit" sx={{ '& .MuiTabs-indicator': { backgroundColor: 'var(--accent-primary)' } }}>
-            <Tab label="Ledger & Analytics" sx={{ fontWeight: 600, textTransform: 'none' }} />
-            <Tab label="Committed Bills & Loans" sx={{ fontWeight: 600, textTransform: 'none' }} />
-          </Tabs>
-        </Box>
-
-        {activeTab === 0 ? (
-          /* TAB 0: LEDGER & ANALYTICS */
-          <Grid container spacing={4}>
-            {/* Add Transaction Form */}
-            <Grid size={{ xs: 12, md: 5 }}>
-              <TiltCard sx={{ p: 2 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
-                    Log Transaction
-                  </Typography>
-                  <form onSubmit={handleAddTransaction}>
-                    <Stack spacing={2.5}>
-                      <TextField
-                        label="Description"
-                        placeholder="e.g. Grocery Shop, Monthly Salary"
-                        required
-                        fullWidth
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                      />
-                      <TextField
-                        label="Amount ($)"
-                        type="number"
-                        required
-                        fullWidth
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                      />
-                      <FormControl fullWidth>
-                        <InputLabel id="type-label">Type</InputLabel>
-                        <Select
-                          labelId="type-label"
-                          label="Type"
-                          value={type}
-                          onChange={(e) => setType(e.target.value)}
-                        >
-                          <MenuItem value="Expense">Expense</MenuItem>
-                          <MenuItem value="Income">Income</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        label="Category"
-                        placeholder="e.g. Food, Utilities, Salary, Travel"
-                        required
-                        fullWidth
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                      />
-                      <TextField
-                        label="Date"
-                        type="date"
-                        required
-                        fullWidth
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                      />
-                      <IconSlideButton
-                        type="submit"
-                        variant="contained"
-                        fullWidth
-                        disabled={submitting}
-                        startIcon={<AddIcon />}
-                        sx={{
-                          bgcolor: 'var(--accent-primary)',
-                          py: 1.5,
-                          fontWeight: 600,
-                          '&:hover': { bgcolor: 'var(--accent-secondary)' },
-                        }}
-                      >
-                        {submitting ? 'Logging...' : 'Log Transaction'}
-                      </IconSlideButton>
-                    </Stack>
-                  </form>
-                </CardContent>
-              </TiltCard>
-            </Grid>
-
-            {/* Transactions List & Charts */}
-            <Grid size={{ xs: 12, md: 7 }}>
-              <Stack spacing={4}>
-                {/* Chart Card */}
-                <TiltCard sx={{ p: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
-                      Income vs Expense Breakdown
-                    </Typography>
-                    <Box sx={{ width: '100%', height: 200 }}>
-                      <ResponsiveContainer>
-                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip formatter={(value) => `$${value}`} />
-                          <Legend />
-                          <Bar dataKey="Income" fill="#4CAF50" radius={[10, 10, 0, 0]} barSize={60} />
-                          <Bar dataKey="Expense" fill="#E85A4F" radius={[10, 10, 0, 0]} barSize={60} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Box>
-                  </CardContent>
-                </TiltCard>
-
-                {/* Transactions History Card */}
-                <TiltCard sx={{ minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
-                      Transaction History
-                    </Typography>
-
-                    {loading ? (
-                      <LogoLoader />
-                    ) : transactions.length === 0 ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D' }}>
-                        <AccountBalanceWalletIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
-                        <Typography variant="body1">No transactions recorded yet.</Typography>
-                      </Box>
-                    ) : (
-                      <Stack spacing={1.5} sx={{ overflowY: 'auto', maxHeight: '400px', pr: 1 }}>
-                        {transactions.map((t) => (
-                          <Card
-                            key={t.id}
-                            sx={{
-                              flexShrink: 0,
-                              borderRadius: '12px',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                              borderLeft: t.type === 'Income' ? '4px solid #4CAF50' : '4px solid #E85A4F',
-                              bgcolor: 'var(--card-bg)',
-                            }}
-                          >
-                            <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: '10px !important' }}>
-                              <Box sx={{ minWidth: 0 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                  {t.description}
-                                </Typography>
-                                <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center' }}>
-                                  <Typography variant="caption" sx={{ bgcolor: '#F0F0F0', px: 1, py: 0.2, borderRadius: '4px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    {t.category}
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ color: '#8D8D8D' }}>
-                                    {new Date(t.date).toLocaleDateString()}
-                                  </Typography>
-                                </Stack>
-                              </Box>
-                              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                                <Typography variant="body1" sx={{ fontWeight: 700, color: t.type === 'Income' ? '#4CAF50' : '#E85A4F' }}>
-                                  {t.type === 'Income' ? '+' : '-'}${t.amount.toFixed(2)}
-                                </Typography>
-                                <IconButton onClick={() => handleDeleteTransaction(t.id)} size="small" sx={{ color: '#E85A4F' }}>
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Stack>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </Stack>
-                    )}
-                  </CardContent>
-                </TiltCard>
-              </Stack>
-            </Grid>
-          </Grid>
-        ) : (
-          /* TAB 1: COMMITTED BILLS & LOANS */
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
-            {/* Add Commitment Form */}
-            <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
-              <TiltCard sx={{ width: '100%', height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--accent-primary)' }}>
-                    Add Commitment / Recurring Cost
-                  </Typography>
-                  <form onSubmit={handleAddRecurringItem}>
-                    <Stack spacing={2.5}>
-                      <TextField
-                        label="Description / Name"
-                        placeholder="e.g. Netflix, Car Loan, House Rent"
-                        required
-                        fullWidth
-                        value={recDescription}
-                        onChange={(e) => setRecDescription(e.target.value)}
-                      />
-                      <TextField
-                        label="Amount ($)"
-                        type="number"
-                        required
-                        fullWidth
-                        value={recAmount}
-                        onChange={(e) => setRecAmount(e.target.value)}
-                      />
-                      <FormControl fullWidth>
-                        <InputLabel id="rec-type-label">Type</InputLabel>
-                        <Select
-                          labelId="rec-type-label"
-                          label="Type"
-                          value={recType}
-                          onChange={(e) => setRecType(e.target.value)}
-                        >
-                          <MenuItem value="Bill">Bill / Subscription</MenuItem>
-                          <MenuItem value="EMI">EMI Payment</MenuItem>
-                          <MenuItem value="Loan">Loan Payment</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <FormControl fullWidth>
-                        <InputLabel id="rec-freq-label">Billing Cycle</InputLabel>
-                        <Select
-                          labelId="rec-freq-label"
-                          label="Billing Cycle"
-                          value={recFrequency}
-                          onChange={(e) => setRecFrequency(e.target.value)}
-                        >
-                          <MenuItem value="Monthly">Monthly</MenuItem>
-                          <MenuItem value="Yearly">Yearly</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        label="Next Expiry / Due Date"
-                        type="date"
-                        required
-                        fullWidth
-                        value={recDueDate}
-                        onChange={(e) => setRecDueDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                      />
-                      <IconSlideButton
-                        type="submit"
-                        variant="contained"
-                        fullWidth
-                        disabled={recSubmitting}
-                        startIcon={<AddIcon />}
-                        sx={{
-                          bgcolor: 'var(--accent-primary)',
-                          py: 1.5,
-                          fontWeight: 600,
-                          '&:hover': { bgcolor: 'var(--accent-secondary)' },
-                        }}
-                      >
-                        {recSubmitting ? 'Recording...' : 'Record Commitment'}
-                      </IconSlideButton>
-                    </Stack>
-                  </form>
-                </CardContent>
-              </TiltCard>
+        {/* Filter Toolbar */}
+        <Card
+          sx={{
+            mb: 3,
+            p: 1.5,
+            bgcolor: 'var(--card-bg)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--card-border)',
+            boxShadow: 'var(--shadow-soft)',
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', lg: 'row' }}
+            sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', lg: 'center' }, gap: 2 }}
+          >
+            <Box sx={{ position: 'relative', width: { xs: '100%', lg: '320px' } }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
+                  },
+                }}
+              />
             </Box>
 
-            {/* Commitments List sorted by expiry date first */}
-            <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
-              <TiltCard sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'var(--text-primary)' }}>
-                    Active Bills, EMIs & Loans (Sorted by Expiry Date)
-                  </Typography>
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', py: 0.5, alignItems: 'center' }}>
+              <FilterListIcon sx={{ color: 'var(--text-secondary)', fontSize: 18 }} />
+              {(
+                [
+                  { key: 'today', label: 'Today' },
+                  { key: 'this_week', label: 'This Week' },
+                  { key: 'this_month', label: 'This Month' },
+                  { key: 'this_year', label: 'This Year' },
+                  { key: 'all', label: 'All Time' },
+                  { key: 'custom', label: 'Custom' },
+                ] as const
+              ).map((tab) => (
+                <Chip
+                  key={tab.key}
+                  label={tab.label}
+                  clickable
+                  onClick={() => setDateFilter(tab.key)}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-chip)',
+                    bgcolor: dateFilter === tab.key ? 'var(--accent-primary)' : 'transparent',
+                    color: dateFilter === tab.key ? '#FFFFFF' : 'var(--text-secondary)',
+                    border: '1px solid',
+                    borderColor: dateFilter === tab.key ? 'var(--accent-primary)' : 'var(--card-border)',
+                  }}
+                />
+              ))}
+            </Stack>
+          </Stack>
 
-                  {loading ? (
-                    <LogoLoader />
-                  ) : recurringItems.length === 0 ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '350px' }}>
-                      <ReceiptIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
-                      <Typography variant="body1">No committed bills or loans logged.</Typography>
+          {dateFilter === 'custom' && (
+            <Stack direction="row" spacing={2} sx={{ mt: 2, pt: 2, borderTop: '1px dashed var(--card-border)' }}>
+              <TextField
+                size="small"
+                label="From"
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                size="small"
+                label="To"
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          )}
+        </Card>
+
+        {loading ? (
+          <Box sx={{ py: 8 }}>
+            <LogoLoader />
+          </Box>
+        ) : (
+          <Stack spacing={3}>
+            {/* Top Metric Cards (Cashly Style) */}
+            <Grid container spacing={2.5}>
+              {/* Total Balance */}
+              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Card
+                  sx={{
+                    p: 2.2,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Total Balance (All Time)
+                    </Typography>
+                    <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                  </Stack>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
+                    ${summary.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                    Combined net holdings across all accounts
+                  </Typography>
+                </Card>
+              </Grid>
+
+              {/* Monthly Income (Period Based) */}
+              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Card
+                  sx={{
+                    p: 2.2,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Period Income
+                    </Typography>
+                    <TrendingUpIcon sx={{ color: '#10B981', fontSize: 20 }} />
+                  </Stack>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: '#10B981', mb: 0.5 }}>
+                    +${periodAnalytics.income.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                    Inflow for selected period
+                  </Typography>
+                </Card>
+              </Grid>
+
+              {/* Monthly Expense (Period Based) */}
+              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Card
+                  sx={{
+                    p: 2.2,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Period Expenses
+                    </Typography>
+                    <TrendingDownIcon sx={{ color: '#EF4444', fontSize: 20 }} />
+                  </Stack>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: '#EF4444', mb: 0.5 }}>
+                    -${periodAnalytics.expense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                    Outflow for selected period
+                  </Typography>
+                </Card>
+              </Grid>
+
+              {/* Net Cash Flow / Savings */}
+              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Card
+                  sx={{
+                    p: 2.2,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Net Cash Flow
+                    </Typography>
+                    <SavingsIcon sx={{ color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444', fontSize: 20 }} />
+                  </Stack>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 800,
+                      color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444',
+                      mb: 0.5,
+                    }}
+                  >
+                    {periodAnalytics.netFlow >= 0 ? '+' : ''}${periodAnalytics.netFlow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                    Savings Rate: {periodAnalytics.savingsRate.toFixed(1)}%
+                  </Typography>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Middle Section: Cashly Visual Charts */}
+            <Grid container spacing={2.5}>
+              {/* Income vs Expenses 6-Month Chart */}
+              <Grid size={{ xs: 12, lg: 8 }}>
+                <Card
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    minHeight: '380px',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                        Income vs Expenses
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                        6-month overview of cash performance
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  {incomeVsExpenseData.every((d) => d.income === 0 && d.expense === 0) ? (
+                    <Box sx={{ py: 10, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      <Typography variant="body2">No historical transaction data available to plot chart.</Typography>
                     </Box>
                   ) : (
-                    <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '420px', pr: 1 }}>
-                      {recurringItems.map((item) => {
-                        const dueSoon = isDueSoon(item.dueDate);
-                        const isOverdue = new Date(item.dueDate) < new Date() && !isSameDay(new Date(item.dueDate), new Date());
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={incomeVsExpenseData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                          </linearGradient>
+                          <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#E85A4F" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#E85A4F" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                        <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={12} />
+                        <YAxis stroke="var(--text-secondary)" fontSize={12} />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--card-bg)',
+                            borderColor: 'var(--card-border)',
+                            borderRadius: '10px',
+                            color: 'var(--text-primary)',
+                          }}
+                        />
+                        <Legend />
+                        <Area type="monotone" dataKey="income" name="Income" stroke="#10B981" fillOpacity={1} fill="url(#incomeGrad)" strokeWidth={2.5} />
+                        <Area type="monotone" dataKey="expense" name="Expense" stroke="#E85A4F" fillOpacity={1} fill="url(#expenseGrad)" strokeWidth={2.5} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </Card>
+              </Grid>
 
-                        function isSameDay(d1: Date, d2: Date) {
-                          return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
-                        }
+              {/* Spending Breakdown Donut Chart */}
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    minHeight: '380px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Spending Breakdown
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2 }}>
+                    Distribution across expense categories
+                  </Typography>
 
-                        return (
-                          <Card
-                            key={item.id}
-                            sx={{
-                              flexShrink: 0,
-                              borderRadius: '12px',
-                              boxShadow: dueSoon || isOverdue ? '0 4px 16px rgba(232, 90, 79, 0.1)' : '0 2px 8px rgba(0,0,0,0.02)',
-                              borderLeft: `5px solid ${getRecurringTypeColor(item.type)}`,
-                              border: dueSoon || isOverdue ? '1px solid rgba(232, 90, 79, 0.25)' : 'none',
-                              bgcolor: 'var(--card-bg)',
-                            }}
+                  {categoryChartData.length === 0 ? (
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                      <Typography variant="body2">No expense records logged in this period.</Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={categoryChartData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={55}
+                            outerRadius={80}
+                            paddingAngle={3}
                           >
-                            <CardContent sx={{ py: '12px !important' }}>
-                              <Grid container spacing={2} sx={{ alignItems: 'center' }}>
-                                <Grid size={{ xs: 12, sm: 7 }}>
-                                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                                    <Typography variant="body1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                                      {item.description}
-                                    </Typography>
-                                    <Chip
-                                      label={`${item.type} - ${item.frequency}`}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: `${getRecurringTypeColor(item.type)}12`,
-                                        color: getRecurringTypeColor(item.type),
-                                        fontWeight: 700,
-                                        fontSize: '10px',
-                                        height: '20px'
-                                      }}
-                                    />
-                                  </Stack>
-                                  <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                                    <Typography variant="body2" sx={{ color: isOverdue ? '#E85A4F' : dueSoon ? '#FF9800' : '#8D8D8D', fontWeight: dueSoon || isOverdue ? 700 : 500, fontSize: '13px' }}>
-                                      Expiry/Due Date: {new Date(item.dueDate).toLocaleDateString()}
-                                    </Typography>
-                                    {(dueSoon || isOverdue) && (
-                                      <Typography variant="caption" sx={{ color: '#E85A4F', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        {isOverdue ? '⚠️ Overdue' : '⏳ Due Soon!'}
-                                      </Typography>
-                                    )}
-                                  </Stack>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 5 }}>
-                                  <Stack direction="row" spacing={1.5} sx={{ justifyContent: { xs: 'flex-start', sm: 'flex-end' }, alignItems: 'center' }}>
-                                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                                      ${item.amount.toFixed(2)}
-                                    </Typography>
-                                    <IconButton
-                                      onClick={() => handlePayRecurringItem(item.id)}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: '#4CAF5015',
-                                        color: '#4CAF50',
-                                        border: '1px solid rgba(76, 175, 80, 0.25)',
-                                        '&:hover': { bgcolor: '#4CAF50', color: 'white' }
-                                      }}
-                                      title="Mark as Paid"
-                                    >
-                                      <CheckCircleIcon sx={{ fontSize: 20 }} />
-                                    </IconButton>
-                                    <IconButton
-                                      onClick={() => handleDeleteRecurringItem(item.id)}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: '#E85A4F12',
-                                        color: '#E85A4F',
-                                        '&:hover': { bgcolor: '#E85A4F', color: 'white' }
-                                      }}
-                                      title="Delete Commitment"
-                                    >
-                                      <DeleteIcon sx={{ fontSize: 20 }} />
-                                    </IconButton>
-                                  </Stack>
-                                </Grid>
-                              </Grid>
-                            </CardContent>
-                          </Card>
+                            {categoryChartData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--card-bg)',
+                              borderColor: 'var(--card-border)',
+                              borderRadius: '10px',
+                              color: 'var(--text-primary)',
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+
+                      <Stack spacing={0.8} sx={{ width: '100%', mt: 1 }}>
+                        {categoryChartData.slice(0, 4).map((c, i) => (
+                          <Stack key={c.name} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                              <Typography variant="caption" sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                                {c.name}
+                              </Typography>
+                            </Stack>
+                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
+                              ${c.value.toLocaleString()} ({c.percent}%)
+                            </Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Bottom Row: Cash Flow + Budget Planner Progress + Recent Transactions */}
+            <Grid container spacing={2.5}>
+              {/* Monthly Net Cash Flow */}
+              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                <Card
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    height: '100%',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Cash Flow
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
+                    Monthly net savings (positive vs deficit)
+                  </Typography>
+
+                  <ResponsiveContainer width="100%" height={230}>
+                    <BarChart data={cashFlowData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                      <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
+                      <YAxis stroke="var(--text-secondary)" fontSize={11} />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--card-bg)',
+                          borderColor: 'var(--card-border)',
+                          borderRadius: '10px',
+                        }}
+                      />
+                      <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Grid>
+
+              {/* Budget Planner Progress */}
+              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                <Card
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    height: '100%',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Budget Planner
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
+                    Current spend vs typical monthly limits
+                  </Typography>
+
+                  <Stack spacing={2.2} sx={{ mt: 1 }}>
+                    {budgetProgressData.map((b) => (
+                      <Box key={b.category}>
+                        <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {b.category}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: b.pct >= 90 ? '#EF4444' : 'var(--text-secondary)' }}>
+                            ${b.spent} / ${b.budget} ({b.pct}%)
+                          </Typography>
+                        </Stack>
+                        <LinearProgress
+                          variant="determinate"
+                          value={b.pct}
+                          sx={{
+                            height: 7,
+                            borderRadius: 4,
+                            bgcolor: 'var(--bg-secondary)',
+                            '& .MuiLinearProgress-bar': {
+                              bgcolor: b.pct >= 90 ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--accent-primary)',
+                              borderRadius: 4,
+                            },
+                          }}
+                        />
+                      </Box>
+                    ))}
+                  </Stack>
+                </Card>
+              </Grid>
+
+              {/* Recurring Bills / Commitments Card */}
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 'var(--radius-card)',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Recurring Commitments
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${recurringItems.length} Active`}
+                      sx={{ fontWeight: 700, fontSize: '11px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
+                    />
+                  </Stack>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
+                    Fixed loans, subscriptions, and utility bills
+                  </Typography>
+
+                  <Stack spacing={1.2} sx={{ flex: 1, overflowY: 'auto', maxHeight: '250px' }}>
+                    {recurringItems.length === 0 ? (
+                      <Box sx={{ py: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <Typography variant="body2">No recurring bills added yet.</Typography>
+                      </Box>
+                    ) : (
+                      recurringItems.map((item) => (
+                        <Card
+                          key={item.id}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '10px',
+                            bgcolor: 'var(--bg-secondary)',
+                            border: '1px solid var(--card-border)',
+                          }}
+                        >
+                          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {item.description}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                Due {new Date(item.dueDate).toLocaleDateString()} • {item.frequency}
+                              </Typography>
+                            </Box>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#EF4444' }}>
+                                -${item.amount.toFixed(2)}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handlePayRecurring(item.id)}
+                                title="Log Payment"
+                                sx={{ color: '#10B981' }}
+                              >
+                                <CheckCircleIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteRecurring(item.id)}
+                                sx={{ color: 'var(--text-secondary)' }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 17 }} />
+                              </IconButton>
+                            </Stack>
+                          </Stack>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Latest Transactions Table */}
+            <Card
+              sx={{
+                p: 2.5,
+                borderRadius: 'var(--radius-card)',
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                boxShadow: 'var(--shadow-soft)',
+              }}
+            >
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Latest Transactions
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                    Showing records for {dateFilter === 'this_month' ? 'this month' : dateFilter}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={`${filteredTransactions.length} items`}
+                  size="small"
+                  sx={{ fontWeight: 700, bgcolor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                />
+              </Stack>
+
+              {filteredTransactions.length === 0 ? (
+                <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <Typography variant="body2">No transactions match your current filters.</Typography>
+                </Box>
+              ) : (
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'var(--bg-primary)' }}>
+                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Description</TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Category</TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Date</TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Type</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Amount</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredTransactions.slice(0, 10).map((t) => {
+                        const isIncome = t.type.toLowerCase() === 'income';
+                        return (
+                          <TableRow key={t.id} hover>
+                            <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {t.description}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                label={t.category}
+                                sx={{ fontSize: '11px', fontWeight: 600, bgcolor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              {new Date(t.date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                label={isIncome ? 'Income' : 'Expense'}
+                                sx={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  bgcolor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                  color: isIncome ? '#10B981' : '#EF4444',
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
+                              {isIncome ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell align="center">
+                              <IconButton size="small" onClick={() => openEditDialog(t)} sx={{ p: 0.5 }}>
+                                <EditIcon sx={{ fontSize: 16, color: 'var(--text-secondary)' }} />
+                              </IconButton>
+                              <IconButton size="small" onClick={() => handleDeleteTransaction(t.id)} sx={{ p: 0.5 }}>
+                                <DeleteIcon sx={{ fontSize: 16, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
                         );
                       })}
-                    </Stack>
-                  )}
-                </CardContent>
-              </TiltCard>
-            </Box>
-          </Box>
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+            </Card>
+          </Stack>
         )}
       </Box>
+
+      {/* CREATE / EDIT TRANSACTION MODAL */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+          {editingId ? 'Edit Transaction' : 'Record Transaction'}
+        </DialogTitle>
+        <DialogContent dividers sx={{ borderColor: 'var(--card-border)' }}>
+          <form onSubmit={handleSaveTransaction} id="tx-form">
+            <Stack spacing={2.2} sx={{ pt: 1 }}>
+              <TextField
+                label="Description"
+                required
+                fullWidth
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Whole Foods Groceries"
+              />
+
+              <TextField
+                label="Amount ($)"
+                required
+                fullWidth
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                slotProps={{ htmlInput: { min: '0.01', step: '0.01' } }}
+              />
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={type}
+                  label="Type"
+                  onChange={(e) => setType(e.target.value as any)}
+                >
+                  <MenuItem value="Expense">Expense</MenuItem>
+                  <MenuItem value="Income">Income</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Category"
+                required
+                fullWidth
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="e.g. Food, Salary, Utilities, Cloud"
+              />
+
+              <TextField
+                label="Date"
+                type="date"
+                required
+                fullWidth
+                value={txDate}
+                onChange={(e) => setTxDate(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="tx-form"
+            variant="contained"
+            disabled={!description.trim() || !amount || parseFloat(amount) <= 0 || !txDate || submitting}
+            sx={{
+              bgcolor: 'var(--accent-primary)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'var(--accent-secondary)' },
+            }}
+          >
+            {submitting ? 'Saving...' : editingId ? 'Update' : 'Record'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CREATE RECURRING COMMITMENT MODAL */}
+      <Dialog
+        open={recDialogOpen}
+        onClose={() => setRecDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+          Add Recurring Commitment
+        </DialogTitle>
+        <DialogContent dividers sx={{ borderColor: 'var(--card-border)' }}>
+          <form onSubmit={handleSaveRecurring} id="rec-form">
+            <Stack spacing={2.2} sx={{ pt: 1 }}>
+              <TextField
+                label="Bill / Commitment Name"
+                required
+                fullWidth
+                value={recDescription}
+                onChange={(e) => setRecDescription(e.target.value)}
+                placeholder="e.g. Rent, Netflix, Car Loan"
+              />
+
+              <TextField
+                label="Amount ($)"
+                required
+                fullWidth
+                type="number"
+                value={recAmount}
+                onChange={(e) => setRecAmount(e.target.value)}
+                slotProps={{ htmlInput: { min: '0.01', step: '0.01' } }}
+              />
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={recType}
+                  label="Type"
+                  onChange={(e) => setRecType(e.target.value as any)}
+                >
+                  <MenuItem value="Bill">Bill / Subscription</MenuItem>
+                  <MenuItem value="Loan">Loan</MenuItem>
+                  <MenuItem value="EMI">EMI</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Frequency</InputLabel>
+                <Select
+                  value={recFrequency}
+                  label="Frequency"
+                  onChange={(e) => setRecFrequency(e.target.value as any)}
+                >
+                  <MenuItem value="Monthly">Monthly</MenuItem>
+                  <MenuItem value="Yearly">Yearly</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Next Due Date"
+                type="date"
+                required
+                fullWidth
+                value={recDueDate}
+                onChange={(e) => setRecDueDate(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setRecDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="rec-form"
+            variant="contained"
+            disabled={!recDescription.trim() || !recAmount || parseFloat(recAmount) <= 0 || !recDueDate || recSubmitting}
+            sx={{
+              bgcolor: 'var(--accent-primary)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'var(--accent-secondary)' },
+            }}
+          >
+            {recSubmitting ? 'Saving...' : 'Add Commitment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* FINANCE LOG & EXCEL EXPORT MODAL */}
+      <Dialog
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              maxHeight: '90vh',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)', pb: 1 }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <HistoryIcon sx={{ color: 'var(--accent-primary)' }} />
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Finance Activity Log & Export
+              </Typography>
+            </Stack>
+            <IconButton onClick={() => setLogOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ borderColor: 'var(--card-border)' }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ mb: 2.5, alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flex: 1 }}>
+              <TextField
+                size="small"
+                placeholder="Search transactions..."
+                value={logSearch}
+                onChange={(e) => {
+                  setLogSearch(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 18 }} />,
+                  },
+                }}
+                sx={{ minWidth: '220px' }}
+              />
+
+              <FormControl size="small" sx={{ minWidth: '140px' }}>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={logTypeFilter}
+                  label="Type"
+                  onChange={(e) => {
+                    setLogTypeFilter(e.target.value);
+                    setLogPage(0);
+                  }}
+                >
+                  <MenuItem value="All">All Types</MenuItem>
+                  <MenuItem value="Income">Income</MenuItem>
+                  <MenuItem value="Expense">Expense</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: '140px' }}>
+                <InputLabel>Period</InputLabel>
+                <Select
+                  value={logDateFilter}
+                  label="Period"
+                  onChange={(e) => {
+                    setLogDateFilter(e.target.value as any);
+                    setLogPage(0);
+                  }}
+                >
+                  <MenuItem value="all">All Time</MenuItem>
+                  <MenuItem value="today">Today</MenuItem>
+                  <MenuItem value="yesterday">Yesterday</MenuItem>
+                  <MenuItem value="this_week">This Week</MenuItem>
+                  <MenuItem value="this_month">This Month</MenuItem>
+                  <MenuItem value="this_year">This Year</MenuItem>
+                  <MenuItem value="custom">Custom Range</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportFinanceExcel}
+              disabled={logRecords.length === 0}
+              sx={{
+                bgcolor: '#10B981',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: 'var(--radius-button)',
+                '&:hover': { bgcolor: '#059669' },
+              }}
+            >
+              Export Excel ({logRecords.length})
+            </Button>
+          </Stack>
+
+          {logDateFilter === 'custom' && (
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField
+                size="small"
+                label="From"
+                type="date"
+                value={logCustomStart}
+                onChange={(e) => {
+                  setLogCustomStart(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                size="small"
+                label="To"
+                type="date"
+                value={logCustomEnd}
+                onChange={(e) => {
+                  setLogCustomEnd(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          )}
+
+          {logRecords.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <Typography variant="body1">No transactions found matching active filters.</Typography>
+            </Box>
+          ) : (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'var(--bg-primary)' }}>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Description</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Type</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pagedLogRecords.map((t) => {
+                    const isIncome = t.type.toLowerCase() === 'income';
+                    return (
+                      <TableRow key={t.id} hover>
+                        <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {t.description}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={t.category}
+                            sx={{ fontSize: '11px', fontWeight: 600, bgcolor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {new Date(t.date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={isIncome ? 'Income' : 'Expense'}
+                            sx={{
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              bgcolor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: isIncome ? '#10B981' : '#EF4444',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
+                          {isIncome ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={logRecords.length}
+                rowsPerPage={logRowsPerPage}
+                page={logPage}
+                onPageChange={(_, p) => setLogPage(p)}
+                onRowsPerPageChange={(e) => {
+                  setLogRowsPerPage(parseInt(e.target.value, 10));
+                  setLogPage(0);
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setLogOpen(false)} sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageWrapper>
   );
 };
 
 export default Finance;
-

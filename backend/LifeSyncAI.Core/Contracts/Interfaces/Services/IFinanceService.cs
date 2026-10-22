@@ -11,13 +11,14 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
     {
         Task<ApiResponse<List<TransactionDto>>> GetTransactionsAsync(int userId);
         Task<ApiResponse<TransactionDto>> CreateTransactionAsync(CreateTransactionDto dto, int userId);
-        Task<ApiResponse<bool>> DeleteTransactionAsync(int id);
+        Task<ApiResponse<TransactionDto>> UpdateTransactionAsync(int id, UpdateTransactionDto dto, int userId);
+        Task<ApiResponse<bool>> DeleteTransactionAsync(int id, int userId = 0);
         Task<ApiResponse<FinanceSummaryDto>> GetSummaryAsync(int userId);
         
         // Recurring Bills & Loans
         Task<ApiResponse<List<RecurringItem>>> GetRecurringItemsAsync(int userId);
         Task<ApiResponse<RecurringItem>> CreateRecurringItemAsync(CreateRecurringItemDto dto, int userId);
-        Task<ApiResponse<bool>> DeleteRecurringItemAsync(int id);
+        Task<ApiResponse<bool>> DeleteRecurringItemAsync(int id, int userId = 0);
         Task<ApiResponse<TransactionDto>> PayRecurringItemAsync(int id, int userId);
     }
 }
