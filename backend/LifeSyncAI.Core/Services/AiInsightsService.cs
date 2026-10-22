@@ -189,7 +189,17 @@ namespace LifeSyncAI.Core.Services
                     .Where(pe => pe.UserId == userId)
                     .ToListAsync();
 
-                var pendingTasks = peEvents.Where(t => !t.IsCompleted).ToList();
+                var nowUtc = DateTime.UtcNow;
+                var overdueTasks = peEvents.Where(t => !t.IsCompleted && nowUtc > t.EndTime).ToList();
+                if (overdueTasks.Count > 0)
+                {
+                    generatedInsights.Add((
+                        $"⚠️ Overdue Alert: You have {overdueTasks.Count} overdue {(overdueTasks.Count == 1 ? "task" : "tasks")}. Unfinished tasks past their deadline apply a −2 Life Score penalty. Clear or complete them to safeguard your consistency score!",
+                        "Productivity"
+                    ));
+                }
+
+                var pendingTasks = peEvents.Where(t => !t.IsCompleted && nowUtc <= t.EndTime).ToList();
                 if (pendingTasks.Count > 3)
                 {
                     generatedInsights.Add((
@@ -205,11 +215,19 @@ namespace LifeSyncAI.Core.Services
 
                 if (jobApps.Count > 0)
                 {
-                    var interviewing = jobApps.Count(a => a.Status == "Interviewing");
-                    if (interviewing > 0)
+                    var interviewing = jobApps.Count(a => a.Status == "Interviewing" || a.Status == "Interview");
+                    var offered = jobApps.Count(a => a.Status == "Offered");
+                    if (offered > 0)
                     {
                         generatedInsights.Add((
-                            $"🚀 Interview Season! You have {interviewing} active interviews in progress. Focus: Record a mock video of yourself answering 'Walk me through your resume.' Tweak your eye contact and posture for an instant 2x confidence boost!",
+                            $"🎉 Congratulations! You have {offered} job {(offered == 1 ? "offer" : "offers")} on the table. Compare benefits, commute, and growth potential before negotiating your final compensation package!",
+                            "Career"
+                        ));
+                    }
+                    else if (interviewing > 0)
+                    {
+                        generatedInsights.Add((
+                            $"🚀 Interview Season! You have {interviewing} active interview stages in progress. Focus: Record a mock video of yourself answering 'Walk me through your resume.' Tweak your eye contact and posture for an instant confidence boost!",
                             "Career"
                         ));
                     }
@@ -220,6 +238,26 @@ namespace LifeSyncAI.Core.Services
                             "Career"
                         ));
                     }
+                }
+
+                // 5. ANALYZE VAULT SECURITY METADATA (COUNTS ONLY - NEVER SECRETS)
+                var vaultCount = await _context.VaultItems
+                    .Where(v => v.UserId == userId)
+                    .CountAsync();
+
+                if (vaultCount == 0)
+                {
+                    generatedInsights.Add((
+                        "🔐 Digital Hygiene: Your CipherVault is empty. Storing credentials and recovery phrases in unencrypted notes is risky. Secure your essential accounts in the Vault today!",
+                        "Security"
+                    ));
+                }
+                else if (vaultCount < 5)
+                {
+                    generatedInsights.Add((
+                        $"🛡️ Vault Status: You have {vaultCount} encrypted {(vaultCount == 1 ? "credential" : "credentials")} safely protected. Remember to audit passwords every 90 days for maximum safety.",
+                        "Security"
+                    ));
                 }
 
                 // Fallback default insight if no other insights generated
