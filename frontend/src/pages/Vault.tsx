@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
   TextField,
   IconButton,
   Alert,
@@ -36,6 +35,8 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -288,7 +289,9 @@ const Vault: React.FC = () => {
     <PageWrapper>
       <Box sx={{ padding: { xs: '16px', md: '28px' }, height: '100%', overflowY: 'auto', bgcolor: 'var(--bg-primary)' }}>
         {/* CipherVault Hero Banner */}
-        <Card
+        <TiltCard
+          maxTilt={1.5}
+          enableRefraction={false}
           sx={{
             mb: 3,
             p: { xs: 2.5, md: 3.5 },
@@ -342,18 +345,17 @@ const Vault: React.FC = () => {
               }}
             />
           </Stack>
-        </Card>
+        </TiltCard>
 
         {/* Security Feature Pillars */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card
+            <TiltCard
+              maxTilt={3}
               sx={{
                 p: 2,
                 borderRadius: '14px',
-                bgcolor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
+                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
@@ -370,17 +372,16 @@ const Vault: React.FC = () => {
                   Active & Protected
                 </Typography>
               </Box>
-            </Card>
+            </TiltCard>
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card
+            <TiltCard
+              maxTilt={3}
               sx={{
                 p: 2,
                 borderRadius: '14px',
-                bgcolor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
+                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
@@ -397,17 +398,16 @@ const Vault: React.FC = () => {
                   AES-256 Symmetric Key
                 </Typography>
               </Box>
-            </Card>
+            </TiltCard>
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card
+            <TiltCard
+              maxTilt={3}
               sx={{
                 p: 2,
                 borderRadius: '14px',
-                bgcolor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
+                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
@@ -424,7 +424,7 @@ const Vault: React.FC = () => {
                   Strict User Isolation
                 </Typography>
               </Box>
-            </Card>
+            </TiltCard>
           </Grid>
         </Grid>
 
@@ -438,13 +438,11 @@ const Vault: React.FC = () => {
         <Grid container spacing={2.5} sx={{ mb: 3 }}>
           {/* Total Status */}
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <Card
+            <TiltCard
+              maxTilt={3.5}
               sx={{
                 p: 2.2,
                 borderRadius: 'var(--radius-card)',
-                bgcolor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
                 height: '100%',
               }}
             >
@@ -460,24 +458,21 @@ const Vault: React.FC = () => {
               <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                 Total encrypted items in vault
               </Typography>
-            </Card>
+            </TiltCard>
           </Grid>
 
           {/* Password Manager */}
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <Card
+            <TiltCard
+              maxTilt={3.5}
               onClick={() => setActiveCategory('Login')}
               sx={{
                 p: 2.2,
                 borderRadius: 'var(--radius-card)',
-                bgcolor: 'var(--card-bg)',
                 border: '1px solid',
                 borderColor: activeCategory === 'Login' ? 'var(--accent-primary)' : 'var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
                 cursor: 'pointer',
                 height: '100%',
-                transition: '0.2s',
-                '&:hover': { transform: 'translateY(-2px)' },
               }}
             >
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -515,24 +510,21 @@ const Vault: React.FC = () => {
                   + Add
                 </Button>
               </Stack>
-            </Card>
+            </TiltCard>
           </Grid>
 
           {/* Secure Notes */}
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <Card
+            <TiltCard
+              maxTilt={3.5}
               onClick={() => setActiveCategory('Note')}
               sx={{
                 p: 2.2,
                 borderRadius: 'var(--radius-card)',
-                bgcolor: 'var(--card-bg)',
                 border: '1px solid',
                 borderColor: activeCategory === 'Note' ? 'var(--accent-primary)' : 'var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
                 cursor: 'pointer',
                 height: '100%',
-                transition: '0.2s',
-                '&:hover': { transform: 'translateY(-2px)' },
               }}
             >
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -570,24 +562,21 @@ const Vault: React.FC = () => {
                   + Add
                 </Button>
               </Stack>
-            </Card>
+            </TiltCard>
           </Grid>
 
           {/* Links & Bookmarks */}
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-            <Card
+            <TiltCard
+              maxTilt={3.5}
               onClick={() => setActiveCategory('Link')}
               sx={{
                 p: 2.2,
                 borderRadius: 'var(--radius-card)',
-                bgcolor: 'var(--card-bg)',
                 border: '1px solid',
                 borderColor: activeCategory === 'Link' ? 'var(--accent-primary)' : 'var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
                 cursor: 'pointer',
                 height: '100%',
-                transition: '0.2s',
-                '&:hover': { transform: 'translateY(-2px)' },
               }}
             >
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -625,19 +614,18 @@ const Vault: React.FC = () => {
                   + Add
                 </Button>
               </Stack>
-            </Card>
+            </TiltCard>
           </Grid>
         </Grid>
 
         {/* Toolbar & Category Switcher */}
-        <Card
+        <TiltCard
+          maxTilt={1.5}
+          enableRefraction={false}
           sx={{
             mb: 3,
             p: 1.5,
-            bgcolor: 'var(--card-bg)',
             borderRadius: 'var(--radius-card)',
-            border: '1px solid var(--card-border)',
-            boxShadow: 'var(--shadow-soft)',
           }}
         >
           <Stack
@@ -685,7 +673,7 @@ const Vault: React.FC = () => {
                 />
               ))}
 
-              <Button
+              <IconSlideButton
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => openCreateDialog(activeCategory === 'All' ? 'Login' : activeCategory)}
@@ -693,17 +681,17 @@ const Vault: React.FC = () => {
                   bgcolor: 'var(--accent-primary)',
                   color: '#FFFFFF',
                   fontWeight: 700,
-                  textTransform: 'none',
-                  borderRadius: 'var(--radius-button)',
+                  px: 2.5,
+                  py: 0.8,
                   whiteSpace: 'nowrap',
                   '&:hover': { bgcolor: 'var(--accent-secondary)' },
                 }}
               >
                 Add Secret
-              </Button>
+              </IconSlideButton>
             </Stack>
           </Stack>
-        </Card>
+        </TiltCard>
 
         {/* Vault Items Grid */}
         {loading ? (
@@ -737,19 +725,16 @@ const Vault: React.FC = () => {
 
               return (
                 <Grid key={item.id} size={{ xs: 12, md: 6, lg: 4 }}>
-                  <Card
+                  <TiltCard
+                    maxTilt={3}
+                    enableRefraction={false}
                     sx={{
                       p: 2.2,
                       borderRadius: 'var(--radius-card)',
-                      bgcolor: 'var(--card-bg)',
-                      border: '1px solid var(--card-border)',
-                      boxShadow: 'var(--shadow-soft)',
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                      '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--shadow-hover)' },
                     }}
                   >
                     <Box>
@@ -926,7 +911,7 @@ const Vault: React.FC = () => {
                         AES-256 Encrypted • Zero Plaintext
                       </Typography>
                     </Box>
-                  </Card>
+                  </TiltCard>
                 </Grid>
               );
             })}
@@ -1054,7 +1039,7 @@ const Vault: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
-          <Button
+          <IconSlideButton
             type="submit"
             form="vault-form"
             variant="contained"
@@ -1068,11 +1053,13 @@ const Vault: React.FC = () => {
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
+              px: 2.5,
+              py: 0.8,
               '&:hover': { bgcolor: 'var(--accent-secondary)' },
             }}
           >
             {submitting ? 'Encrypting...' : editingId ? 'Update Secret' : 'Encrypt & Save'}
-          </Button>
+          </IconSlideButton>
         </DialogActions>
       </Dialog>
     </PageWrapper>

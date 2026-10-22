@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
   TextField,
   Select,
   MenuItem,
@@ -42,6 +41,8 @@ import BusinessIcon from '@mui/icons-material/Business';
 
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -563,7 +564,7 @@ const Career: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button
+            <IconSlideButton
               variant="outlined"
               startIcon={<HistoryIcon />}
               onClick={() => {
@@ -574,32 +575,31 @@ const Career: React.FC = () => {
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 650,
+                px: 2,
+                py: 0.8,
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
               Career Log
-            </Button>
+            </IconSlideButton>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => openCreateDialog('Applied')}
               sx={{
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
-                textTransform: 'none',
                 fontWeight: 700,
                 px: 2.5,
-                borderRadius: 'var(--radius-button)',
+                py: 0.8,
                 boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' },
               }}
             >
               Add Job
-            </Button>
+            </IconSlideButton>
           </Stack>
         </Stack>
 
@@ -611,7 +611,9 @@ const Career: React.FC = () => {
 
         {/* Unobtrusive Optional Note Bar for recent stage transition */}
         {transitionPrompt && (
-          <Card
+          <TiltCard
+            maxTilt={1.5}
+            enableRefraction={false}
             sx={{
               mb: 2.5,
               p: 2,
@@ -647,15 +649,15 @@ const Career: React.FC = () => {
                     if (e.key === 'Enter') handleSaveTransitionNote();
                   }}
                 />
-                <Button
+                <IconSlideButton
                   variant="contained"
                   size="small"
                   disabled={savingNote || !transitionNoteText.trim()}
                   onClick={handleSaveTransitionNote}
-                  sx={{ bgcolor: 'var(--accent-primary)', whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
+                  sx={{ bgcolor: 'var(--accent-primary)', whiteSpace: 'nowrap', fontWeight: 700 }}
                 >
                   Save Note
-                </Button>
+                </IconSlideButton>
                 <Button
                   size="small"
                   onClick={() => setTransitionPrompt(null)}
@@ -665,11 +667,13 @@ const Career: React.FC = () => {
                 </Button>
               </Stack>
             </Stack>
-          </Card>
+          </TiltCard>
         )}
 
         {/* Filter Toolbar */}
-        <Card
+        <TiltCard
+          maxTilt={1.5}
+          enableRefraction={false}
           sx={{
             mb: 3,
             p: 1.5,
@@ -749,7 +753,7 @@ const Career: React.FC = () => {
               />
             </Stack>
           )}
-        </Card>
+        </TiltCard>
 
         {/* Applyarc Kanban Board (5 Columns) */}
         {loading ? (
@@ -850,23 +854,20 @@ const Career: React.FC = () => {
                             : null;
 
                         return (
-                          <Card
+                          <TiltCard
                             key={job.id}
+                            maxTilt={3}
+                            enableRefraction={false}
                             draggable
                             onDragStart={(e) => handleDragStart(e, job.id)}
                             onClick={() => setDetailsDrawerJob(job)}
                             sx={{
                               p: 1.8,
-                              borderRadius: '12px',
+                              borderRadius: '14px',
                               bgcolor: 'var(--card-bg)',
                               border: '1px solid var(--card-border)',
                               boxShadow: 'var(--shadow-soft)',
                               cursor: 'grab',
-                              transition: 'transform 0.15s, box-shadow 0.15s',
-                              '&:hover': {
-                                transform: 'translateY(-2px)',
-                                boxShadow: 'var(--shadow-hover)',
-                              },
                               '&:active': { cursor: 'grabbing' },
                             }}
                           >
@@ -999,7 +1000,7 @@ const Career: React.FC = () => {
                                 </Typography>
                               )}
                             </Stack>
-                          </Card>
+                          </TiltCard>
                         );
                       })
                     )}
@@ -1306,7 +1307,7 @@ const Career: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
-          <Button
+          <IconSlideButton
             type="submit"
             form="career-form"
             variant="contained"
@@ -1314,11 +1315,13 @@ const Career: React.FC = () => {
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
+              px: 2.5,
+              py: 0.8,
               '&:hover': { bgcolor: 'var(--accent-secondary)' },
             }}
           >
             {submitting ? 'Saving...' : editingId ? 'Update Job' : 'Add to Board'}
-          </Button>
+          </IconSlideButton>
         </DialogActions>
       </Dialog>
 
@@ -1416,7 +1419,7 @@ const Career: React.FC = () => {
               </FormControl>
             </Stack>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<FileDownloadIcon />}
               onClick={handleExportCareerExcel}
@@ -1424,14 +1427,14 @@ const Career: React.FC = () => {
               sx={{
                 bgcolor: '#10B981',
                 color: '#FFFFFF',
-                fontWeight: 700,
-                textTransform: 'none',
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 750,
+                px: 2.5,
+                py: 0.8,
                 '&:hover': { bgcolor: '#059669' },
               }}
             >
               Export Excel ({logRecords.length})
-            </Button>
+            </IconSlideButton>
           </Stack>
 
           {logDateFilter === 'custom' && (

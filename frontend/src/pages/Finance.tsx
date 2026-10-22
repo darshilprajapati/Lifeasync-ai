@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
   TextField,
   IconButton,
   Select,
@@ -58,6 +57,8 @@ import {
 
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -564,7 +565,7 @@ const Finance: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button
+            <IconSlideButton
               variant="outlined"
               startIcon={<HistoryIcon />}
               onClick={() => {
@@ -575,47 +576,48 @@ const Finance: React.FC = () => {
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 650,
+                px: 2,
+                py: 0.8,
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
               Finance Log
-            </Button>
+            </IconSlideButton>
 
-            <Button
+            <IconSlideButton
               variant="outlined"
+              startIcon={<AddIcon />}
               onClick={() => setRecDialogOpen(true)}
               sx={{
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 650,
+                px: 2,
+                py: 0.8,
+                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
               + Recurring Bill
-            </Button>
+            </IconSlideButton>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<AddIcon />}
               onClick={openCreateDialog}
               sx={{
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
-                textTransform: 'none',
                 fontWeight: 700,
                 px: 2.5,
-                borderRadius: 'var(--radius-button)',
+                py: 0.8,
                 boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' },
               }}
             >
               Add Transaction
-            </Button>
+            </IconSlideButton>
           </Stack>
         </Stack>
 
@@ -626,7 +628,9 @@ const Finance: React.FC = () => {
         )}
 
         {/* Filter Toolbar */}
-        <Card
+        <TiltCard
+          maxTilt={1.5}
+          enableRefraction={false}
           sx={{
             mb: 3,
             p: 1.5,
@@ -706,7 +710,7 @@ const Finance: React.FC = () => {
               />
             </Stack>
           )}
-        </Card>
+        </TiltCard>
 
         {loading ? (
           <Box sx={{ py: 8 }}>
@@ -718,15 +722,7 @@ const Finance: React.FC = () => {
             <Grid container spacing={2.5}>
               {/* Total Balance */}
               <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card
-                  sx={{
-                    p: 2.2,
-                    borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                >
+                <TiltCard sx={{ p: 2.2, height: '100%' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                       Total Balance (All Time)
@@ -739,20 +735,12 @@ const Finance: React.FC = () => {
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Combined net holdings across all accounts
                   </Typography>
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Monthly Income (Period Based) */}
               <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card
-                  sx={{
-                    p: 2.2,
-                    borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                >
+                <TiltCard sx={{ p: 2.2, height: '100%' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                       Period Income
@@ -765,20 +753,12 @@ const Finance: React.FC = () => {
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Inflow for selected period
                   </Typography>
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Monthly Expense (Period Based) */}
               <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card
-                  sx={{
-                    p: 2.2,
-                    borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                >
+                <TiltCard sx={{ p: 2.2, height: '100%' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                       Period Expenses
@@ -791,20 +771,12 @@ const Finance: React.FC = () => {
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Outflow for selected period
                   </Typography>
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Net Cash Flow / Savings */}
               <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <Card
-                  sx={{
-                    p: 2.2,
-                    borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
-                  }}
-                >
+                <TiltCard sx={{ p: 2.2, height: '100%' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                       Net Cash Flow
@@ -824,7 +796,7 @@ const Finance: React.FC = () => {
                   <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                     Savings Rate: {periodAnalytics.savingsRate.toFixed(1)}%
                   </Typography>
-                </Card>
+                </TiltCard>
               </Grid>
             </Grid>
 
@@ -832,14 +804,13 @@ const Finance: React.FC = () => {
             <Grid container spacing={2.5}>
               {/* Income vs Expenses 6-Month Chart */}
               <Grid size={{ xs: 12, lg: 8 }}>
-                <Card
+                <TiltCard
+                  maxTilt={2}
                   sx={{
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
                     minHeight: '380px',
+                    height: '100%',
                   }}
                 >
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -887,19 +858,18 @@ const Finance: React.FC = () => {
                       </AreaChart>
                     </ResponsiveContainer>
                   )}
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Spending Breakdown Donut Chart */}
               <Grid size={{ xs: 12, lg: 4 }}>
-                <Card
+                <TiltCard
+                  maxTilt={2}
                   sx={{
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
                     minHeight: '380px',
+                    height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                   }}
@@ -959,7 +929,7 @@ const Finance: React.FC = () => {
                       </Stack>
                     </Box>
                   )}
-                </Card>
+                </TiltCard>
               </Grid>
             </Grid>
 
@@ -967,13 +937,11 @@ const Finance: React.FC = () => {
             <Grid container spacing={2.5}>
               {/* Monthly Net Cash Flow */}
               <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-                <Card
+                <TiltCard
+                  maxTilt={2.5}
                   sx={{
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
                     height: '100%',
                   }}
                 >
@@ -999,18 +967,16 @@ const Finance: React.FC = () => {
                       <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Budget Planner Progress */}
               <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-                <Card
+                <TiltCard
+                  maxTilt={2.5}
                   sx={{
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
                     height: '100%',
                   }}
                 >
@@ -1048,18 +1014,16 @@ const Finance: React.FC = () => {
                       </Box>
                     ))}
                   </Stack>
-                </Card>
+                </TiltCard>
               </Grid>
 
               {/* Recurring Bills / Commitments Card */}
               <Grid size={{ xs: 12, lg: 4 }}>
-                <Card
+                <TiltCard
+                  maxTilt={2}
                   sx={{
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
-                    bgcolor: 'var(--card-bg)',
-                    border: '1px solid var(--card-border)',
-                    boxShadow: 'var(--shadow-soft)',
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
@@ -1086,8 +1050,10 @@ const Finance: React.FC = () => {
                       </Box>
                     ) : (
                       recurringItems.map((item) => (
-                        <Card
+                        <TiltCard
                           key={item.id}
+                          maxTilt={2}
+                          enableRefraction={false}
                           sx={{
                             p: 1.5,
                             borderRadius: '10px',
@@ -1125,22 +1091,21 @@ const Finance: React.FC = () => {
                               </IconButton>
                             </Stack>
                           </Stack>
-                        </Card>
+                        </TiltCard>
                       ))
                     )}
                   </Stack>
-                </Card>
+                </TiltCard>
               </Grid>
             </Grid>
 
             {/* Latest Transactions Table */}
-            <Card
+            <TiltCard
+              maxTilt={1.5}
+              enableRefraction={false}
               sx={{
                 p: 2.5,
                 borderRadius: 'var(--radius-card)',
-                bgcolor: 'var(--card-bg)',
-                border: '1px solid var(--card-border)',
-                boxShadow: 'var(--shadow-soft)',
               }}
             >
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -1224,7 +1189,7 @@ const Finance: React.FC = () => {
                   </Table>
                 </Box>
               )}
-            </Card>
+            </TiltCard>
           </Stack>
         )}
       </Box>
@@ -1313,7 +1278,7 @@ const Finance: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
-          <Button
+          <IconSlideButton
             type="submit"
             form="tx-form"
             variant="contained"
@@ -1321,11 +1286,13 @@ const Finance: React.FC = () => {
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
+              px: 2.5,
+              py: 0.8,
               '&:hover': { bgcolor: 'var(--accent-secondary)' },
             }}
           >
             {submitting ? 'Saving...' : editingId ? 'Update' : 'Record'}
-          </Button>
+          </IconSlideButton>
         </DialogActions>
       </Dialog>
 
@@ -1417,7 +1384,7 @@ const Finance: React.FC = () => {
           <Button onClick={() => setRecDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
-          <Button
+          <IconSlideButton
             type="submit"
             form="rec-form"
             variant="contained"
@@ -1425,11 +1392,13 @@ const Finance: React.FC = () => {
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
+              px: 2.5,
+              py: 0.8,
               '&:hover': { bgcolor: 'var(--accent-secondary)' },
             }}
           >
             {recSubmitting ? 'Saving...' : 'Add Commitment'}
-          </Button>
+          </IconSlideButton>
         </DialogActions>
       </Dialog>
 
@@ -1524,7 +1493,7 @@ const Finance: React.FC = () => {
               </FormControl>
             </Stack>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<FileDownloadIcon />}
               onClick={handleExportFinanceExcel}
@@ -1532,14 +1501,14 @@ const Finance: React.FC = () => {
               sx={{
                 bgcolor: '#10B981',
                 color: '#FFFFFF',
-                fontWeight: 700,
-                textTransform: 'none',
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 750,
+                px: 2.5,
+                py: 0.8,
                 '&:hover': { bgcolor: '#059669' },
               }}
             >
               Export Excel ({logRecords.length})
-            </Button>
+            </IconSlideButton>
           </Stack>
 
           {logDateFilter === 'custom' && (

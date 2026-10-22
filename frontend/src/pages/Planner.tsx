@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
-  Card,
   CardContent,
   TextField,
   Button,
@@ -42,6 +41,8 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
+import { TiltCard } from '../components/modern3d/TiltCard';
+import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -620,7 +621,7 @@ const Planner: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button
+            <IconSlideButton
               variant="outlined"
               startIcon={<HistoryIcon />}
               onClick={() => {
@@ -631,32 +632,31 @@ const Planner: React.FC = () => {
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 650,
+                px: 2,
+                py: 0.8,
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
               Planner Log
-            </Button>
+            </IconSlideButton>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => openCreateDialog('Todo')}
               sx={{
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
-                textTransform: 'none',
                 fontWeight: 700,
                 px: 2.5,
-                borderRadius: 'var(--radius-button)',
+                py: 0.8,
                 boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' },
               }}
             >
               New Task
-            </Button>
+            </IconSlideButton>
           </Stack>
         </Stack>
 
@@ -667,7 +667,9 @@ const Planner: React.FC = () => {
         )}
 
         {/* Filter Toolbar */}
-        <Card
+        <TiltCard
+          maxTilt={1.5}
+          enableRefraction={false}
           sx={{
             mb: 3,
             p: 1.5,
@@ -761,7 +763,7 @@ const Planner: React.FC = () => {
               />
             </Stack>
           )}
-        </Card>
+        </TiltCard>
 
         {/* Kanban Board Columns */}
         {loading ? (
@@ -1006,7 +1008,7 @@ const Planner: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
-          <Button
+          <IconSlideButton
             type="submit"
             form="planner-form"
             variant="contained"
@@ -1022,11 +1024,13 @@ const Planner: React.FC = () => {
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
+              px: 2.5,
+              py: 0.8,
               '&:hover': { bgcolor: 'var(--accent-secondary)' },
             }}
           >
             {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Create Task'}
-          </Button>
+          </IconSlideButton>
         </DialogActions>
       </Dialog>
 
@@ -1124,7 +1128,7 @@ const Planner: React.FC = () => {
               </FormControl>
             </Stack>
 
-            <Button
+            <IconSlideButton
               variant="contained"
               startIcon={<FileDownloadIcon />}
               onClick={handleExportPlannerExcel}
@@ -1132,14 +1136,14 @@ const Planner: React.FC = () => {
               sx={{
                 bgcolor: '#10B981',
                 color: '#FFFFFF',
-                fontWeight: 700,
-                textTransform: 'none',
-                borderRadius: 'var(--radius-button)',
+                fontWeight: 750,
+                px: 2.5,
+                py: 0.8,
                 '&:hover': { bgcolor: '#059669' },
               }}
             >
               Export Excel ({logRecords.length})
-            </Button>
+            </IconSlideButton>
           </Stack>
 
           {logDateFilter === 'custom' && (
@@ -1390,8 +1394,10 @@ const Planner: React.FC = () => {
               const isOverdue = colKey === 'overdue';
 
               return (
-                <Card
+                <TiltCard
                   key={task.id}
+                  maxTilt={3}
+                  enableRefraction={false}
                   draggable={colKey !== 'overdue'}
                   onDragStart={(e) => handleDragStart(e, task.id)}
                   sx={{
@@ -1401,11 +1407,6 @@ const Planner: React.FC = () => {
                     borderColor: isOverdue ? 'rgba(239, 68, 68, 0.4)' : 'var(--card-border)',
                     boxShadow: 'var(--shadow-soft)',
                     cursor: colKey === 'overdue' ? 'default' : 'grab',
-                    transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: 'var(--shadow-hover)',
-                    },
                     '&:active': { cursor: colKey === 'overdue' ? 'default' : 'grabbing' },
                   }}
                 >
@@ -1542,7 +1543,7 @@ const Planner: React.FC = () => {
                       )}
                     </Stack>
                   </CardContent>
-                </Card>
+                </TiltCard>
               );
             })
           )}

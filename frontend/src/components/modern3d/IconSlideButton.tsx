@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, type ButtonProps } from '@mui/material';
 import { useThemeSystem } from '../../context/ThemeContext';
+import { useCornerPress } from './useCornerPress';
 
 export interface IconSlideButtonProps extends ButtonProps {
   slideDirection?: 'right' | 'left' | 'up';
@@ -8,10 +9,10 @@ export interface IconSlideButtonProps extends ButtonProps {
 
 /**
  * IconSlideButton
- * Section 9: Modern 3D Icon Slide Buttons.
+ * Section 9: Modern 3D Icon Slide Buttons with tactile corner-press depth.
  * - Displays button icon and label in normal position.
  * - On hover, animates icon with a controlled slide and transitions depth/edge highlight.
- * - Subtle pressed-state movement on click.
+ * - Subtle corner-press responsive to cursor position.
  * - In Professional mode, renders sharp 0px corners, flat background, no slide.
  * - Preserves original onClick, disabled, loading, tooltips, and accessibility.
  */
@@ -21,16 +22,30 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
   endIcon,
   slideDirection = 'right',
   sx,
+  onPointerMove,
+  onPointerEnter,
+  onPointerLeave,
+  onPointerDown,
+  onPointerUp,
+  disabled,
   ...rest
 }) => {
   const { designSystem } = useThemeSystem();
   const isProf = designSystem === 'professional';
+
+  const { transform, handlers } = useCornerPress({
+    maxTilt: 3.5,
+    perspective: 600,
+    translateZ: 3,
+    disabled: isProf || disabled,
+  });
 
   if (isProf) {
     return (
       <Button
         startIcon={startIcon}
         endIcon={endIcon}
+        disabled={disabled}
         sx={{
           borderRadius: '0px !important',
           boxShadow: 'none !important',
@@ -40,10 +55,15 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
           transform: 'none !important',
           '&:hover': {
             boxShadow: 'none !important',
-            transform: 'none !important'
+            transform: 'none !important',
           },
-          ...sx
+          ...sx,
         }}
+        onPointerMove={onPointerMove}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
         {...rest}
       >
         {children}
@@ -61,6 +81,27 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
 
   return (
     <Button
+      disabled={disabled}
+      onPointerMove={(e) => {
+        handlers.onPointerMove(e);
+        onPointerMove?.(e);
+      }}
+      onPointerEnter={(e) => {
+        handlers.onPointerEnter();
+        onPointerEnter?.(e);
+      }}
+      onPointerLeave={(e) => {
+        handlers.onPointerLeave();
+        onPointerLeave?.(e);
+      }}
+      onPointerDown={(e) => {
+        handlers.onPointerDown();
+        onPointerDown?.(e);
+      }}
+      onPointerUp={(e) => {
+        handlers.onPointerUp();
+        onPointerUp?.(e);
+      }}
       startIcon={
         startIcon ? (
           <span
@@ -68,7 +109,7 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
             }}
           >
             {startIcon}
@@ -82,7 +123,7 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
             }}
           >
             {endIcon}
@@ -94,17 +135,18 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
         textTransform: 'none',
         fontWeight: 700,
         letterSpacing: '0.2px',
-        transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        transform: transform,
+        transformStyle: 'preserve-3d',
+        transition: 'transform 0.1s ease-out, box-shadow 0.25s ease',
         '&:hover': {
-          transform: 'translateY(-2px)',
           '& .icon-slide-target': {
-            transform: slideTranslate
-          }
+            transform: slideTranslate,
+          },
         },
         '&:active': {
-          transform: 'translateY(1px) scale(0.98)'
+          transform: 'scale(0.975)',
         },
-        ...sx
+        ...sx,
       }}
       {...rest}
     >
@@ -112,3 +154,5 @@ export const IconSlideButton: React.FC<IconSlideButtonProps> = ({
     </Button>
   );
 };
+
+export default IconSlideButton;
