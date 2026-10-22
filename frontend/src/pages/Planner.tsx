@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -6,12 +6,25 @@ import {
   CardContent,
   TextField,
   Button,
-  Checkbox,
   IconButton,
   Alert,
   Stack,
   Chip,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TablePagination,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -21,16 +34,20 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import HistoryIcon from '@mui/icons-material/History';
+import SearchIcon from '@mui/icons-material/Search';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import FilterListIcon from '@mui/icons-material/FilterList';
+
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
-import ReportExporter from '../components/ReportExporter';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
-import { TiltCard } from '../components/modern3d/TiltCard';
-import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { useNotification } from '../context/NotificationContext';
+import { exportToExcel } from '../utils/excelExport';
 
-interface PlannerEvent {
+export interface PlannerEvent {
   id: number;
   title: string;
   description?: string;
@@ -38,30 +55,122 @@ interface PlannerEvent {
   endTime: string;
   isCompleted: boolean;
   completedAt?: string;
+  status: string; // 'Todo' | 'InProgress' | 'Completed' | 'Overdue'
+  priority?: string; // 'Low' | 'Medium' | 'High' | 'Urgent'
+  category?: string; // 'Design' | 'Development' | 'Personal' | 'Research' | 'Meetings' | 'General'
   missedDeadlinePenalized?: boolean;
   reminderSent?: boolean;
   reminderTime?: string;
 }
 
+type DateFilterOption = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+
 const INVALID_TIME_RANGE_MESSAGE =
   'The end time must be later than the start time. Choose a valid deadline for your task.';
 
+// Color palette inspired by Taskmate references for task tags
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Design: { bg: 'rgba(254, 243, 199, 0.9)', text: '#92400E', border: 'rgba(245, 158, 11, 0.3)' },
+  Development: { bg: 'rgba(219, 234, 254, 0.9)', text: '#1E40AF', border: 'rgba(59, 130, 246, 0.3)' },
+  Research: { bg: 'rgba(209, 250, 229, 0.9)', text: '#065F46', border: 'rgba(16, 185, 129, 0.3)' },
+  Meetings: { bg: 'rgba(254, 226, 226, 0.9)', text: '#991B1B', border: 'rgba(239, 68, 68, 0.3)' },
+  Personal: { bg: 'rgba(243, 232, 255, 0.9)', text: '#6B21A8', border: 'rgba(168, 85, 247, 0.3)' },
+  General: { bg: 'rgba(243, 244, 246, 0.9)', text: '#374151', border: 'rgba(209, 213, 219, 0.5)' },
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  Low: '#10B981',
+  Medium: '#F59E0B',
+  High: '#E85A4F',
+  Urgent: '#EF4444',
+};
+
+export const isDateInPeriod = (
+  dateStr: string,
+  filter: DateFilterOption,
+  customStart?: string,
+  customEnd?: string
+): boolean => {
+  if (filter === 'all' || !dateStr) return true;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return true;
+  const now = new Date();
+
+  if (filter === 'today') {
+    return d.toDateString() === now.toDateString();
+  }
+  if (filter === 'yesterday') {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return d.toDateString() === y.toDateString();
+  }
+  if (filter === 'this_week') {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+  if (filter === 'this_month') {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }
+  if (filter === 'this_year') {
+    return d.getFullYear() === now.getFullYear();
+  }
+  if (filter === 'custom' && customStart && customEnd) {
+    const s = new Date(customStart);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(customEnd);
+    e.setHours(23, 59, 59, 999);
+    return d >= s && d <= e;
+  }
+  return true;
+};
+
 const Planner: React.FC = () => {
+  const { notify } = useNotification();
   const [events, setEvents] = useState<PlannerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
-  const [reminderTimeError, setReminderTimeError] = useState<string | null>(null);
 
-  // Form Fields
+  // Filters
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>('all');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Drag and drop state
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+
+  // Form Modal state
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [targetStatus, setTargetStatus] = useState<string>('Todo');
+  const [priority, setPriority] = useState<string>('Medium');
+  const [category, setCategory] = useState<string>('Development');
   const [reminderSchedule, setReminderSchedule] = useState<'none' | 'at_start' | '15m' | '30m' | '1h' | 'custom'>('15m');
   const [customReminderDate, setCustomReminderDate] = useState<string>('');
+  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Log Modal state
+  const [logOpen, setLogOpen] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [logStatusFilter, setLogStatusFilter] = useState<string>('All');
+  const [logDateFilter, setLogDateFilter] = useState<DateFilterOption>('all');
+  const [logCustomStart, setLogCustomStart] = useState('');
+  const [logCustomEnd, setLogCustomEnd] = useState('');
+  const [logPage, setLogPage] = useState(0);
+  const [logRowsPerPage, setLogRowsPerPage] = useState(10);
 
   const fetchEvents = async () => {
     try {
@@ -71,7 +180,9 @@ const Planner: React.FC = () => {
         setEvents(res.data.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load events.');
+      const msg = err.response?.data?.message || err.message || 'Failed to load planner events.';
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }
@@ -81,20 +192,25 @@ const Planner: React.FC = () => {
     fetchEvents();
   }, []);
 
-  // Strict date/time range validator
+  // Classify a task into its canonical Kanban column
+  const getTaskColumn = (e: PlannerEvent): 'todo' | 'in_progress' | 'completed' | 'overdue' => {
+    if (e.isCompleted) return 'completed';
+    const isPastDeadline = new Date() > new Date(e.endTime);
+    if (isPastDeadline) return 'overdue';
+    if (e.status === 'InProgress') return 'in_progress';
+    return 'todo';
+  };
+
+  // Validate Start and End times
   const validateRange = (startVal: string, endVal: string): string | null => {
     if (!startVal || !endVal) return null;
-    const startMs = new Date(startVal).getTime();
-    const endMs = new Date(endVal).getTime();
-    if (isNaN(startMs) || isNaN(endMs)) return null;
-
-    if (endMs <= startMs) {
-      return INVALID_TIME_RANGE_MESSAGE;
-    }
+    const s = new Date(startVal).getTime();
+    const e = new Date(endVal).getTime();
+    if (isNaN(s) || isNaN(e)) return null;
+    if (e <= s) return INVALID_TIME_RANGE_MESSAGE;
     return null;
   };
 
-  // Restricts year to exactly 4 digits maximum to avoid 6-digit browser year issues
   const sanitizeDateTimeInput = (val: string): string => {
     if (!val) return '';
     const parts = val.split('-');
@@ -108,53 +224,68 @@ const Planner: React.FC = () => {
     if (!val) return true;
     const parts = val.split('-');
     if (parts.length === 0) return true;
-    const yearStr = parts[0];
-    if (yearStr.length !== 4 || !/^\d{4}$/.test(yearStr)) return false;
-    const year = parseInt(yearStr, 10);
-    return !isNaN(year) && year >= 1900 && year <= 2099;
+    const yStr = parts[0];
+    if (yStr.length !== 4 || !/^\d{4}$/.test(yStr)) return false;
+    const y = parseInt(yStr, 10);
+    return !isNaN(y) && y >= 1900 && y <= 2099;
   };
 
-  const handleStartTimeChange = (raw: string) => {
-    const val = sanitizeDateTimeInput(raw);
-    setStartTime(val);
-    if (val && !isValidFourDigitYear(val)) {
-      setTimeRangeError('Start time year must be a 4-digit number between 1900 and 2099.');
-      return;
-    }
-    if (endTime) {
-      const err = validateRange(val, endTime);
-      setTimeRangeError(err);
+  const toLocalInput = (isoStr: string) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const openCreateDialog = (initialStatus: string = 'Todo') => {
+    setEditingId(null);
+    setTitle('');
+    setDescription('');
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    setStartTime(toLocalInput(now.toISOString()));
+    setEndTime(toLocalInput(oneHourLater.toISOString()));
+    setTargetStatus(initialStatus);
+    setPriority('Medium');
+    setCategory('Development');
+    setReminderSchedule('15m');
+    setCustomReminderDate('');
+    setTimeRangeError(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (ev: PlannerEvent) => {
+    setEditingId(ev.id);
+    setTitle(ev.title);
+    setDescription(ev.description || '');
+    setStartTime(toLocalInput(ev.startTime));
+    setEndTime(toLocalInput(ev.endTime));
+    setTargetStatus(ev.isCompleted ? 'Completed' : ev.status || 'Todo');
+    setPriority(ev.priority || 'Medium');
+    setCategory(ev.category || 'General');
+
+    if (ev.reminderTime) {
+      const remMs = new Date(ev.reminderTime).getTime();
+      const startMs = new Date(ev.startTime).getTime();
+      const diffMins = Math.round((startMs - remMs) / 60000);
+      if (diffMins === 0) setReminderSchedule('at_start');
+      else if (diffMins === 15) setReminderSchedule('15m');
+      else if (diffMins === 30) setReminderSchedule('30m');
+      else if (diffMins === 60) setReminderSchedule('1h');
+      else {
+        setReminderSchedule('custom');
+        setCustomReminderDate(toLocalInput(ev.reminderTime));
+      }
     } else {
-      setTimeRangeError(null);
+      setReminderSchedule('none');
+      setCustomReminderDate('');
     }
+
+    setTimeRangeError(null);
+    setDialogOpen(true);
   };
 
-  const handleEndTimeChange = (raw: string) => {
-    const val = sanitizeDateTimeInput(raw);
-    setEndTime(val);
-    if (val && !isValidFourDigitYear(val)) {
-      setTimeRangeError('Deadline year must be a 4-digit number between 1900 and 2099.');
-      return;
-    }
-    if (startTime) {
-      const err = validateRange(startTime, val);
-      setTimeRangeError(err);
-    } else {
-      setTimeRangeError(null);
-    }
-  };
-
-  const handleCustomReminderChange = (raw: string) => {
-    const val = sanitizeDateTimeInput(raw);
-    setCustomReminderDate(val);
-    if (val && !isValidFourDigitYear(val)) {
-      setReminderTimeError('Reminder year must be a 4-digit number between 1900 and 2099.');
-    } else {
-      setReminderTimeError(null);
-    }
-  };
-
-  const handleSaveEvent = async (e: React.FormEvent) => {
+  const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !startTime || !endTime) return;
 
@@ -164,520 +295,1261 @@ const Planner: React.FC = () => {
       return;
     }
 
-    setError(null);
-    setTimeRangeError(null);
     setSubmitting(true);
+    setError(null);
 
     const getCalculatedReminderIso = (): string | null => {
       if (reminderSchedule === 'none' || !startTime) return null;
       if (reminderSchedule === 'custom') {
         return customReminderDate ? new Date(customReminderDate).toISOString() : null;
       }
-      const startMs = new Date(startTime).getTime();
-      if (isNaN(startMs)) return null;
-
+      const sMs = new Date(startTime).getTime();
+      if (isNaN(sMs)) return null;
       let offsetMs = 0;
       if (reminderSchedule === '15m') offsetMs = 15 * 60 * 1000;
       else if (reminderSchedule === '30m') offsetMs = 30 * 60 * 1000;
       else if (reminderSchedule === '1h') offsetMs = 60 * 60 * 1000;
-
-      return new Date(startMs - offsetMs).toISOString();
+      return new Date(sMs - offsetMs).toISOString();
     };
 
-    const calculatedReminderTime = getCalculatedReminderIso();
+    const reminderIso = getCalculatedReminderIso();
+    const isCompleted = targetStatus === 'Completed';
 
     try {
       if (editingId) {
-        // Update existing event
         const res = await apiClient.put(`/api/planner/${editingId}`, {
           title: title.trim(),
           description: description.trim(),
           startTime: new Date(startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
-          reminderTime: calculatedReminderTime,
-          isCompleted: false,
+          reminderTime: reminderIso,
+          isCompleted,
+          status: targetStatus,
+          priority,
+          category,
         });
-
         if (res.data.isSuccess) {
           trackAction('planner_event_updated', { module: 'planner', action: 'edit' });
-          setEvents((prev) =>
-            prev.map((ev) => (ev.id === editingId ? res.data.data : ev)).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-          );
-          resetForm();
+          setEvents((prev) => prev.map((ev) => (ev.id === editingId ? res.data.data : ev)));
+          notify.success(`Task "${title.trim()}" updated successfully.`);
+          setDialogOpen(false);
         }
       } else {
-        // Create new event
         const res = await apiClient.post('/api/planner', {
           title: title.trim(),
           description: description.trim(),
           startTime: new Date(startTime).toISOString(),
           endTime: new Date(endTime).toISOString(),
-          reminderTime: calculatedReminderTime,
-          isCompleted: false,
+          reminderTime: reminderIso,
+          isCompleted,
+          status: targetStatus,
+          priority,
+          category,
         });
-
         if (res.data.isSuccess) {
           trackAction('planner_event_created', { module: 'planner', action: 'create' });
-          setEvents((prev) =>
-            [...prev, res.data.data].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-          );
-          resetForm();
+          setEvents((prev) => [...prev, res.data.data]);
+          notify.success(`Task "${title.trim()}" created in ${targetStatus}.`);
+          setDialogOpen(false);
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to save event.');
+      const msg = err.response?.data?.message || err.message || 'Failed to save task.';
+      setError(msg);
+      notify.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setTitle('');
-    setDescription('');
-    setStartTime('');
-    setEndTime('');
-    setReminderSchedule('15m');
-    setCustomReminderDate('');
-    setTimeRangeError(null);
-    setReminderTimeError(null);
-  };
-
-  const handleStartEdit = (event: PlannerEvent) => {
-    setEditingId(event.id);
-    setTitle(event.title);
-    setDescription(event.description || '');
-
-    // Format ISO string to datetime-local friendly string (YYYY-MM-DDTHH:mm)
-    const toLocalInput = (isoStr: string) => {
-      const d = new Date(isoStr);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-
-    setStartTime(toLocalInput(event.startTime));
-    setEndTime(toLocalInput(event.endTime));
-
-    if (event.reminderTime) {
-      const reminderDate = new Date(event.reminderTime).getTime();
-      const startDate = new Date(event.startTime).getTime();
-      const diffMinutes = Math.round((startDate - reminderDate) / 60000);
-
-      if (diffMinutes === 0) setReminderSchedule('at_start');
-      else if (diffMinutes === 15) setReminderSchedule('15m');
-      else if (diffMinutes === 30) setReminderSchedule('30m');
-      else if (diffMinutes === 60) setReminderSchedule('1h');
-      else {
-        setReminderSchedule('custom');
-        setCustomReminderDate(toLocalInput(event.reminderTime));
-      }
-    } else {
-      setReminderSchedule('none');
-      setCustomReminderDate('');
-    }
-
-    setTimeRangeError(null);
-    setReminderTimeError(null);
-  };
-
-  const handleToggleEvent = async (id: number, currentCompleted: boolean) => {
-    try {
-      const res = await apiClient.put(`/api/planner/${id}/toggle`, !currentCompleted);
-      if (res.data.isSuccess) {
-        trackAction('planner_event_updated', { module: 'planner', action: 'toggle_status' });
-        const nowIso = new Date().toISOString();
-        setEvents((prev) =>
-          prev.map((e) => {
-            if (e.id === id) {
-              const willBeCompleted = !currentCompleted;
-              const isOverdue = new Date() > new Date(e.endTime);
-              return {
-                ...e,
-                isCompleted: willBeCompleted,
-                completedAt: willBeCompleted ? nowIso : undefined,
-                missedDeadlinePenalized: willBeCompleted
-                  ? (isOverdue ? true : e.missedDeadlinePenalized)
-                  : (isOverdue ? true : e.missedDeadlinePenalized),
-              };
-            }
-            return e;
-          })
-        );
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to toggle event.');
-    }
-  };
-
-  const handleDeleteEvent = async (id: number) => {
+  const handleDeleteTask = async (id: number) => {
     try {
       const res = await apiClient.delete(`/api/planner/${id}`);
       if (res.data.isSuccess) {
         trackAction('planner_event_deleted', { module: 'planner', action: 'delete' });
-        setEvents((prev) => prev.filter((e) => e.id !== id));
-        if (editingId === id) resetForm();
+        setEvents((prev) => prev.filter((ev) => ev.id !== id));
+        notify.success('Task removed from planner.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete event.');
+      notify.error(err.response?.data?.message || 'Failed to delete task.');
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-  };
-
-  // Status helper for task deadline evaluation
-  const getTaskDeadlineStatus = (event: PlannerEvent) => {
-    const now = new Date();
-    const end = new Date(event.endTime);
-    const msLeft = end.getTime() - now.getTime();
-    const oneHourMs = 60 * 60 * 1000;
-
-    if (event.isCompleted) {
-      if (event.completedAt && new Date(event.completedAt) > end) {
-        return {
-          label: 'Completed Late (-2 Penalty)',
-          color: 'error' as const,
-          tooltip: 'Completed after expected deadline. Penalty recorded permanently for that day.',
-        };
+  const handleToggleComplete = async (ev: PlannerEvent) => {
+    const nextCompleted = !ev.isCompleted;
+    try {
+      const res = await apiClient.put(`/api/planner/${ev.id}/toggle`, nextCompleted);
+      if (res.data.isSuccess) {
+        trackAction('planner_event_toggled', { module: 'planner', action: 'toggle' });
+        const nowIso = new Date().toISOString();
+        setEvents((prev) =>
+          prev.map((item) =>
+            item.id === ev.id
+              ? {
+                  ...item,
+                  isCompleted: nextCompleted,
+                  status: nextCompleted ? 'Completed' : 'Todo',
+                  completedAt: nextCompleted ? nowIso : undefined,
+                }
+              : item
+          )
+        );
+        notify.success(nextCompleted ? `Task completed!` : `Task marked active.`);
       }
-      return {
-        label: 'Completed on Time',
-        color: 'success' as const,
-        tooltip: 'Completed prior to deadline without score penalties.',
-      };
+    } catch (err: any) {
+      notify.error(err.response?.data?.message || 'Failed to toggle task.');
     }
-
-    if (now > end) {
-      return {
-        label: 'Overdue (-2 Score Penalty)',
-        color: 'error' as const,
-        tooltip: 'Expected deadline passed without completion. -2 points applied to daily Life Score.',
-      };
-    }
-
-    if (msLeft > 0 && msLeft <= oneHourMs) {
-      return {
-        label: 'Due in ~1 Hour',
-        color: 'warning' as const,
-        tooltip: 'Deadline approaching. Reminder email triggered.',
-      };
-    }
-
-    return null;
   };
 
-  const isFormInvalid =
-    !title.trim() ||
-    !startTime ||
-    !endTime ||
-    !isValidFourDigitYear(startTime) ||
-    !isValidFourDigitYear(endTime) ||
-    (reminderSchedule === 'custom' && (!customReminderDate || !isValidFourDigitYear(customReminderDate))) ||
-    !!timeRangeError ||
-    !!reminderTimeError ||
-    submitting;
+  // Drag and Drop Handling
+  const handleDragStart = (e: React.DragEvent, id: number) => {
+    e.dataTransfer.setData('text/plain', String(id));
+    setDraggingId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, col: string) => {
+    e.preventDefault();
+    if (col !== 'overdue') {
+      setDragOverCol(col);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCol(null);
+  };
+
+  const handleDrop = async (targetColKey: 'todo' | 'in_progress' | 'completed' | 'overdue') => {
+    setDragOverCol(null);
+    if (!draggingId) return;
+
+    // Do not allow dragging into overdue
+    if (targetColKey === 'overdue') {
+      notify.warning('Overdue status is assigned automatically when task deadlines pass.');
+      setDraggingId(null);
+      return;
+    }
+
+    const task = events.find((t) => t.id === draggingId);
+    if (!task) return;
+
+    // Do not allow dragging OUT of Overdue unless completing it via supported actions
+    const currentCol = getTaskColumn(task);
+    if (currentCol === 'overdue' && targetColKey !== 'completed') {
+      notify.warning('Overdue tasks cannot be rescheduled by drag. Complete it or edit its deadline.');
+      setDraggingId(null);
+      return;
+    }
+
+    let nextStatus = 'Todo';
+    if (targetColKey === 'in_progress') nextStatus = 'InProgress';
+    else if (targetColKey === 'completed') nextStatus = 'Completed';
+
+    if (task.status === nextStatus && (targetColKey === 'completed') === task.isCompleted) {
+      setDraggingId(null);
+      return;
+    }
+
+    // Optimistic Update
+    const prevEvents = [...events];
+    const willBeCompleted = targetColKey === 'completed';
+    setEvents((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              status: nextStatus,
+              isCompleted: willBeCompleted,
+              completedAt: willBeCompleted ? new Date().toISOString() : undefined,
+            }
+          : t
+      )
+    );
+
+    try {
+      const res = await apiClient.put(`/api/planner/${task.id}/status`, { status: nextStatus });
+      if (!res.data.isSuccess) {
+        setEvents(prevEvents);
+        notify.error('Failed to update status on server.');
+      } else {
+        notify.success(`Moved to ${targetColKey === 'in_progress' ? 'In Progress' : targetColKey === 'completed' ? 'Completed' : 'To Do'}`);
+      }
+    } catch (err: any) {
+      setEvents(prevEvents);
+      notify.error(err.response?.data?.message || 'Failed to move task. Reverting position.');
+    } finally {
+      setDraggingId(null);
+    }
+  };
+
+  // Filter tasks for the board
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev) => {
+      // Date filter applied based on task deadline / start time
+      const dateMatch = isDateInPeriod(ev.startTime, dateFilter, customStart, customEnd);
+      if (!dateMatch) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = ev.title.toLowerCase().includes(q);
+        const descMatch = (ev.description || '').toLowerCase().includes(q);
+        const catMatch = (ev.category || '').toLowerCase().includes(q);
+        if (!titleMatch && !descMatch && !catMatch) return false;
+      }
+      return true;
+    });
+  }, [events, dateFilter, customStart, customEnd, searchQuery]);
+
+  // Group into the 4 Taskmate Kanban columns
+  const columns = useMemo(() => {
+    const todo: PlannerEvent[] = [];
+    const inProgress: PlannerEvent[] = [];
+    const completed: PlannerEvent[] = [];
+    const overdue: PlannerEvent[] = [];
+
+    filteredEvents.forEach((ev) => {
+      const col = getTaskColumn(ev);
+      if (col === 'completed') completed.push(ev);
+      else if (col === 'overdue') overdue.push(ev);
+      else if (col === 'in_progress') inProgress.push(ev);
+      else todo.push(ev);
+    });
+
+    return {
+      todo,
+      in_progress: inProgress,
+      completed,
+      overdue,
+    };
+  }, [filteredEvents]);
+
+  // Filter records for the Planner Log & Excel Export
+  const logRecords = useMemo(() => {
+    return events.filter((ev) => {
+      const dateMatch = isDateInPeriod(ev.startTime, logDateFilter, logCustomStart, logCustomEnd);
+      if (!dateMatch) return false;
+
+      const col = getTaskColumn(ev);
+      if (logStatusFilter !== 'All') {
+        if (logStatusFilter === 'Todo' && col !== 'todo') return false;
+        if (logStatusFilter === 'InProgress' && col !== 'in_progress') return false;
+        if (logStatusFilter === 'Completed' && col !== 'completed') return false;
+        if (logStatusFilter === 'Overdue' && col !== 'overdue') return false;
+      }
+
+      if (logSearch.trim()) {
+        const q = logSearch.toLowerCase();
+        const titleMatch = ev.title.toLowerCase().includes(q);
+        const descMatch = (ev.description || '').toLowerCase().includes(q);
+        const catMatch = (ev.category || '').toLowerCase().includes(q);
+        if (!titleMatch && !descMatch && !catMatch) return false;
+      }
+      return true;
+    });
+  }, [events, logDateFilter, logCustomStart, logCustomEnd, logStatusFilter, logSearch]);
+
+  const pagedLogRecords = useMemo(() => {
+    const start = logPage * logRowsPerPage;
+    return logRecords.slice(start, start + logRowsPerPage);
+  }, [logRecords, logPage, logRowsPerPage]);
+
+  const handleExportPlannerExcel = () => {
+    const exportRows = logRecords.map((ev) => ({
+      ID: ev.id,
+      Title: ev.title,
+      Description: ev.description || '',
+      Status: getTaskColumn(ev).toUpperCase(),
+      Priority: ev.priority || 'Medium',
+      Category: ev.category || 'General',
+      'Start Time': new Date(ev.startTime).toLocaleString(),
+      Deadline: new Date(ev.endTime).toLocaleString(),
+      'Is Completed': ev.isCompleted ? 'Yes' : 'No',
+      'Completed At': ev.completedAt ? new Date(ev.completedAt).toLocaleString() : 'N/A',
+      'Penalty Applied (-2)': ev.missedDeadlinePenalized ? 'Yes (-2)' : 'No',
+    }));
+
+    exportToExcel(
+      exportRows,
+      `LifeSync_Planner_Log_${new Date().toISOString().slice(0, 10)}`,
+      'Planner Tasks'
+    );
+    notify.success(`Exported ${exportRows.length} tasks matching current log filters.`);
+  };
+
+  const formatTimeRange = (startStr: string, endStr: string) => {
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    const formatTime = (d: Date) =>
+      d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatDate = (d: Date) =>
+      d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    if (s.toDateString() === e.toDateString()) {
+      return `${formatDate(s)} • ${formatTime(s)} - ${formatTime(e)}`;
+    }
+    return `${formatDate(s)} ${formatTime(s)} → ${formatDate(e)} ${formatTime(e)}`;
+  };
 
   return (
     <PageWrapper>
-      <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <CalendarTodayIcon sx={{ color: 'var(--accent-primary)', fontSize: 32 }} />
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-              Personal Planner
+      <Box sx={{ padding: { xs: '16px', md: '28px' }, height: '100%', overflowY: 'auto', bgcolor: 'var(--bg-primary)' }}>
+        {/* Top Header */}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, mb: 2.5, gap: 2 }}
+        >
+          <Box>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
+              <Box
+                sx={{
+                  bgcolor: 'rgba(232, 90, 79, 0.12)',
+                  p: 1,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <CalendarTodayIcon sx={{ color: 'var(--accent-primary)', fontSize: 26 }} />
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                Planner
+              </Typography>
+            </Stack>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+              Taskmate-style agile board. Incomplete tasks past deadline deduct −2 Life Score points once.
             </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <ReportExporter module="Planner" />
+          </Box>
+
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              startIcon={<HistoryIcon />}
+              onClick={() => {
+                setLogPage(0);
+                setLogOpen(true);
+              }}
+              sx={{
+                borderColor: 'var(--card-border)',
+                color: 'var(--text-primary)',
+                bgcolor: 'var(--card-bg)',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-button)',
+                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
+              }}
+            >
+              Planner Log
+            </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => openCreateDialog('Todo')}
+              sx={{
+                bgcolor: 'var(--accent-primary)',
+                color: '#FFFFFF',
+                textTransform: 'none',
+                fontWeight: 700,
+                px: 2.5,
+                borderRadius: 'var(--radius-button)',
+                boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
+                '&:hover': { bgcolor: 'var(--accent-secondary)' },
+              }}
+            >
+              New Task
+            </Button>
           </Stack>
         </Stack>
-        <Typography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
-          Organize your tasks, schedule deadlines, and maintain daily consistency. Missing deadlines incurs a permanent −2 Life Score deduction.
-        </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: '12px' }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'stretch' }}>
-          {/* Add / Edit Event Form */}
-          <Box sx={{ flex: { xs: '1 1 auto', md: 5 }, display: 'flex', flexDirection: 'column' }}>
-            <TiltCard sx={{ width: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
-              <CardContent sx={{ flex: 1 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'var(--accent-primary)' }}>
-                    {editingId ? 'Edit Task / Reschedule' : 'Add Task / Event'}
-                  </Typography>
-                  {editingId && (
-                    <Button size="small" startIcon={<CloseIcon />} onClick={resetForm} sx={{ color: '#6b7280' }}>
-                      Cancel Edit
-                    </Button>
-                  )}
-                </Stack>
+        {/* Filter Toolbar */}
+        <Card
+          sx={{
+            mb: 3,
+            p: 1.5,
+            bgcolor: 'var(--card-bg)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--card-border)',
+            boxShadow: 'var(--shadow-soft)',
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', lg: 'row' }}
+            sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', lg: 'center' }, gap: 2 }}
+          >
+            {/* Search Box */}
+            <Box sx={{ position: 'relative', width: { xs: '100%', lg: '320px' } }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search tasks by name, category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
+                  },
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 'var(--radius-input)',
+                    bgcolor: 'var(--bg-primary)',
+                    fontSize: '13.5px',
+                  },
+                }}
+              />
+            </Box>
 
-                {timeRangeError && (
-                  <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 2.5, borderRadius: '10px', fontSize: '13px' }}>
-                    {timeRangeError}
-                  </Alert>
-                )}
+            {/* Date Filter Badges */}
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', py: 0.5, alignItems: 'center' }}>
+              <FilterListIcon sx={{ color: 'var(--text-secondary)', fontSize: 18 }} />
+              {(
+                [
+                  { key: 'all', label: 'All' },
+                  { key: 'today', label: 'Today' },
+                  { key: 'yesterday', label: 'Yesterday' },
+                  { key: 'this_week', label: 'This Week' },
+                  { key: 'this_month', label: 'This Month' },
+                  { key: 'this_year', label: 'This Year' },
+                  { key: 'custom', label: 'Custom' },
+                ] as const
+              ).map((tab) => (
+                <Chip
+                  key={tab.key}
+                  label={tab.label}
+                  clickable
+                  onClick={() => setDateFilter(tab.key)}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-chip)',
+                    bgcolor: dateFilter === tab.key ? 'var(--accent-primary)' : 'transparent',
+                    color: dateFilter === tab.key ? '#FFFFFF' : 'var(--text-secondary)',
+                    border: '1px solid',
+                    borderColor: dateFilter === tab.key ? 'var(--accent-primary)' : 'var(--card-border)',
+                    '&:hover': {
+                      bgcolor: dateFilter === tab.key ? 'var(--accent-secondary)' : 'rgba(232, 90, 79, 0.08)',
+                    },
+                  }}
+                />
+              ))}
+            </Stack>
+          </Stack>
 
-                <form onSubmit={handleSaveEvent}>
-                  <Stack spacing={2.5}>
-                    <TextField
-                      label="Event Title"
-                      required
-                      fullWidth
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. Finish Project Proposal"
-                    />
-                    <TextField
-                      label="Description"
-                      multiline
-                      rows={3}
-                      fullWidth
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Optional notes, context, or checklist items"
-                    />
-                    <TextField
-                      label="Start Time"
-                      type="datetime-local"
-                      required
-                      fullWidth
-                      value={startTime}
-                      onChange={(e) => handleStartTimeChange(e.target.value)}
-                      slotProps={{
-                        inputLabel: { shrink: true },
-                        htmlInput: {
-                          min: '1900-01-01T00:00',
-                          max: '2099-12-31T23:59',
-                        }
-                      }}
-                    />
-                    <TextField
-                      label="End Time (Deadline)"
-                      type="datetime-local"
-                      required
-                      fullWidth
-                      value={endTime}
-                      onChange={(e) => handleEndTimeChange(e.target.value)}
-                      error={!!timeRangeError}
-                      helperText={timeRangeError}
-                      slotProps={{
-                        inputLabel: { shrink: true },
-                        htmlInput: {
-                          min: startTime || '1900-01-01T00:00',
-                          max: '2099-12-31T23:59',
-                        }
-                      }}
-                    />
-                    <TextField
-                      label="Email Reminder Schedule"
-                      select
-                      fullWidth
-                      value={reminderSchedule}
-                      onChange={(e) => setReminderSchedule(e.target.value as any)}
-                      slotProps={{ select: { native: true } }}
-                    >
-                      <option value="none">No Email Reminder</option>
-                      <option value="at_start">At Event Start Time</option>
-                      <option value="15m">15 Minutes Before Start</option>
-                      <option value="30m">30 Minutes Before Start</option>
-                      <option value="1h">1 Hour Before Start</option>
-                      <option value="custom">Custom Date & Time</option>
-                    </TextField>
-                    {reminderSchedule === 'custom' && (
-                      <TextField
-                        label="Custom Reminder Date & Time"
-                        type="datetime-local"
-                        required
-                        fullWidth
-                        value={customReminderDate}
-                        onChange={(e) => handleCustomReminderChange(e.target.value)}
-                        error={!!reminderTimeError}
-                        helperText={reminderTimeError}
-                        slotProps={{
-                          inputLabel: { shrink: true },
-                          htmlInput: {
-                            min: '1900-01-01T00:00',
-                            max: '2099-12-31T23:59',
-                          }
-                        }}
-                      />
-                    )}
-                    <IconSlideButton
-                      type="submit"
-                      variant="contained"
-                      fullWidth
-                      disabled={isFormInvalid}
-                      startIcon={editingId ? <EditIcon /> : <AddIcon />}
-                      sx={{
-                        bgcolor: 'var(--accent-primary)',
-                        py: 1.5,
-                        fontWeight: 600,
-                        '&:hover': { bgcolor: 'var(--accent-secondary)' },
-                      }}
-                    >
-                      {submitting
-                        ? (editingId ? 'Saving Changes...' : 'Creating...')
-                        : (editingId ? 'Save Changes' : 'Create Event')}
-                    </IconSlideButton>
-                  </Stack>
-                </form>
-              </CardContent>
-            </TiltCard>
+          {/* Custom Date Pickers */}
+          {dateFilter === 'custom' && (
+            <Stack direction="row" spacing={2} sx={{ mt: 2, pt: 2, borderTop: '1px dashed var(--card-border)' }}>
+              <TextField
+                size="small"
+                label="From Date"
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                size="small"
+                label="To Date"
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          )}
+        </Card>
+
+        {/* Kanban Board Columns */}
+        {loading ? (
+          <Box sx={{ py: 8 }}>
+            <LogoLoader />
           </Box>
+        ) : (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                lg: 'repeat(4, 1fr)',
+              },
+              gap: 2.5,
+              alignItems: 'start',
+            }}
+          >
+            {/* Column 1: To Do */}
+            {renderKanbanColumn(
+              'todo',
+              'To Do',
+              columns.todo,
+              '#F59E0B',
+              true,
+              'Todo',
+              handleDragOver,
+              handleDragLeave,
+              () => handleDrop('todo'),
+              dragOverCol === 'todo'
+            )}
 
-          {/* Events List */}
-          <Box sx={{ flex: { xs: '1 1 auto', md: 7 }, display: 'flex', flexDirection: 'column' }}>
-            <TiltCard sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-              <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Your Schedule
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    {events.length} {events.length === 1 ? 'task' : 'tasks'} scheduled
-                  </Typography>
-                </Stack>
+            {/* Column 2: In Progress */}
+            {renderKanbanColumn(
+              'in_progress',
+              'In Progress',
+              columns.in_progress,
+              '#3B82F6',
+              true,
+              'InProgress',
+              handleDragOver,
+              handleDragLeave,
+              () => handleDrop('in_progress'),
+              dragOverCol === 'in_progress'
+            )}
 
-                {loading ? (
-                  <LogoLoader />
-                ) : events.length === 0 ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'column', color: '#8D8D8D', minHeight: '350px' }}>
-                    <CalendarTodayIcon sx={{ fontSize: 48, opacity: 0.5, mb: 2 }} />
-                    <Typography variant="body1">No events scheduled. Plan your first task!</Typography>
-                  </Box>
-                ) : (
-                  <Stack spacing={2} sx={{ overflowY: 'auto', maxHeight: '520px', pr: 1 }}>
-                    {events.map((e) => {
-                      const deadlineStatus = getTaskDeadlineStatus(e);
-                      const isOverdue = !e.isCompleted && new Date() > new Date(e.endTime);
+            {/* Column 3: Completed */}
+            {renderKanbanColumn(
+              'completed',
+              'Completed',
+              columns.completed,
+              '#10B981',
+              true,
+              'Completed',
+              handleDragOver,
+              handleDragLeave,
+              () => handleDrop('completed'),
+              dragOverCol === 'completed'
+            )}
 
-                      return (
-                        <Card
-                          key={e.id}
-                          sx={{
-                            flexShrink: 0,
-                            borderRadius: '12px',
-                            borderLeft: e.isCompleted
-                              ? '4px solid #4CAF50'
-                              : isOverdue
-                              ? '4px solid #ef4444'
-                              : '4px solid var(--accent-primary)',
-                            transition: '0.2s',
-                            bgcolor: e.isCompleted
-                              ? 'rgba(76, 175, 80, 0.08)'
-                              : isOverdue
-                              ? 'rgba(239, 68, 68, 0.08)'
-                              : 'var(--card-bg)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                          }}
-                        >
-                          <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: '14px !important' }}>
-                            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
-                              <Checkbox
-                                checked={e.isCompleted}
-                                onChange={() => handleToggleEvent(e.id, e.isCompleted)}
-                                icon={<RadioButtonUncheckedIcon />}
-                                checkedIcon={<CheckCircleIcon sx={{ color: '#4CAF50' }} />}
-                                sx={{ mt: -0.5 }}
-                              />
-                              <Box sx={{ minWidth: 0, flex: 1 }}>
-                                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
-                                  <Typography
-                                    variant="body1"
-                                    sx={{
-                                      fontWeight: 600,
-                                      color: e.isCompleted ? '#8D8D8D' : '#2D2D2D',
-                                      textDecoration: e.isCompleted ? 'line-through' : 'none',
-                                      wordBreak: 'break-word',
-                                    }}
-                                  >
-                                    {e.title}
-                                  </Typography>
-
-                                  {deadlineStatus && (
-                                    <Tooltip title={deadlineStatus.tooltip} arrow>
-                                      <Chip
-                                        size="small"
-                                        label={deadlineStatus.label}
-                                        color={deadlineStatus.color}
-                                        variant="outlined"
-                                        sx={{ fontSize: '11px', height: '20px', fontWeight: 600 }}
-                                      />
-                                    </Tooltip>
-                                  )}
-
-                                  {e.reminderTime && (
-                                    <Tooltip
-                                      title={
-                                        e.reminderSent
-                                          ? `Reminder email dispatched`
-                                          : `Email reminder scheduled for ${formatDate(e.reminderTime)}`
-                                      }
-                                      arrow
-                                    >
-                                      <Chip
-                                        size="small"
-                                        icon={<NotificationsActiveIcon sx={{ fontSize: '12px !important' }} />}
-                                        label={e.reminderSent ? 'Reminded' : 'Reminder Set'}
-                                        color={e.reminderSent ? 'default' : 'secondary'}
-                                        variant="outlined"
-                                        sx={{ fontSize: '11px', height: '20px', fontWeight: 600 }}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </Stack>
-
-                                {e.description && (
-                                  <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
-                                    {e.description}
-                                  </Typography>
-                                )}
-
-                                <Typography variant="caption" sx={{ color: 'var(--accent-primary)', fontWeight: 500, display: 'block' }}>
-                                  📅 {formatDate(e.startTime)} &rarr; {formatDate(e.endTime)}
-                                </Typography>
-                              </Box>
-                            </Stack>
-
-                            <Stack direction="row" spacing={0.5}>
-                              <IconButton
-                                onClick={() => handleStartEdit(e)}
-                                size="small"
-                                sx={{ color: '#6b7280', '&:hover': { color: 'var(--accent-primary)' } }}
-                                title="Edit Task"
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                onClick={() => handleDeleteEvent(e.id)}
-                                size="small"
-                                sx={{ color: '#E85A4F' }}
-                                title="Delete Task"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </Stack>
-                )}
-              </CardContent>
-            </TiltCard>
+            {/* Column 4: Overdue */}
+            {renderKanbanColumn(
+              'overdue',
+              'Overdue',
+              columns.overdue,
+              '#EF4444',
+              false,
+              'Todo',
+              handleDragOver,
+              handleDragLeave,
+              () => handleDrop('overdue'),
+              dragOverCol === 'overdue'
+            )}
           </Box>
-        </Box>
+        )}
       </Box>
+
+      {/* CREATE / EDIT TASK DIALOG */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)', pb: 1 }}>
+          {editingId ? 'Edit Task' : 'Create New Task'}
+        </DialogTitle>
+        <DialogContent dividers sx={{ borderColor: 'var(--card-border)' }}>
+          {timeRangeError && (
+            <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 2, borderRadius: '10px', fontSize: '13px' }}>
+              {timeRangeError}
+            </Alert>
+          )}
+
+          <form onSubmit={handleSaveTask} id="planner-form">
+            <Stack spacing={2.2} sx={{ pt: 1 }}>
+              <TextField
+                label="Task Title"
+                required
+                fullWidth
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Design Landing Page Wireframes"
+              />
+
+              <TextField
+                label="Description & Notes"
+                multiline
+                rows={2}
+                fullWidth
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional task brief or checklist..."
+              />
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Column / Status</InputLabel>
+                  <Select
+                    value={targetStatus}
+                    label="Column / Status"
+                    onChange={(e) => setTargetStatus(e.target.value)}
+                  >
+                    <MenuItem value="Todo">To Do</MenuItem>
+                    <MenuItem value="InProgress">In Progress</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth size="small">
+                  <InputLabel>Priority</InputLabel>
+                  <Select
+                    value={priority}
+                    label="Priority"
+                    onChange={(e) => setPriority(e.target.value)}
+                  >
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
+                    <MenuItem value="Urgent">Urgent</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth size="small">
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={category}
+                    label="Category"
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    <MenuItem value="Design">Design</MenuItem>
+                    <MenuItem value="Development">Development</MenuItem>
+                    <MenuItem value="Research">Research</MenuItem>
+                    <MenuItem value="Meetings">Meetings</MenuItem>
+                    <MenuItem value="Personal">Personal</MenuItem>
+                    <MenuItem value="General">General</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Start Time"
+                  type="datetime-local"
+                  required
+                  fullWidth
+                  size="small"
+                  value={startTime}
+                  onChange={(e) => {
+                    const val = sanitizeDateTimeInput(e.target.value);
+                    setStartTime(val);
+                    if (endTime) setTimeRangeError(validateRange(val, endTime));
+                  }}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { min: '1900-01-01T00:00', max: '2099-12-31T23:59' },
+                  }}
+                />
+
+                <TextField
+                  label="End Time (Deadline)"
+                  type="datetime-local"
+                  required
+                  fullWidth
+                  size="small"
+                  value={endTime}
+                  onChange={(e) => {
+                    const val = sanitizeDateTimeInput(e.target.value);
+                    setEndTime(val);
+                    if (startTime) setTimeRangeError(validateRange(startTime, val));
+                  }}
+                  error={!!timeRangeError}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { min: startTime || '1900-01-01T00:00', max: '2099-12-31T23:59' },
+                  }}
+                />
+              </Stack>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Reminder Notification</InputLabel>
+                <Select
+                  value={reminderSchedule}
+                  label="Reminder Notification"
+                  onChange={(e) => setReminderSchedule(e.target.value as any)}
+                >
+                  <MenuItem value="none">No Reminder</MenuItem>
+                  <MenuItem value="at_start">At Event Start Time</MenuItem>
+                  <MenuItem value="15m">15 Minutes Before Start</MenuItem>
+                  <MenuItem value="30m">30 Minutes Before Start</MenuItem>
+                  <MenuItem value="1h">1 Hour Before Start</MenuItem>
+                  <MenuItem value="custom">Custom Date & Time</MenuItem>
+                </Select>
+              </FormControl>
+
+              {reminderSchedule === 'custom' && (
+                <TextField
+                  label="Custom Reminder Time"
+                  type="datetime-local"
+                  fullWidth
+                  size="small"
+                  value={customReminderDate}
+                  onChange={(e) => setCustomReminderDate(sanitizeDateTimeInput(e.target.value))}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              )}
+            </Stack>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="planner-form"
+            variant="contained"
+            disabled={
+              !title.trim() ||
+              !startTime ||
+              !endTime ||
+              !isValidFourDigitYear(startTime) ||
+              !isValidFourDigitYear(endTime) ||
+              !!timeRangeError ||
+              submitting
+            }
+            sx={{
+              bgcolor: 'var(--accent-primary)',
+              fontWeight: 700,
+              '&:hover': { bgcolor: 'var(--accent-secondary)' },
+            }}
+          >
+            {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Create Task'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* PLANNER LOG & EXCEL EXPORT DIALOG */}
+      <Dialog
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              maxHeight: '90vh',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)', pb: 1 }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <HistoryIcon sx={{ color: 'var(--accent-primary)' }} />
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Planner Activity Log & Export
+              </Typography>
+            </Stack>
+            <IconButton onClick={() => setLogOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ borderColor: 'var(--card-border)' }}>
+          {/* Log Filters Bar */}
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ mb: 2.5, alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ flex: 1 }}>
+              <TextField
+                size="small"
+                placeholder="Search log..."
+                value={logSearch}
+                onChange={(e) => {
+                  setLogSearch(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 18 }} />,
+                  },
+                }}
+                sx={{ minWidth: '220px' }}
+              />
+
+              <FormControl size="small" sx={{ minWidth: '140px' }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={logStatusFilter}
+                  label="Status"
+                  onChange={(e) => {
+                    setLogStatusFilter(e.target.value);
+                    setLogPage(0);
+                  }}
+                >
+                  <MenuItem value="All">All Statuses</MenuItem>
+                  <MenuItem value="Todo">To Do</MenuItem>
+                  <MenuItem value="InProgress">In Progress</MenuItem>
+                  <MenuItem value="Completed">Completed</MenuItem>
+                  <MenuItem value="Overdue">Overdue</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: '140px' }}>
+                <InputLabel>Period</InputLabel>
+                <Select
+                  value={logDateFilter}
+                  label="Period"
+                  onChange={(e) => {
+                    setLogDateFilter(e.target.value as any);
+                    setLogPage(0);
+                  }}
+                >
+                  <MenuItem value="all">All Time</MenuItem>
+                  <MenuItem value="today">Today</MenuItem>
+                  <MenuItem value="yesterday">Yesterday</MenuItem>
+                  <MenuItem value="this_week">This Week</MenuItem>
+                  <MenuItem value="this_month">This Month</MenuItem>
+                  <MenuItem value="this_year">This Year</MenuItem>
+                  <MenuItem value="custom">Custom Range</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportPlannerExcel}
+              disabled={logRecords.length === 0}
+              sx={{
+                bgcolor: '#10B981',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: 'var(--radius-button)',
+                '&:hover': { bgcolor: '#059669' },
+              }}
+            >
+              Export Excel ({logRecords.length})
+            </Button>
+          </Stack>
+
+          {logDateFilter === 'custom' && (
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField
+                size="small"
+                label="Log From"
+                type="date"
+                value={logCustomStart}
+                onChange={(e) => {
+                  setLogCustomStart(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                size="small"
+                label="Log To"
+                type="date"
+                value={logCustomEnd}
+                onChange={(e) => {
+                  setLogCustomEnd(e.target.value);
+                  setLogPage(0);
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
+          )}
+
+          {/* Table */}
+          {logRecords.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <Typography variant="body1">No tasks found matching the active log filters.</Typography>
+            </Box>
+          ) : (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'var(--bg-primary)' }}>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Task Title</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Priority</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Schedule</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Deadline Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pagedLogRecords.map((task) => {
+                    const col = getTaskColumn(task);
+                    const isOverdue = col === 'overdue';
+                    return (
+                      <TableRow key={task.id} hover>
+                        <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {task.title}
+                          {task.description && (
+                            <Typography variant="caption" sx={{ display: 'block', color: 'var(--text-secondary)' }}>
+                              {task.description}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={col === 'in_progress' ? 'In Progress' : col === 'overdue' ? 'Overdue (-2)' : col.toUpperCase()}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '11px',
+                              bgcolor:
+                                col === 'completed'
+                                  ? 'rgba(16, 185, 129, 0.15)'
+                                  : col === 'overdue'
+                                  ? 'rgba(239, 68, 68, 0.15)'
+                                  : col === 'in_progress'
+                                  ? 'rgba(59, 130, 246, 0.15)'
+                                  : 'rgba(245, 158, 11, 0.15)',
+                              color:
+                                col === 'completed'
+                                  ? '#10B981'
+                                  : col === 'overdue'
+                                  ? '#EF4444'
+                                  : col === 'in_progress'
+                                  ? '#3B82F6'
+                                  : '#F59E0B',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={task.category || 'General'}
+                            sx={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              bgcolor: CATEGORY_COLORS[task.category || 'General']?.bg,
+                              color: CATEGORY_COLORS[task.category || 'General']?.text,
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontWeight: 700,
+                              color: PRIORITY_COLORS[task.priority || 'Medium'],
+                            }}
+                          >
+                            {task.priority || 'Medium'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {formatTimeRange(task.startTime, task.endTime)}
+                        </TableCell>
+                        <TableCell>
+                          {task.isCompleted ? (
+                            <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 600 }}>
+                              Completed {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : ''}
+                            </Typography>
+                          ) : isOverdue ? (
+                            <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 700 }}>
+                              Overdue (−2 pts)
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                              Active
+                            </Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={logRecords.length}
+                rowsPerPage={logRowsPerPage}
+                page={logPage}
+                onPageChange={(_, p) => setLogPage(p)}
+                onRowsPerPageChange={(e) => {
+                  setLogRowsPerPage(parseInt(e.target.value, 10));
+                  setLogPage(0);
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setLogOpen(false)} sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageWrapper>
   );
+
+  // Helper renderer for a single Kanban Column
+  function renderKanbanColumn(
+    colKey: 'todo' | 'in_progress' | 'completed' | 'overdue',
+    colTitle: string,
+    tasks: PlannerEvent[],
+    accentColor: string,
+    allowCreate: boolean,
+    targetCreateStatus: string,
+    onDragOver: (e: React.DragEvent, col: string) => void,
+    onDragLeave: () => void,
+    onDrop: () => void,
+    isDragOver: boolean
+  ) {
+    return (
+      <Box
+        onDragOver={(e) => onDragOver(e, colKey)}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        sx={{
+          bgcolor: isDragOver ? 'rgba(232, 90, 79, 0.06)' : 'var(--bg-secondary)',
+          borderRadius: 'var(--radius-card)',
+          border: isDragOver ? '2px dashed var(--accent-primary)' : '1px solid var(--card-border)',
+          p: 1.8,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '620px',
+          transition: 'border-color 0.2s, background-color 0.2s',
+        }}
+      >
+        {/* Column Header */}
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: accentColor }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+              {colTitle}
+            </Typography>
+            <Chip
+              label={tasks.length}
+              size="small"
+              sx={{
+                fontWeight: 800,
+                fontSize: '11px',
+                height: 20,
+                bgcolor: 'var(--card-bg)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--card-border)',
+              }}
+            />
+          </Stack>
+
+          {allowCreate && (
+            <IconButton
+              size="small"
+              onClick={() => openCreateDialog(targetCreateStatus)}
+              sx={{
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.12)', color: 'var(--accent-primary)' },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+        </Stack>
+
+        {/* Task Cards List */}
+        <Stack spacing={1.6} sx={{ flex: 1, overflowY: 'auto' }}>
+          {tasks.length === 0 ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 6,
+                color: 'var(--text-secondary)',
+                border: '1px dashed var(--card-border)',
+                borderRadius: '12px',
+                bgcolor: 'var(--card-bg)',
+                opacity: 0.7,
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                No tasks
+              </Typography>
+            </Box>
+          ) : (
+            tasks.map((task) => {
+              const catConfig = CATEGORY_COLORS[task.category || 'General'] || CATEGORY_COLORS.General;
+              const isOverdue = colKey === 'overdue';
+
+              return (
+                <Card
+                  key={task.id}
+                  draggable={colKey !== 'overdue'}
+                  onDragStart={(e) => handleDragStart(e, task.id)}
+                  sx={{
+                    borderRadius: '14px',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid',
+                    borderColor: isOverdue ? 'rgba(239, 68, 68, 0.4)' : 'var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    cursor: colKey === 'overdue' ? 'default' : 'grab',
+                    transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'var(--shadow-hover)',
+                    },
+                    '&:active': { cursor: colKey === 'overdue' ? 'default' : 'grabbing' },
+                  }}
+                >
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    {/* Card Top: Badges and Actions */}
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
+                      <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                        <Chip
+                          label={task.category || 'General'}
+                          size="small"
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '10.5px',
+                            height: 20,
+                            bgcolor: catConfig.bg,
+                            color: catConfig.text,
+                            border: `1px solid ${catConfig.border}`,
+                          }}
+                        />
+                        <Chip
+                          label={task.priority || 'Medium'}
+                          size="small"
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '10px',
+                            height: 18,
+                            bgcolor: 'transparent',
+                            color: PRIORITY_COLORS[task.priority || 'Medium'],
+                            border: `1px solid ${PRIORITY_COLORS[task.priority || 'Medium']}`,
+                          }}
+                        />
+                      </Stack>
+
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleToggleComplete(task)}
+                          title={task.isCompleted ? 'Mark Incomplete' : 'Complete Task'}
+                          sx={{
+                            color: task.isCompleted ? '#10B981' : 'var(--text-secondary)',
+                            p: 0.5,
+                          }}
+                        >
+                          {task.isCompleted ? (
+                            <CheckCircleIcon sx={{ fontSize: 18 }} />
+                          ) : (
+                            <RadioButtonUncheckedIcon sx={{ fontSize: 18 }} />
+                          )}
+                        </IconButton>
+                        <IconButton size="small" onClick={() => openEditDialog(task)} sx={{ p: 0.5 }}>
+                          <EditIcon sx={{ fontSize: 17, color: 'var(--text-secondary)' }} />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDeleteTask(task.id)} sx={{ p: 0.5 }}>
+                          <DeleteIcon sx={{ fontSize: 17, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }} />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+
+                    {/* Task Title */}
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        mb: 0.8,
+                        textDecoration: task.isCompleted ? 'line-through' : 'none',
+                        opacity: task.isCompleted ? 0.75 : 1,
+                        fontSize: '14.5px',
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {task.title}
+                    </Typography>
+
+                    {/* Optional description snippet */}
+                    {task.description && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'var(--text-secondary)',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          mb: 1.2,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {task.description}
+                      </Typography>
+                    )}
+
+                    {/* Card Footer: Time and Overdue indicator */}
+                    <Stack
+                      direction="row"
+                      sx={{
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        pt: 1,
+                        borderTop: '1px solid var(--border-color)',
+                        fontSize: '11.5px',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                        <ScheduleIcon sx={{ fontSize: 13, color: isOverdue ? '#EF4444' : 'var(--text-secondary)' }} />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '11px',
+                            fontWeight: isOverdue ? 700 : 500,
+                            color: isOverdue ? '#EF4444' : 'var(--text-secondary)',
+                          }}
+                        >
+                          {formatTimeRange(task.startTime, task.endTime)}
+                        </Typography>
+                      </Stack>
+
+                      {isOverdue && (
+                        <Tooltip title="−2 Life Score penalty applied permanently for missing deadline">
+                          <Chip
+                            label="−2 Penalty"
+                            size="small"
+                            sx={{
+                              height: 18,
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              bgcolor: 'rgba(239, 68, 68, 0.12)',
+                              color: '#EF4444',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </Stack>
+      </Box>
+    );
+  }
 };
 
 export default Planner;

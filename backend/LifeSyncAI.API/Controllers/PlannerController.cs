@@ -55,6 +55,15 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}/status")]
+        public async Task<ActionResult<ApiResponse<bool>>> UpdateStatus(int id, [FromBody] UpdatePlannerStatusDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _plannerService.UpdateStatusAsync(id, dto.Status, userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpPut("{id}/toggle")]
         public async Task<ActionResult<ApiResponse<bool>>> ToggleEvent(int id, [FromBody] bool isCompleted)
         {

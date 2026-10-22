@@ -20,5 +20,11 @@ namespace LifeSyncAI.Core.DTO.Input.Planner
         public DateTime? ReminderTime { get; set; }
 
         public bool IsCompleted { get; set; } = false;
+
+        public string? Status { get; set; } = "Todo";
+
+        public string? Priority { get; set; } = "Medium";
+
+        public string? Category { get; set; } = "General";
     }
 }

@@ -60,6 +60,9 @@ namespace LifeSyncAI.Core.Services
                     EndTime = e.EndTime,
                     IsCompleted = e.IsCompleted,
                     CompletedAt = e.CompletedAt,
+                    Status = e.Status ?? (e.IsCompleted ? "Completed" : (nowUtc > e.EndTime ? "Overdue" : "Todo")),
+                    Priority = e.Priority ?? "Medium",
+                    Category = e.Category ?? "General",
                     MissedDeadlinePenalized = e.MissedDeadlinePenalized,
                     ReminderSent = e.ReminderSent,
                     ReminderTime = e.ReminderTime,
@@ -85,6 +88,9 @@ namespace LifeSyncAI.Core.Services
                 }
 
                 var nowUtc = DateTime.UtcNow;
+                bool isCompleted = dto.IsCompleted || string.Equals(dto.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+                string status = dto.Status?.Trim() ?? (isCompleted ? "Completed" : "Todo");
+
                 var plannerEvent = new PlannerEvent
                 {
                     Title = dto.Title.Trim(),
@@ -92,8 +98,11 @@ namespace LifeSyncAI.Core.Services
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                     ReminderTime = dto.ReminderTime,
-                    IsCompleted = dto.IsCompleted,
-                    CompletedAt = dto.IsCompleted ? nowUtc : null,
+                    IsCompleted = isCompleted,
+                    CompletedAt = isCompleted ? nowUtc : null,
+                    Status = status,
+                    Priority = dto.Priority?.Trim() ?? "Medium",
+                    Category = dto.Category?.Trim() ?? "General",
                     CreatedAt = nowUtc,
                     UpdatedAt = nowUtc,
                     UserId = userId
@@ -111,6 +120,9 @@ namespace LifeSyncAI.Core.Services
                     EndTime = plannerEvent.EndTime,
                     IsCompleted = plannerEvent.IsCompleted,
                     CompletedAt = plannerEvent.CompletedAt,
+                    Status = plannerEvent.Status ?? "Todo",
+                    Priority = plannerEvent.Priority ?? "Medium",
+                    Category = plannerEvent.Category ?? "General",
                     MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
                     ReminderSent = plannerEvent.ReminderSent,
                     ReminderTime = plannerEvent.ReminderTime,
@@ -161,34 +173,44 @@ namespace LifeSyncAI.Core.Services
                     }
                 }
 
-                // Note: A deadline change cannot retroactively erase an already-recorded penalty.
-                // MissedDeadlinePenalized is preserved.
-
                 plannerEvent.Title = dto.Title.Trim();
                 plannerEvent.Description = dto.Description?.Trim();
                 plannerEvent.StartTime = dto.StartTime;
                 plannerEvent.EndTime = dto.EndTime;
                 plannerEvent.UpdatedAt = nowUtc;
 
-                if (dto.IsCompleted && !plannerEvent.IsCompleted)
+                if (!string.IsNullOrWhiteSpace(dto.Priority)) plannerEvent.Priority = dto.Priority.Trim();
+                if (!string.IsNullOrWhiteSpace(dto.Category)) plannerEvent.Category = dto.Category.Trim();
+
+                bool willBeCompleted = dto.IsCompleted || string.Equals(dto.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+
+                if (willBeCompleted && !plannerEvent.IsCompleted)
                 {
                     plannerEvent.IsCompleted = true;
                     plannerEvent.CompletedAt = nowUtc;
+                    plannerEvent.Status = "Completed";
                     if (nowUtc > plannerEvent.EndTime)
                     {
                         plannerEvent.MissedDeadlinePenalized = true;
                         plannerEvent.PenaltyAppliedAt ??= nowUtc;
                     }
                 }
-                else if (!dto.IsCompleted && plannerEvent.IsCompleted)
+                else if (!willBeCompleted && plannerEvent.IsCompleted)
                 {
                     plannerEvent.IsCompleted = false;
                     plannerEvent.CompletedAt = null;
+                    plannerEvent.Status = !string.IsNullOrWhiteSpace(dto.Status) && !string.Equals(dto.Status, "Completed", StringComparison.OrdinalIgnoreCase)
+                        ? dto.Status.Trim()
+                        : "Todo";
                     if (nowUtc > plannerEvent.EndTime)
                     {
                         plannerEvent.MissedDeadlinePenalized = true;
                         plannerEvent.PenaltyAppliedAt ??= nowUtc;
                     }
+                }
+                else if (!string.IsNullOrWhiteSpace(dto.Status))
+                {
+                    plannerEvent.Status = dto.Status.Trim();
                 }
 
                 await _context.SaveChangesAsync();
@@ -202,6 +224,9 @@ namespace LifeSyncAI.Core.Services
                     EndTime = plannerEvent.EndTime,
                     IsCompleted = plannerEvent.IsCompleted,
                     CompletedAt = plannerEvent.CompletedAt,
+                    Status = plannerEvent.Status ?? (plannerEvent.IsCompleted ? "Completed" : "Todo"),
+                    Priority = plannerEvent.Priority ?? "Medium",
+                    Category = plannerEvent.Category ?? "General",
                     MissedDeadlinePenalized = plannerEvent.MissedDeadlinePenalized,
                     ReminderSent = plannerEvent.ReminderSent,
                     ReminderTime = plannerEvent.ReminderTime,
@@ -213,6 +238,53 @@ namespace LifeSyncAI.Core.Services
             catch (Exception ex)
             {
                 return ApiResponse<PlannerEventDto>.Fail($"Failed to update planner event: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> UpdateStatusAsync(int id, string status, int userId)
+        {
+            try
+            {
+                var plannerEvent = await _context.PlannerEvents.FindAsync(id);
+                if (plannerEvent == null || plannerEvent.UserId != userId)
+                {
+                    return ApiResponse<bool>.Fail("Event not found or access denied.");
+                }
+
+                var nowUtc = DateTime.UtcNow;
+                string newStatus = status.Trim();
+                plannerEvent.Status = newStatus;
+                plannerEvent.UpdatedAt = nowUtc;
+
+                if (string.Equals(newStatus, "Completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    plannerEvent.IsCompleted = true;
+                    plannerEvent.CompletedAt = nowUtc;
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                        await RecordPersistentPenaltyLogAsync(plannerEvent);
+                    }
+                }
+                else
+                {
+                    plannerEvent.IsCompleted = false;
+                    plannerEvent.CompletedAt = null;
+                    if (nowUtc > plannerEvent.EndTime)
+                    {
+                        plannerEvent.MissedDeadlinePenalized = true;
+                        plannerEvent.PenaltyAppliedAt ??= nowUtc;
+                        await RecordPersistentPenaltyLogAsync(plannerEvent);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return ApiResponse<bool>.Success(true, "Event status updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.Fail($"Failed to update status: {ex.Message}");
             }
         }
 
@@ -228,6 +300,7 @@ namespace LifeSyncAI.Core.Services
 
                 var nowUtc = DateTime.UtcNow;
                 plannerEvent.IsCompleted = isCompleted;
+                plannerEvent.Status = isCompleted ? "Completed" : "Todo";
                 plannerEvent.UpdatedAt = nowUtc;
 
                 if (isCompleted)
