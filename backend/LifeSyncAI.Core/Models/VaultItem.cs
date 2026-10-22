@@ -5,6 +5,7 @@ namespace LifeSyncAI.Core.Models
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string EncryptedContent { get; set; } = string.Empty;
+        public string? Category { get; set; } = "Login"; // 'Login', 'Note', 'Link'
         public int UserId { get; set; }
     }
 }

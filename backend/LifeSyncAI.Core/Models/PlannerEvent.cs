@@ -11,6 +11,9 @@ namespace LifeSyncAI.Core.Models
         public DateTime EndTime { get; set; }
         public bool IsCompleted { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public string? Status { get; set; } = "Todo"; // 'Todo', 'InProgress', 'Completed'
+        public string? Priority { get; set; } = "Medium"; // 'Low', 'Medium', 'High', 'Urgent'
+        public string? Category { get; set; } = "General"; // 'Work', 'Personal', 'Design', 'Development', etc.
         public bool ReminderSent { get; set; } = false;
         public DateTime? ReminderSentAt { get; set; }
         public DateTime? ReminderTime { get; set; }

@@ -22,6 +22,7 @@ namespace LifeSyncAI.Core.Database
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<HealthLog> HealthLogs { get; set; }
         public DbSet<JobApplication> JobApplications { get; set; }
+        public DbSet<JobApplicationStageHistory> JobApplicationStageHistories { get; set; }
         public DbSet<VaultItem> VaultItems { get; set; }
         public DbSet<AiRecommendation> AiRecommendations { get; set; }
         public DbSet<RecurringItem> RecurringItems { get; set; }
@@ -84,6 +85,18 @@ namespace LifeSyncAI.Core.Database
                 .HasOne<User>()
                 .WithMany()
                 .HasForeignKey(j => j.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JobApplication>()
+                .HasMany(j => j.StageHistories)
+                .WithOne()
+                .HasForeignKey(h => h.JobApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JobApplicationStageHistory>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<VaultItem>()
