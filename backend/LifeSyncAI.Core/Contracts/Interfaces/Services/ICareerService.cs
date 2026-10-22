@@ -10,7 +10,8 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
     {
         Task<ApiResponse<List<JobApplicationDto>>> GetApplicationsAsync(int userId);
         Task<ApiResponse<JobApplicationDto>> CreateApplicationAsync(CreateJobApplicationDto dto, int userId);
-        Task<ApiResponse<bool>> UpdateStatusAsync(int id, string status);
-        Task<ApiResponse<bool>> DeleteApplicationAsync(int id);
+        Task<ApiResponse<JobApplicationDto>> UpdateApplicationAsync(int id, UpdateJobApplicationDto dto, int userId);
+        Task<ApiResponse<bool>> UpdateStatusAsync(int id, string status, string? note = null, int userId = 0);
+        Task<ApiResponse<bool>> DeleteApplicationAsync(int id, int userId = 0);
     }
 }

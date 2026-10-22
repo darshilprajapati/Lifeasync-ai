@@ -15,13 +15,19 @@ namespace LifeSyncAI.Core.DTO.Input.Career
         public string Position { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Status is required.")]
-        [RegularExpression("^(Applied|Interviewing|Offered|Rejected)$", ErrorMessage = "Status must be: Applied, Interviewing, Offered, or Rejected.")]
+        [RegularExpression("^(Saved|Applied|Interview|Interviewing|Offered|Rejected)$", ErrorMessage = "Status must be: Saved, Applied, Interview, Interviewing, Offered, or Rejected.")]
         public string Status { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Applied Date is required.")]
         public DateTime AppliedDate { get; set; }
 
         public string? Notes { get; set; }
+        public string? Category { get; set; }
+        public string? JobType { get; set; }
+        public string? WorkplaceType { get; set; }
+        public string? Location { get; set; }
+        public string? Salary { get; set; }
+        public string? Url { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
@@ -33,7 +39,6 @@ namespace LifeSyncAI.Core.DTO.Input.Career
                     new[] { nameof(AppliedDate) });
             }
 
-            // Check leap year / calendar day validity
             int year = AppliedDate.Year;
             int month = AppliedDate.Month;
             int day = AppliedDate.Day;

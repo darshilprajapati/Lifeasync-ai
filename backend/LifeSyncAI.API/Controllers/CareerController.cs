@@ -40,10 +40,20 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<JobApplicationDto>>> UpdateApplication(int id, [FromBody] UpdateJobApplicationDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _careerService.UpdateApplicationAsync(id, dto, userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpPut("{id}/status")]
         public async Task<ActionResult<ApiResponse<bool>>> UpdateStatus(int id, [FromBody] UpdateJobApplicationStatusDto dto)
         {
-            var result = await _careerService.UpdateStatusAsync(id, dto.Status);
+            var userId = GetUserId();
+            var result = await _careerService.UpdateStatusAsync(id, dto.Status, dto.Note, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -51,7 +61,8 @@ namespace LifeSyncAI.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteApplication(int id)
         {
-            var result = await _careerService.DeleteApplicationAsync(id);
+            var userId = GetUserId();
+            var result = await _careerService.DeleteApplicationAsync(id, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
