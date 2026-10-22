@@ -40,10 +40,20 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<VaultItemDto>>> UpdateItem(int id, [FromBody] UpdateVaultItemDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _vaultService.UpdateItemAsync(id, dto, userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteItem(int id)
         {
-            var result = await _vaultService.DeleteItemAsync(id);
+            var userId = GetUserId();
+            var result = await _vaultService.DeleteItemAsync(id, userId);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

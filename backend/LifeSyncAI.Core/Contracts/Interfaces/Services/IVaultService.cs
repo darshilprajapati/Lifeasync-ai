@@ -10,6 +10,7 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
     {
         Task<ApiResponse<List<VaultItemDto>>> GetItemsAsync(int userId);
         Task<ApiResponse<VaultItemDto>> CreateItemAsync(CreateVaultItemDto dto, int userId);
-        Task<ApiResponse<bool>> DeleteItemAsync(int id);
+        Task<ApiResponse<VaultItemDto>> UpdateItemAsync(int id, UpdateVaultItemDto dto, int userId);
+        Task<ApiResponse<bool>> DeleteItemAsync(int id, int userId = 0);
     }
 }

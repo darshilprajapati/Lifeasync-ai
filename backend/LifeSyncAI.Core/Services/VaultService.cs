@@ -54,6 +54,7 @@ namespace LifeSyncAI.Core.Services
                         Id = item.Id,
                         Title = item.Title,
                         Content = decryptedContent,
+                        Category = item.Category ?? "Login",
                         UserId = item.UserId
                     });
                 }
@@ -74,8 +75,9 @@ namespace LifeSyncAI.Core.Services
 
                 var item = new VaultItem
                 {
-                    Title = dto.Title,
+                    Title = dto.Title.Trim(),
                     EncryptedContent = encryptedContent,
+                    Category = !string.IsNullOrWhiteSpace(dto.Category) ? dto.Category.Trim() : "Login",
                     UserId = userId
                 };
 
@@ -85,8 +87,9 @@ namespace LifeSyncAI.Core.Services
                 var createdDto = new VaultItemDto
                 {
                     Id = item.Id,
-                    Title = dto.Title,
+                    Title = dto.Title.Trim(),
                     Content = dto.Content, // return decrypted to the user on success
+                    Category = item.Category,
                     UserId = userId
                 };
 
@@ -98,13 +101,50 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<bool>> DeleteItemAsync(int id)
+        public async Task<ApiResponse<VaultItemDto>> UpdateItemAsync(int id, UpdateVaultItemDto dto, int userId)
+        {
+            try
+            {
+                var item = await _context.VaultItems.FindAsync(id);
+                if (item == null || item.UserId != userId)
+                {
+                    return ApiResponse<VaultItemDto>.Fail("Vault item not found or access denied.");
+                }
+
+                item.Title = dto.Title.Trim();
+                item.EncryptedContent = EncryptString(dto.Content);
+                item.Category = !string.IsNullOrWhiteSpace(dto.Category) ? dto.Category.Trim() : (item.Category ?? "Login");
+
+                await _context.SaveChangesAsync();
+
+                var updatedDto = new VaultItemDto
+                {
+                    Id = item.Id,
+                    Title = item.Title,
+                    Content = dto.Content,
+                    Category = item.Category,
+                    UserId = userId
+                };
+
+                return ApiResponse<VaultItemDto>.Success(updatedDto, "Vault item updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<VaultItemDto>.Fail($"Failed to update vault item: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> DeleteItemAsync(int id, int userId = 0)
         {
             try
             {
                 var item = await _context.VaultItems.FindAsync(id);
                 if (item != null)
                 {
+                    if (userId > 0 && item.UserId != userId)
+                    {
+                        return ApiResponse<bool>.Fail("Vault item not found or access denied.");
+                    }
                     _context.VaultItems.Remove(item);
                     await _context.SaveChangesAsync();
                 }
