@@ -459,9 +459,6 @@ const Finance: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const openCreateIncomeDialog = () => openCreateDialog('Income');
-  const openCreateExpenseDialog = () => openCreateDialog('Expense');
-
   const openEditDialog = (t: Transaction) => {
     setEditingId(t.id);
     setDescription(t.description);
@@ -700,6 +697,24 @@ const Finance: React.FC = () => {
               }}
             >
               Finance Log
+            </IconSlideButton>
+
+            <IconSlideButton
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportFinanceExcel}
+              disabled={transactions.length === 0}
+              sx={{
+                borderColor: 'var(--card-border)',
+                color: 'var(--text-primary)',
+                bgcolor: 'var(--card-bg)',
+                fontWeight: 650,
+                px: 2,
+                py: 0.8,
+                '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981', color: '#10B981' },
+              }}
+            >
+              Export Records
             </IconSlideButton>
 
             <IconSlideButton
@@ -1279,11 +1294,32 @@ const Finance: React.FC = () => {
                       <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
                         Recurring Commitments
                       </Typography>
-                      <Chip
-                        size="small"
-                        label={`${recurringItems.length} Active`}
-                        sx={{ fontWeight: 700, fontSize: '11px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
-                      />
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Chip
+                          size="small"
+                          label={`${recurringItems.length} Active`}
+                          sx={{ fontWeight: 700, fontSize: '11px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
+                        />
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => setRecDialogOpen(true)}
+                          sx={{
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            py: 0.3,
+                            px: 1.2,
+                            borderColor: 'var(--accent-primary)',
+                            color: 'var(--accent-primary)',
+                            '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
+                          }}
+                        >
+                          + Add Bill
+                        </Button>
+                      </Stack>
                     </Stack>
                     <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
                       Fixed loans, subscriptions, and utility bills
@@ -1291,8 +1327,18 @@ const Finance: React.FC = () => {
 
                     <Stack spacing={1.2} sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
                       {recurringItems.length === 0 ? (
-                        <Box sx={{ py: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          <Typography variant="body2">No recurring bills added yet.</Typography>
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1.5 }}>
+                            No recurring bills added yet.
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => setRecDialogOpen(true)}
+                            sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: 'var(--accent-primary)', fontWeight: 700 }}
+                          >
+                            + Add First Bill
+                          </Button>
                         </Box>
                       ) : (
                         recurringItems.map((item) => (
@@ -1345,156 +1391,6 @@ const Finance: React.FC = () => {
                 </ResizablePanel>
               </Grid>
             </Grid>
-
-            {/* Quick Actions & Finance Operations Panel (Replaces duplicated Latest Transactions) */}
-            <ResizablePanel pageId="finance" componentId="finance_actions_operations" defaultHeight={180} minHeight={140} maxHeight={360}>
-              <TiltCard
-                maxTilt={1.5}
-                enableRefraction={false}
-                sx={{
-                  p: 2.5,
-                  borderRadius: 'var(--radius-card)',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                }}
-              >
-                <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1.5, mb: 2 }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                      Finance Operations & Snapshot
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                      Quick financial workflows, budgeting controls, and transaction audit log
-                    </Typography>
-                  </Box>
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-                    <Chip
-                      size="small"
-                      label={`${transactions.length} Total Tx`}
-                      sx={{ fontWeight: 700, bgcolor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${budgets.length} Budgets`}
-                      sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6' }}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${recurringItems.length} Commitments`}
-                      sx={{ fontWeight: 700, bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
-                    />
-                  </Stack>
-                </Stack>
-
-                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.2 }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<TrendingUpIcon />}
-                    onClick={openCreateIncomeDialog}
-                    sx={{
-                      bgcolor: '#10B981',
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { bgcolor: '#059669' },
-                    }}
-                  >
-                    + Add Income
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<TrendingDownIcon />}
-                    onClick={openCreateExpenseDialog}
-                    sx={{
-                      bgcolor: '#EF4444',
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { bgcolor: '#DC2626' },
-                    }}
-                  >
-                    - Add Expense
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={handleOpenCreateBudget}
-                    sx={{
-                      borderColor: 'var(--accent-primary)',
-                      color: 'var(--accent-primary)',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' },
-                    }}
-                  >
-                    Manage Budgets
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AccountBalanceWalletIcon />}
-                    onClick={() => setRecDialogOpen(true)}
-                    sx={{
-                      borderColor: 'var(--card-border)',
-                      color: 'var(--text-primary)',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { borderColor: 'var(--accent-primary)', bgcolor: 'var(--bg-secondary)' },
-                    }}
-                  >
-                    + Recurring Commitment
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<HistoryIcon />}
-                    onClick={() => setLogOpen(true)}
-                    sx={{
-                      borderColor: 'var(--card-border)',
-                      color: 'var(--text-primary)',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { borderColor: 'var(--accent-primary)', bgcolor: 'var(--bg-secondary)' },
-                    }}
-                  >
-                    Open Finance Log
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FileDownloadIcon />}
-                    onClick={handleExportFinanceExcel}
-                    disabled={transactions.length === 0}
-                    sx={{
-                      borderColor: 'var(--card-border)',
-                      color: 'var(--text-primary)',
-                      fontWeight: 700,
-                      borderRadius: '10px',
-                      textTransform: 'none',
-                      px: 2,
-                      py: 0.9,
-                      '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10B981' },
-                    }}
-                  >
-                    Export Records
-                  </Button>
-                </Stack>
-              </TiltCard>
-            </ResizablePanel>
           </Stack>
         )}
       </Box>
