@@ -103,6 +103,42 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("budgets")]
+        public async Task<ActionResult<ApiResponse<List<UserBudgetDto>>>> GetBudgets()
+        {
+            var userId = GetUserId();
+            var result = await _financeService.GetBudgetsAsync(userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("budgets")]
+        public async Task<ActionResult<ApiResponse<UserBudgetDto>>> CreateBudget([FromBody] CreateUserBudgetDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _financeService.CreateBudgetAsync(userId, dto);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPut("budgets/{id}")]
+        public async Task<ActionResult<ApiResponse<UserBudgetDto>>> UpdateBudget(int id, [FromBody] UpdateUserBudgetDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _financeService.UpdateBudgetAsync(userId, id, dto);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpDelete("budgets/{id}")]
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteBudget(int id)
+        {
+            var userId = GetUserId();
+            var result = await _financeService.DeleteBudgetAsync(userId, id);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         private int GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

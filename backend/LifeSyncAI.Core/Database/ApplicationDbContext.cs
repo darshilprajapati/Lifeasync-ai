@@ -33,6 +33,8 @@ namespace LifeSyncAI.Core.Database
         public DbSet<WorkoutDayExercise> WorkoutDayExercises { get; set; }
         public DbSet<WorkoutSessionLog> WorkoutSessionLogs { get; set; }
         public DbSet<WorkoutExerciseCompletion> WorkoutExerciseCompletions { get; set; }
+        public DbSet<UserHealthTarget> UserHealthTargets { get; set; }
+        public DbSet<UserBudget> UserBudgets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,6 +48,8 @@ namespace LifeSyncAI.Core.Database
             modelBuilder.Entity<WorkoutDayExercise>().HasQueryFilter(de => !de.IsDeleted);
             modelBuilder.Entity<WorkoutSessionLog>().HasQueryFilter(s => !s.IsDeleted);
             modelBuilder.Entity<WorkoutExerciseCompletion>().HasQueryFilter(wec => !wec.IsDeleted);
+            modelBuilder.Entity<UserHealthTarget>().HasQueryFilter(h => !h.IsDeleted);
+            modelBuilder.Entity<UserBudget>().HasQueryFilter(b => !b.IsDeleted);
 
             // Unique index on Email for quick lookup and data integrity
             modelBuilder.Entity<User>()
@@ -61,6 +65,23 @@ namespace LifeSyncAI.Core.Database
             modelBuilder.Entity<RecurringItem>()
                 .Property(r => r.Amount)
                 .HasPrecision(18, 2);
+
+            // Configure decimal precision for UserBudget MonthlyLimit
+            modelBuilder.Entity<UserBudget>()
+                .Property(b => b.MonthlyLimit)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<UserHealthTarget>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserBudget>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Configure Foreign Key relationships with cascade delete
             modelBuilder.Entity<PlannerEvent>()

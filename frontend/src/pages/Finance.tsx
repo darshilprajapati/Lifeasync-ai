@@ -84,6 +84,16 @@ export interface RecurringItem {
   isPaid: boolean;
 }
 
+export interface UserBudget {
+  id: number;
+  category: string;
+  monthlyLimit: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  isOverBudget: boolean;
+}
+
 export interface FinanceSummary {
   totalIncome: number;
   totalExpense: number;
@@ -191,6 +201,15 @@ const Finance: React.FC = () => {
   const [recDueDate, setRecDueDate] = useState('');
   const [recSubmitting, setRecSubmitting] = useState(false);
 
+  // User Budgets State
+  const [budgets, setBudgets] = useState<UserBudget[]>([]);
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [editingBudgetId, setEditingBudgetId] = useState<number | null>(null);
+  const [budgetCategory, setBudgetCategory] = useState('Food');
+  const [customBudgetCategory, setCustomBudgetCategory] = useState('');
+  const [budgetLimit, setBudgetLimit] = useState('');
+  const [budgetSubmitting, setBudgetSubmitting] = useState(false);
+
   // Finance Log State
   const [logOpen, setLogOpen] = useState(false);
   const [logSearch, setLogSearch] = useState('');
@@ -204,15 +223,17 @@ const Finance: React.FC = () => {
   const fetchFinanceData = async () => {
     try {
       setLoading(true);
-      const [transRes, sumRes, recRes] = await Promise.all([
+      const [transRes, sumRes, recRes, budgetRes] = await Promise.all([
         apiClient.get('/api/finance'),
         apiClient.get('/api/finance/summary'),
         apiClient.get('/api/finance/recurring'),
+        apiClient.get('/api/finance/budgets'),
       ]);
 
       if (transRes.data.isSuccess) setTransactions(transRes.data.data);
       if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
       if (recRes.data.isSuccess) setRecurringItems(recRes.data.data);
+      if (budgetRes.data?.isSuccess) setBudgets(budgetRes.data.data);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to load financial records.';
       setError(msg);
@@ -317,35 +338,112 @@ const Finance: React.FC = () => {
     }));
   }, [incomeVsExpenseData]);
 
-  // Budget Planner progress (Standard categories vs actual spend)
+  // Budget Planner progress (Configurable categories vs actual spend)
   const budgetProgressData = useMemo(() => {
-    const targets: Record<string, number> = {
-      Food: 600,
-      Shopping: 400,
-      Entertainment: 300,
-      Utilities: 250,
-      Transport: 200,
-    };
-
     const actuals: Record<string, number> = {};
     filteredTransactions
       .filter((t) => t.type.toLowerCase() === 'expense')
       .forEach((t) => {
         const cat = t.category || 'Other';
-        actuals[cat] = (actuals[cat] || 0) + t.amount;
+        actuals[cat.toLowerCase()] = (actuals[cat.toLowerCase()] || 0) + t.amount;
       });
 
-    return Object.entries(targets).map(([cat, budget]) => {
-      const spent = actuals[cat] || 0;
-      const pct = Math.min(Math.round((spent / budget) * 100), 100);
+    return budgets.map((b) => {
+      const spent = actuals[b.category.toLowerCase()] || 0;
+      const budget = b.monthlyLimit;
+      const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+      const remaining = budget - spent;
       return {
-        category: cat,
+        id: b.id,
+        category: b.category,
         spent,
         budget,
         pct,
+        remaining,
+        isOverBudget: spent > budget,
       };
     });
-  }, [filteredTransactions]);
+  }, [budgets, filteredTransactions]);
+
+  // Budget CRUD handlers
+  const handleOpenCreateBudget = () => {
+    setEditingBudgetId(null);
+    setBudgetCategory('Food');
+    setCustomBudgetCategory('');
+    setBudgetLimit('');
+    setBudgetDialogOpen(true);
+  };
+
+  const handleOpenEditBudget = (b: { id: number; category: string; budget: number }) => {
+    setEditingBudgetId(b.id);
+    const standardCategories = ['Food', 'Shopping', 'Entertainment', 'Utilities', 'Transport', 'Housing', 'Healthcare', 'Education', 'Personal'];
+    if (standardCategories.includes(b.category)) {
+      setBudgetCategory(b.category);
+      setCustomBudgetCategory('');
+    } else {
+      setBudgetCategory('Other');
+      setCustomBudgetCategory(b.category);
+    }
+    setBudgetLimit(b.budget.toString());
+    setBudgetDialogOpen(true);
+  };
+
+  const handleSaveBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalCategory = budgetCategory === 'Other' ? customBudgetCategory.trim() : budgetCategory.trim();
+    if (!finalCategory) {
+      notify.warning('Please specify a category name.', 'Validation Error');
+      return;
+    }
+    const limitVal = parseFloat(budgetLimit);
+    if (isNaN(limitVal) || limitVal <= 0) {
+      notify.warning('Please enter a valid positive monthly limit.', 'Validation Error');
+      return;
+    }
+
+    setBudgetSubmitting(true);
+    try {
+      if (editingBudgetId) {
+        const res = await apiClient.put(`/api/finance/budgets/${editingBudgetId}`, {
+          category: finalCategory,
+          monthlyLimit: limitVal,
+        });
+        if (res.data.isSuccess) {
+          notify.success(`Budget for "${finalCategory}" updated to ${formatINR(limitVal, false)}!`, 'Budget Updated');
+          setBudgetDialogOpen(false);
+          await fetchFinanceData();
+        }
+      } else {
+        const res = await apiClient.post('/api/finance/budgets', {
+          category: finalCategory,
+          monthlyLimit: limitVal,
+        });
+        if (res.data.isSuccess) {
+          notify.success(`Budget for "${finalCategory}" set to ${formatINR(limitVal, false)}!`, 'Budget Created');
+          setBudgetDialogOpen(false);
+          await fetchFinanceData();
+        }
+      }
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || 'Failed to save budget.';
+      notify.error(errMsg, 'Budget Error');
+    } finally {
+      setBudgetSubmitting(false);
+    }
+  };
+
+  const handleDeleteBudget = async (id: number, catName: string) => {
+    try {
+      const res = await apiClient.delete(`/api/finance/budgets/${id}`);
+      if (res.data.isSuccess) {
+        notify.info(`Budget limit for "${catName}" removed.`, 'Budget Deleted');
+        await fetchFinanceData();
+      }
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || 'Failed to delete budget.';
+      notify.error(errMsg, 'Delete Failed');
+    }
+  };
 
   // Transaction CRUD handlers
   const openCreateDialog = () => {
@@ -978,41 +1076,153 @@ const Finance: React.FC = () => {
                     p: 2.5,
                     borderRadius: 'var(--radius-card)',
                     height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
                   }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                    Budget Planner
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
-                    Current spend vs typical monthly limits
-                  </Typography>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                        Budget Planner
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block' }}>
+                        Current spend vs custom monthly limits
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+                      onClick={handleOpenCreateBudget}
+                      sx={{
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        py: 0.3,
+                        px: 1.2,
+                        borderColor: 'var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
+                      }}
+                    >
+                      Set Budget
+                    </Button>
+                  </Stack>
 
-                  <Stack spacing={2.2} sx={{ mt: 1 }}>
-                    {budgetProgressData.map((b) => (
-                      <Box key={b.category}>
-                        <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {b.category}
-                          </Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: b.pct >= 90 ? '#EF4444' : 'var(--text-secondary)' }}>
-                            {formatINR(b.spent, false)} / {formatINR(b.budget, false)} ({b.pct}%)
-                          </Typography>
-                        </Stack>
-                        <LinearProgress
-                          variant="determinate"
-                          value={b.pct}
-                          sx={{
-                            height: 7,
-                            borderRadius: 4,
-                            bgcolor: 'var(--bg-secondary)',
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: b.pct >= 90 ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--accent-primary)',
-                              borderRadius: 4,
-                            },
-                          }}
-                        />
+                  <Stack spacing={1.5} sx={{ mt: 0.5, flex: 1, overflowY: 'auto', pr: 0.5 }}>
+                    {budgetProgressData.length === 0 ? (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1.5 }}>
+                          No monthly category budgets configured yet.
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={handleOpenCreateBudget}
+                          sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: 'var(--accent-primary)', fontWeight: 700 }}
+                        >
+                          + Set First Budget
+                        </Button>
                       </Box>
-                    ))}
+                    ) : (
+                      budgetProgressData.map((b) => (
+                        <Box
+                          key={b.id || b.category}
+                          sx={{
+                            p: 1.2,
+                            borderRadius: '10px',
+                            bgcolor: 'var(--bg-secondary)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: 'var(--card-bg)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            }
+                          }}
+                        >
+                          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '12px' }}>
+                                {b.category}
+                              </Typography>
+                              {b.isOverBudget && (
+                                <Chip
+                                  label="Over Budget"
+                                  size="small"
+                                  sx={{
+                                    height: 18,
+                                    fontSize: '9.5px',
+                                    fontWeight: 800,
+                                    bgcolor: 'rgba(239, 68, 68, 0.12)',
+                                    color: '#EF4444',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    borderRadius: '4px'
+                                  }}
+                                />
+                              )}
+                            </Stack>
+                            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: '11px',
+                                  color: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--text-secondary)'
+                                }}
+                              >
+                                {formatINR(b.spent, false)} / {formatINR(b.budget, false)} ({b.pct}%)
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEditBudget(b)}
+                                sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: 'var(--accent-primary)' } }}
+                                title="Edit limit"
+                              >
+                                <EditIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteBudget(b.id, b.category)}
+                                sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }}
+                                title="Delete category budget"
+                              >
+                                <DeleteIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </Stack>
+                          </Stack>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(b.pct, 100)}
+                            sx={{
+                              height: 6,
+                              borderRadius: 3,
+                              bgcolor: 'var(--card-border)',
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--accent-primary)',
+                                borderRadius: 3,
+                              },
+                            }}
+                          />
+                          <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.4 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontSize: '10px',
+                                fontWeight: b.isOverBudget ? 700 : 500,
+                                color: b.isOverBudget ? '#EF4444' : 'var(--text-secondary)'
+                              }}
+                            >
+                              {b.isOverBudget
+                                ? `Exceeded limit by ${formatINR(Math.abs(b.remaining), false)}`
+                                : `${formatINR(b.remaining, false)} remaining`}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                              {b.pct}% used
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      ))
+                    )}
                   </Stack>
                 </TiltCard>
               </Grid>
@@ -1612,6 +1822,117 @@ const Finance: React.FC = () => {
           <Button onClick={() => setLogOpen(false)} sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
             Close
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* MANAGE BUDGET MODAL */}
+      <Dialog
+        open={budgetDialogOpen}
+        onClose={() => setBudgetDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 'var(--radius-card)',
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'var(--text-primary)', pb: 1 }}>
+          {editingBudgetId ? 'Edit Budget Category' : 'Set Category Budget'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: '12px !important' }}>
+          <form id="budget-form" onSubmit={handleSaveBudget}>
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Expense Category</InputLabel>
+                <Select
+                  value={budgetCategory}
+                  label="Expense Category"
+                  onChange={(e) => setBudgetCategory(e.target.value)}
+                >
+                  <MenuItem value="Food">Food & Dining</MenuItem>
+                  <MenuItem value="Shopping">Shopping</MenuItem>
+                  <MenuItem value="Entertainment">Entertainment</MenuItem>
+                  <MenuItem value="Utilities">Utilities & Bills</MenuItem>
+                  <MenuItem value="Transport">Transport & Fuel</MenuItem>
+                  <MenuItem value="Housing">Housing & Rent</MenuItem>
+                  <MenuItem value="Healthcare">Healthcare & Medical</MenuItem>
+                  <MenuItem value="Education">Education</MenuItem>
+                  <MenuItem value="Personal">Personal Care</MenuItem>
+                  <MenuItem value="Other">Custom Category...</MenuItem>
+                </Select>
+              </FormControl>
+
+              {budgetCategory === 'Other' && (
+                <TextField
+                  label="Custom Category Name"
+                  placeholder="e.g. Subscriptions, Travel"
+                  required
+                  fullWidth
+                  size="small"
+                  value={customBudgetCategory}
+                  onChange={(e) => setCustomBudgetCategory(e.target.value)}
+                />
+              )}
+
+              <TextField
+                label="Monthly Limit (₹)"
+                type="number"
+                placeholder="e.g. 6000"
+                required
+                fullWidth
+                size="small"
+                value={budgetLimit}
+                onChange={(e) => setBudgetLimit(e.target.value)}
+                slotProps={{
+                  htmlInput: { min: 1, step: 'any' },
+                  input: {
+                    startAdornment: <Typography sx={{ mr: 1, color: 'var(--text-secondary)', fontWeight: 700 }}>₹</Typography>,
+                  },
+                }}
+              />
+            </Stack>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          {editingBudgetId ? (
+            <Button
+              color="error"
+              size="small"
+              onClick={() => {
+                const b = budgets.find((x) => x.id === editingBudgetId);
+                if (b) handleDeleteBudget(b.id, b.category);
+                setBudgetDialogOpen(false);
+              }}
+              startIcon={<DeleteIcon />}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Delete
+            </Button>
+          ) : <Box />}
+          <Stack direction="row" spacing={1}>
+            <Button onClick={() => setBudgetDialogOpen(false)} sx={{ color: 'var(--text-secondary)' }}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="budget-form"
+              variant="contained"
+              disabled={budgetSubmitting || !budgetLimit || parseFloat(budgetLimit) <= 0}
+              sx={{
+                bgcolor: 'var(--accent-primary)',
+                fontWeight: 700,
+                textTransform: 'none',
+                '&:hover': { bgcolor: 'var(--accent-secondary)' },
+              }}
+            >
+              {budgetSubmitting ? 'Saving...' : editingBudgetId ? 'Update Budget' : 'Save Budget'}
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
     </PageWrapper>

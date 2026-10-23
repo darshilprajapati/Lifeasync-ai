@@ -204,5 +204,96 @@ namespace LifeSyncAI.Core.Services
                 return ApiResponse<bool>.Fail($"Failed to delete health log: {ex.Message}");
             }
         }
+
+        public async Task<ApiResponse<HealthTargetsDto>> GetTargetsAsync(int userId)
+        {
+            try
+            {
+                var target = await _context.UserHealthTargets.FirstOrDefaultAsync(t => t.UserId == userId);
+                if (target == null)
+                {
+                    return ApiResponse<HealthTargetsDto>.Success(new HealthTargetsDto
+                    {
+                        DailyWaterGoal = 2000,
+                        DailySleepGoal = 8.0,
+                        DailyStepsGoal = 10000,
+                        DailyCalorieGoal = 2000,
+                        DailyWorkoutGoal = 30
+                    }, "Default health targets retrieved.");
+                }
+
+                return ApiResponse<HealthTargetsDto>.Success(new HealthTargetsDto
+                {
+                    DailyWaterGoal = target.DailyWaterGoal,
+                    DailySleepGoal = target.DailySleepGoal,
+                    DailyStepsGoal = target.DailyStepsGoal,
+                    DailyCalorieGoal = target.DailyCalorieGoal,
+                    DailyWorkoutGoal = target.DailyWorkoutGoal
+                }, "User health targets retrieved.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<HealthTargetsDto>.Fail($"Failed to load health targets: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<HealthTargetsDto>> UpdateTargetsAsync(int userId, UpdateHealthTargetsDto dto)
+        {
+            try
+            {
+                if (dto.DailyWaterGoal < 250 || dto.DailyWaterGoal > 10000)
+                    return ApiResponse<HealthTargetsDto>.Fail("Daily water goal must be between 250 ml and 10,000 ml.");
+
+                if (dto.DailySleepGoal < 1 || dto.DailySleepGoal > 24)
+                    return ApiResponse<HealthTargetsDto>.Fail("Daily sleep goal must be between 1 and 24 hours.");
+
+                if (dto.DailyStepsGoal < 500 || dto.DailyStepsGoal > 100000)
+                    return ApiResponse<HealthTargetsDto>.Fail("Daily steps goal must be between 500 and 100,000 steps.");
+
+                if (dto.DailyCalorieGoal < 500 || dto.DailyCalorieGoal > 10000)
+                    return ApiResponse<HealthTargetsDto>.Fail("Daily calorie target must be between 500 and 10,000 kcal.");
+
+                if (dto.DailyWorkoutGoal < 5 || dto.DailyWorkoutGoal > 360)
+                    return ApiResponse<HealthTargetsDto>.Fail("Daily workout duration goal must be between 5 and 360 minutes.");
+
+                var target = await _context.UserHealthTargets.FirstOrDefaultAsync(t => t.UserId == userId);
+                if (target == null)
+                {
+                    target = new UserHealthTarget
+                    {
+                        UserId = userId,
+                        DailyWaterGoal = dto.DailyWaterGoal,
+                        DailySleepGoal = dto.DailySleepGoal,
+                        DailyStepsGoal = dto.DailyStepsGoal,
+                        DailyCalorieGoal = dto.DailyCalorieGoal,
+                        DailyWorkoutGoal = dto.DailyWorkoutGoal
+                    };
+                    await _context.UserHealthTargets.AddAsync(target);
+                }
+                else
+                {
+                    target.DailyWaterGoal = dto.DailyWaterGoal;
+                    target.DailySleepGoal = dto.DailySleepGoal;
+                    target.DailyStepsGoal = dto.DailyStepsGoal;
+                    target.DailyCalorieGoal = dto.DailyCalorieGoal;
+                    target.DailyWorkoutGoal = dto.DailyWorkoutGoal;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return ApiResponse<HealthTargetsDto>.Success(new HealthTargetsDto
+                {
+                    DailyWaterGoal = target.DailyWaterGoal,
+                    DailySleepGoal = target.DailySleepGoal,
+                    DailyStepsGoal = target.DailyStepsGoal,
+                    DailyCalorieGoal = target.DailyCalorieGoal,
+                    DailyWorkoutGoal = target.DailyWorkoutGoal
+                }, "Health targets updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<HealthTargetsDto>.Fail($"Failed to update health targets: {ex.Message}");
+            }
+        }
     }
 }

@@ -11,5 +11,7 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         Task<ApiResponse<List<HealthLogDto>>> GetLogsAsync(int userId, System.DateTime clientDate);
         Task<ApiResponse<HealthLogDto>> CreateLogAsync(CreateHealthLogDto dto, int userId, System.DateTime clientDate);
         Task<ApiResponse<bool>> DeleteLogAsync(int id);
+        Task<ApiResponse<HealthTargetsDto>> GetTargetsAsync(int userId);
+        Task<ApiResponse<HealthTargetsDto>> UpdateTargetsAsync(int userId, UpdateHealthTargetsDto dto);
     }
 }

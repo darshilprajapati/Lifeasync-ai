@@ -65,6 +65,24 @@ namespace LifeSyncAI.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("targets")]
+        public async Task<ActionResult<ApiResponse<HealthTargetsDto>>> GetTargets()
+        {
+            var userId = GetUserId();
+            var result = await _healthService.GetTargetsAsync(userId);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPut("targets")]
+        public async Task<ActionResult<ApiResponse<HealthTargetsDto>>> UpdateTargets([FromBody] UpdateHealthTargetsDto dto)
+        {
+            var userId = GetUserId();
+            var result = await _healthService.UpdateTargetsAsync(userId, dto);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         private int GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

@@ -20,5 +20,11 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
         Task<ApiResponse<RecurringItem>> CreateRecurringItemAsync(CreateRecurringItemDto dto, int userId);
         Task<ApiResponse<bool>> DeleteRecurringItemAsync(int id, int userId = 0);
         Task<ApiResponse<TransactionDto>> PayRecurringItemAsync(int id, int userId);
+
+        // Budget Planner
+        Task<ApiResponse<List<UserBudgetDto>>> GetBudgetsAsync(int userId);
+        Task<ApiResponse<UserBudgetDto>> CreateBudgetAsync(int userId, CreateUserBudgetDto dto);
+        Task<ApiResponse<UserBudgetDto>> UpdateBudgetAsync(int userId, int id, UpdateUserBudgetDto dto);
+        Task<ApiResponse<bool>> DeleteBudgetAsync(int userId, int id);
     }
 }
