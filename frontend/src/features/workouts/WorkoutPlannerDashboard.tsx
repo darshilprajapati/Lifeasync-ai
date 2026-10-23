@@ -36,9 +36,15 @@ import TodayIcon from '@mui/icons-material/Today';
 
 interface WorkoutPlannerDashboardProps {
   onWorkoutChanged?: () => void;
+  openAiGeneratorExternal?: boolean;
+  onCloseAiGeneratorExternal?: () => void;
 }
 
-export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = ({ onWorkoutChanged }) => {
+export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = ({
+  onWorkoutChanged,
+  openAiGeneratorExternal = false,
+  onCloseAiGeneratorExternal
+}) => {
   const { notify } = useNotification();
   const { designSystem, mode } = useThemeSystem();
   const isProf = designSystem === 'professional';
@@ -56,6 +62,12 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
   const [aiGeneratorOpen, setAiGeneratorOpen] = useState<boolean>(false);
   const [syncingPlanner, setSyncingPlanner] = useState<boolean>(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openAiGeneratorExternal) {
+      setAiGeneratorOpen(true);
+    }
+  }, [openAiGeneratorExternal]);
 
   const loadData = async (date: Date) => {
     try {
@@ -477,7 +489,10 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
       {/* AI Plan Generator Dialog */}
       <Dialog
         open={aiGeneratorOpen}
-        onClose={() => setAiGeneratorOpen(false)}
+        onClose={() => {
+          setAiGeneratorOpen(false);
+          onCloseAiGeneratorExternal?.();
+        }}
         maxWidth="md"
         fullWidth
         slotProps={{ paper: { sx: { borderRadius: '20px', p: 1 } } }}
@@ -486,14 +501,23 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Generate Custom Weekly Routine
           </Typography>
-          <IconButton onClick={() => setAiGeneratorOpen(false)} size="small">
+          <IconButton
+            onClick={() => {
+              setAiGeneratorOpen(false);
+              onCloseAiGeneratorExternal?.();
+            }}
+            size="small"
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, pt: '14px !important', overflowY: 'auto' }}>
           <AiPlanGeneratorWidget
             onPlanApplied={handlePlanApplied}
-            onClose={() => setAiGeneratorOpen(false)}
+            onClose={() => {
+              setAiGeneratorOpen(false);
+              onCloseAiGeneratorExternal?.();
+            }}
           />
         </DialogContent>
       </Dialog>

@@ -37,6 +37,8 @@ import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -330,20 +332,23 @@ const Vault: React.FC = () => {
               </Box>
             </Stack>
 
-            <Chip
-              icon={<VerifiedUserIcon sx={{ color: '#2563EB !important', fontSize: '18px !important' }} />}
-              label="AES-256 Protected"
-              sx={{
-                bgcolor: 'rgba(59, 130, 246, 0.08)',
-                color: '#2563EB',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                fontWeight: 700,
-                fontSize: '13px',
-                py: 2,
-                px: 1.2,
-                borderRadius: '12px',
-              }}
-            />
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <ResetLayoutButton pageId="vault" pageName="Vault" />
+              <Chip
+                icon={<VerifiedUserIcon sx={{ color: '#2563EB !important', fontSize: '18px !important' }} />}
+                label="AES-256 Protected"
+                sx={{
+                  bgcolor: 'rgba(59, 130, 246, 0.08)',
+                  color: '#2563EB',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  py: 2,
+                  px: 1.2,
+                  borderRadius: '12px',
+                }}
+              />
+            </Stack>
           </Stack>
         </TiltCard>
 
@@ -718,8 +723,9 @@ const Vault: React.FC = () => {
             </Typography>
           </Box>
         ) : (
-          <Grid container spacing={2.5}>
-            {filteredItems.map((item) => {
+          <ResizablePanel pageId="vault" componentId="vault_items_grid" defaultHeight={620} minHeight={380} maxHeight={1400}>
+            <Grid container spacing={2.5} sx={{ height: '100%', overflowY: 'auto', pr: 0.5 }}>
+              {filteredItems.map((item) => {
               const data = parseContent(item.content, item.category);
               const isRevealed = !!revealedIds[item.id];
 
@@ -916,7 +922,8 @@ const Vault: React.FC = () => {
               );
             })}
           </Grid>
-        )}
+        </ResizablePanel>
+      )}
       </Box>
 
       {/* CREATE / EDIT SECRET MODAL */}

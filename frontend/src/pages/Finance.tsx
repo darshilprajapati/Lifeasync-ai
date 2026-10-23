@@ -59,6 +59,8 @@ import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -214,6 +216,7 @@ const Finance: React.FC = () => {
   const [logOpen, setLogOpen] = useState(false);
   const [logSearch, setLogSearch] = useState('');
   const [logTypeFilter, setLogTypeFilter] = useState<string>('All');
+  const [logCategoryFilter, setLogCategoryFilter] = useState<string>('All');
   const [logDateFilter, setLogDateFilter] = useState<DateFilterOption>('all');
   const [logCustomStart, setLogCustomStart] = useState('');
   const [logCustomEnd, setLogCustomEnd] = useState('');
@@ -446,15 +449,18 @@ const Finance: React.FC = () => {
   };
 
   // Transaction CRUD handlers
-  const openCreateDialog = () => {
+  const openCreateDialog = (initialType: 'Expense' | 'Income' = 'Expense') => {
     setEditingId(null);
     setDescription('');
     setAmount('');
-    setType('Expense');
-    setCategory('Food');
+    setType(initialType);
+    setCategory(initialType === 'Income' ? 'Salary' : 'Food');
     setTxDate(new Date().toISOString().slice(0, 10));
     setDialogOpen(true);
   };
+
+  const openCreateIncomeDialog = () => openCreateDialog('Income');
+  const openCreateExpenseDialog = () => openCreateDialog('Expense');
 
   const openEditDialog = (t: Transaction) => {
     setEditingId(t.id);
@@ -588,6 +594,15 @@ const Finance: React.FC = () => {
     }
   };
 
+  // Distinct category list for filtering
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    transactions.forEach((t) => {
+      if (t.category) set.add(t.category);
+    });
+    return Array.from(set).sort();
+  }, [transactions]);
+
   // Log filter calculations and Excel Export
   const logRecords = useMemo(() => {
     return transactions.filter((t) => {
@@ -598,6 +613,10 @@ const Finance: React.FC = () => {
         if (logTypeFilter.toLowerCase() !== t.type.toLowerCase()) return false;
       }
 
+      if (logCategoryFilter !== 'All') {
+        if (logCategoryFilter.toLowerCase() !== t.category.toLowerCase()) return false;
+      }
+
       if (logSearch.trim()) {
         const q = logSearch.toLowerCase();
         const descMatch = t.description.toLowerCase().includes(q);
@@ -606,7 +625,7 @@ const Finance: React.FC = () => {
       }
       return true;
     });
-  }, [transactions, logDateFilter, logCustomStart, logCustomEnd, logTypeFilter, logSearch]);
+  }, [transactions, logDateFilter, logCustomStart, logCustomEnd, logTypeFilter, logCategoryFilter, logSearch]);
 
   const pagedLogRecords = useMemo(() => {
     const start = logPage * logRowsPerPage;
@@ -703,7 +722,7 @@ const Finance: React.FC = () => {
             <IconSlideButton
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={openCreateDialog}
+              onClick={() => openCreateDialog('Expense')}
               sx={{
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
@@ -716,6 +735,8 @@ const Finance: React.FC = () => {
             >
               Add Transaction
             </IconSlideButton>
+
+            <ResetLayoutButton pageId="finance" pageName="Finance" />
           </Stack>
         </Stack>
 
@@ -902,504 +923,578 @@ const Finance: React.FC = () => {
             <Grid container spacing={2.5}>
               {/* Income vs Expenses 6-Month Chart */}
               <Grid size={{ xs: 12, lg: 8 }}>
-                <TiltCard
-                  maxTilt={2}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 'var(--radius-card)',
-                    minHeight: '380px',
-                    height: '100%',
-                  }}
-                >
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                        Income vs Expenses
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                        6-month overview of cash performance
-                      </Typography>
-                    </Box>
-                  </Stack>
+                <ResizablePanel pageId="finance" componentId="income_vs_expense" defaultHeight={380} minHeight={280} maxHeight={650}>
+                  <TiltCard
+                    maxTilt={2}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 'var(--radius-card)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                          Income vs Expenses
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                          6-month overview of cash performance
+                        </Typography>
+                      </Box>
+                    </Stack>
 
-                  {incomeVsExpenseData.every((d) => d.income === 0 && d.expense === 0) ? (
-                    <Box sx={{ py: 10, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      <Typography variant="body2">No historical transaction data available to plot chart.</Typography>
-                    </Box>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={incomeVsExpenseData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                          </linearGradient>
-                          <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#E85A4F" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#E85A4F" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                        <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={12} />
-                        <YAxis stroke="var(--text-secondary)" fontSize={12} />
-                        <RechartsTooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--card-bg)',
-                            borderColor: 'var(--card-border)',
-                            borderRadius: '10px',
-                            color: 'var(--text-primary)',
-                          }}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="income" name="Income" stroke="#10B981" fillOpacity={1} fill="url(#incomeGrad)" strokeWidth={2.5} />
-                        <Area type="monotone" dataKey="expense" name="Expense" stroke="#E85A4F" fillOpacity={1} fill="url(#expenseGrad)" strokeWidth={2.5} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-                </TiltCard>
+                    {incomeVsExpenseData.every((d) => d.income === 0 && d.expense === 0) ? (
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                        <Typography variant="body2">No historical transaction data available to plot chart.</Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ flex: 1, width: '100%', minHeight: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={incomeVsExpenseData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                                <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                              </linearGradient>
+                              <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#E85A4F" stopOpacity={0.4} />
+                                <stop offset="95%" stopColor="#E85A4F" stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                            <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={12} />
+                            <YAxis stroke="var(--text-secondary)" fontSize={12} />
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--card-bg)',
+                                borderColor: 'var(--card-border)',
+                                borderRadius: '10px',
+                                color: 'var(--text-primary)',
+                              }}
+                            />
+                            <Legend />
+                            <Area type="monotone" dataKey="income" name="Income" stroke="#10B981" fillOpacity={1} fill="url(#incomeGrad)" strokeWidth={2.5} />
+                            <Area type="monotone" dataKey="expense" name="Expense" stroke="#E85A4F" fillOpacity={1} fill="url(#expenseGrad)" strokeWidth={2.5} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    )}
+                  </TiltCard>
+                </ResizablePanel>
               </Grid>
 
               {/* Spending Breakdown Donut Chart */}
               <Grid size={{ xs: 12, lg: 4 }}>
-                <TiltCard
-                  maxTilt={2}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 'var(--radius-card)',
-                    minHeight: '380px',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                    Spending Breakdown
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2 }}>
-                    Distribution across expense categories
-                  </Typography>
+                <ResizablePanel pageId="finance" componentId="spending_breakdown" defaultHeight={380} minHeight={280} maxHeight={650}>
+                  <TiltCard
+                    maxTilt={2}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 'var(--radius-card)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Spending Breakdown
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2 }}>
+                      Distribution across expense categories
+                    </Typography>
 
-                  {categoryChartData.length === 0 ? (
-                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                      <Typography variant="body2">No expense records logged in this period.</Typography>
-                    </Box>
-                  ) : (
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie
-                            data={categoryChartData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={55}
-                            outerRadius={80}
-                            paddingAngle={3}
-                          >
-                            {categoryChartData.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                            ))}
-                          </Pie>
+                    {categoryChartData.length === 0 ? (
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                        <Typography variant="body2">No expense records logged in this period.</Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <ResponsiveContainer width="100%" height={190}>
+                          <PieChart>
+                            <Pie
+                              data={categoryChartData}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={50}
+                              outerRadius={75}
+                              paddingAngle={3}
+                            >
+                              {categoryChartData.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--card-bg)',
+                                borderColor: 'var(--card-border)',
+                                borderRadius: '10px',
+                                color: 'var(--text-primary)',
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        <Stack spacing={0.8} sx={{ width: '100%', mt: 1 }}>
+                          {categoryChartData.slice(0, 4).map((c, i) => (
+                            <Stack key={c.name} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                                <Typography variant="caption" sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                                  {c.name}
+                                </Typography>
+                              </Stack>
+                              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                {formatINR(c.value, false)} ({c.percent}%)
+                              </Typography>
+                            </Stack>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
+                  </TiltCard>
+                </ResizablePanel>
+              </Grid>
+            </Grid>
+
+            {/* Bottom Row: Cash Flow + Budget Planner Progress + Recurring Commitments */}
+            <Grid container spacing={2.5}>
+              {/* Monthly Net Cash Flow */}
+              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                <ResizablePanel pageId="finance" componentId="cash_flow" defaultHeight={380} minHeight={260} maxHeight={600}>
+                  <TiltCard
+                    maxTilt={2.5}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 'var(--radius-card)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Cash Flow
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
+                      Monthly net savings (positive vs deficit)
+                    </Typography>
+
+                    <Box sx={{ flex: 1, width: '100%', minHeight: 200 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={cashFlowData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                          <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
+                          <YAxis stroke="var(--text-secondary)" fontSize={11} />
                           <RechartsTooltip
                             contentStyle={{
                               backgroundColor: 'var(--card-bg)',
                               borderColor: 'var(--card-border)',
                               borderRadius: '10px',
-                              color: 'var(--text-primary)',
                             }}
                           />
-                        </PieChart>
+                          <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
                       </ResponsiveContainer>
-
-                      <Stack spacing={0.8} sx={{ width: '100%', mt: 1 }}>
-                        {categoryChartData.slice(0, 4).map((c, i) => (
-                          <Stack key={c.name} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                              <Typography variant="caption" sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                                {c.name}
-                              </Typography>
-                            </Stack>
-                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
-                              {formatINR(c.value, false)} ({c.percent}%)
-                            </Typography>
-                          </Stack>
-                        ))}
-                      </Stack>
                     </Box>
-                  )}
-                </TiltCard>
-              </Grid>
-            </Grid>
-
-            {/* Bottom Row: Cash Flow + Budget Planner Progress + Recent Transactions */}
-            <Grid container spacing={2.5}>
-              {/* Monthly Net Cash Flow */}
-              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-                <TiltCard
-                  maxTilt={2.5}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 'var(--radius-card)',
-                    height: '100%',
-                  }}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                    Cash Flow
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
-                    Monthly net savings (positive vs deficit)
-                  </Typography>
-
-                  <ResponsiveContainer width="100%" height={230}>
-                    <BarChart data={cashFlowData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                      <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
-                      <YAxis stroke="var(--text-secondary)" fontSize={11} />
-                      <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--card-bg)',
-                          borderColor: 'var(--card-border)',
-                          borderRadius: '10px',
-                        }}
-                      />
-                      <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </TiltCard>
+                  </TiltCard>
+                </ResizablePanel>
               </Grid>
 
               {/* Budget Planner Progress */}
               <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-                <TiltCard
-                  maxTilt={2.5}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 'var(--radius-card)',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                        Budget Planner
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block' }}>
-                        Current spend vs custom monthly limits
-                      </Typography>
-                    </Box>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<AddIcon sx={{ fontSize: 15 }} />}
-                      onClick={handleOpenCreateBudget}
-                      sx={{
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        py: 0.3,
-                        px: 1.2,
-                        borderColor: 'var(--accent-primary)',
-                        color: 'var(--accent-primary)',
-                        '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
-                      }}
-                    >
-                      Set Budget
-                    </Button>
-                  </Stack>
-
-                  <Stack spacing={1.5} sx={{ mt: 0.5, flex: 1, overflowY: 'auto', pr: 0.5 }}>
-                    {budgetProgressData.length === 0 ? (
-                      <Box sx={{ py: 4, textAlign: 'center' }}>
-                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1.5 }}>
-                          No monthly category budgets configured yet.
+                <ResizablePanel pageId="finance" componentId="budget_planner" defaultHeight={380} minHeight={260} maxHeight={600}>
+                  <TiltCard
+                    maxTilt={2.5}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 'var(--radius-card)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                          Budget Planner
                         </Typography>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={handleOpenCreateBudget}
-                          sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: 'var(--accent-primary)', fontWeight: 700 }}
-                        >
-                          + Set First Budget
-                        </Button>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block' }}>
+                          Current spend vs custom monthly limits
+                        </Typography>
                       </Box>
-                    ) : (
-                      budgetProgressData.map((b) => (
-                        <Box
-                          key={b.id || b.category}
-                          sx={{
-                            p: 1.2,
-                            borderRadius: '10px',
-                            bgcolor: 'var(--bg-secondary)',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              bgcolor: 'var(--card-bg)',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                            }
-                          }}
-                        >
-                          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '12px' }}>
-                                {b.category}
-                              </Typography>
-                              {b.isOverBudget && (
-                                <Chip
-                                  label="Over Budget"
-                                  size="small"
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+                        onClick={handleOpenCreateBudget}
+                        sx={{
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          py: 0.3,
+                          px: 1.2,
+                          borderColor: 'var(--accent-primary)',
+                          color: 'var(--accent-primary)',
+                          '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
+                        }}
+                      >
+                        Set Budget
+                      </Button>
+                    </Stack>
+
+                    <Stack spacing={1.5} sx={{ mt: 0.5, flex: 1, overflowY: 'auto', pr: 0.5 }}>
+                      {budgetProgressData.length === 0 ? (
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1.5 }}>
+                            No monthly category budgets configured yet.
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={handleOpenCreateBudget}
+                            sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: 'var(--accent-primary)', fontWeight: 700 }}
+                          >
+                            + Set First Budget
+                          </Button>
+                        </Box>
+                      ) : (
+                        budgetProgressData.map((b) => (
+                          <Box
+                            key={b.id || b.category}
+                            sx={{
+                              p: 1.2,
+                              borderRadius: '10px',
+                              bgcolor: 'var(--bg-secondary)',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                bgcolor: 'var(--card-bg)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                              }
+                            }}
+                          >
+                            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                              <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '12px' }}>
+                                  {b.category}
+                                </Typography>
+                                {b.isOverBudget && (
+                                  <Chip
+                                    label="Over Budget"
+                                    size="small"
+                                    sx={{
+                                      height: 18,
+                                      fontSize: '9.5px',
+                                      fontWeight: 800,
+                                      bgcolor: 'rgba(239, 68, 68, 0.12)',
+                                      color: '#EF4444',
+                                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                                      borderRadius: '4px'
+                                    }}
+                                  />
+                                )}
+                              </Stack>
+                              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                                <Typography
+                                  variant="caption"
                                   sx={{
-                                    height: 18,
-                                    fontSize: '9.5px',
-                                    fontWeight: 800,
-                                    bgcolor: 'rgba(239, 68, 68, 0.12)',
-                                    color: '#EF4444',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                    borderRadius: '4px'
+                                    fontWeight: 700,
+                                    fontSize: '11px',
+                                    color: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--text-secondary)'
                                   }}
-                                />
-                              )}
+                                >
+                                  {formatINR(b.spent, false)} / {formatINR(b.budget, false)} ({b.pct}%)
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleOpenEditBudget(b)}
+                                  sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: 'var(--accent-primary)' } }}
+                                  title="Edit limit"
+                                >
+                                  <EditIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteBudget(b.id, b.category)}
+                                  sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }}
+                                  title="Delete category budget"
+                                >
+                                  <DeleteIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                              </Stack>
                             </Stack>
-                            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.min(b.pct, 100)}
+                              sx={{
+                                height: 6,
+                                borderRadius: 3,
+                                bgcolor: 'var(--card-border)',
+                                '& .MuiLinearProgress-bar': {
+                                  bgcolor: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--accent-primary)',
+                                  borderRadius: 3,
+                                },
+                              }}
+                            />
+                            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.4 }}>
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  fontWeight: 700,
-                                  fontSize: '11px',
-                                  color: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--text-secondary)'
+                                  fontSize: '10px',
+                                  fontWeight: b.isOverBudget ? 700 : 500,
+                                  color: b.isOverBudget ? '#EF4444' : 'var(--text-secondary)'
                                 }}
                               >
-                                {formatINR(b.spent, false)} / {formatINR(b.budget, false)} ({b.pct}%)
+                                {b.isOverBudget
+                                  ? `Exceeded limit by ${formatINR(Math.abs(b.remaining), false)}`
+                                  : `${formatINR(b.remaining, false)} remaining`}
                               </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEditBudget(b)}
-                                sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: 'var(--accent-primary)' } }}
-                                title="Edit limit"
-                              >
-                                <EditIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteBudget(b.id, b.category)}
-                                sx={{ p: 0.3, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }}
-                                title="Delete category budget"
-                              >
-                                <DeleteIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
+                              <Typography variant="caption" sx={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                                {b.pct}% used
+                              </Typography>
                             </Stack>
-                          </Stack>
-                          <LinearProgress
-                            variant="determinate"
-                            value={Math.min(b.pct, 100)}
-                            sx={{
-                              height: 6,
-                              borderRadius: 3,
-                              bgcolor: 'var(--card-border)',
-                              '& .MuiLinearProgress-bar': {
-                                bgcolor: b.isOverBudget ? '#EF4444' : b.pct >= 70 ? '#F59E0B' : 'var(--accent-primary)',
-                                borderRadius: 3,
-                              },
-                            }}
-                          />
-                          <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.4 }}>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontSize: '10px',
-                                fontWeight: b.isOverBudget ? 700 : 500,
-                                color: b.isOverBudget ? '#EF4444' : 'var(--text-secondary)'
-                              }}
-                            >
-                              {b.isOverBudget
-                                ? `Exceeded limit by ${formatINR(Math.abs(b.remaining), false)}`
-                                : `${formatINR(b.remaining, false)} remaining`}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                              {b.pct}% used
-                            </Typography>
-                          </Stack>
-                        </Box>
-                      ))
-                    )}
-                  </Stack>
-                </TiltCard>
+                          </Box>
+                        ))
+                      )}
+                    </Stack>
+                  </TiltCard>
+                </ResizablePanel>
               </Grid>
 
               {/* Recurring Bills / Commitments Card */}
               <Grid size={{ xs: 12, lg: 4 }}>
-                <TiltCard
-                  maxTilt={2}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 'var(--radius-card)',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                      Recurring Commitments
+                <ResizablePanel pageId="finance" componentId="recurring_commitments" defaultHeight={380} minHeight={260} maxHeight={600}>
+                  <TiltCard
+                    maxTilt={2}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 'var(--radius-card)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                        Recurring Commitments
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={`${recurringItems.length} Active`}
+                        sx={{ fontWeight: 700, fontSize: '11px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
+                      />
+                    </Stack>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
+                      Fixed loans, subscriptions, and utility bills
                     </Typography>
-                    <Chip
-                      size="small"
-                      label={`${recurringItems.length} Active`}
-                      sx={{ fontWeight: 700, fontSize: '11px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
-                    />
-                  </Stack>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', mb: 2, display: 'block' }}>
-                    Fixed loans, subscriptions, and utility bills
-                  </Typography>
 
-                  <Stack spacing={1.2} sx={{ flex: 1, overflowY: 'auto', maxHeight: '250px' }}>
-                    {recurringItems.length === 0 ? (
-                      <Box sx={{ py: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <Typography variant="body2">No recurring bills added yet.</Typography>
-                      </Box>
-                    ) : (
-                      recurringItems.map((item) => (
-                        <TiltCard
-                          key={item.id}
-                          maxTilt={2}
-                          enableRefraction={false}
-                          sx={{
-                            p: 1.5,
-                            borderRadius: '10px',
-                            bgcolor: 'var(--bg-secondary)',
-                            border: '1px solid var(--card-border)',
-                          }}
-                        >
-                          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                                {item.description}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                                Due {new Date(item.dueDate).toLocaleDateString()} • {item.frequency}
-                              </Typography>
-                            </Box>
-                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#EF4444' }}>
-                                -{formatINR(item.amount)}
-                              </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() => handlePayRecurring(item.id)}
-                                title="Log Payment"
-                                sx={{ color: '#10B981' }}
-                              >
-                                <CheckCircleIcon sx={{ fontSize: 18 }} />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteRecurring(item.id)}
-                                sx={{ color: 'var(--text-secondary)' }}
-                              >
-                                <DeleteIcon sx={{ fontSize: 17 }} />
-                              </IconButton>
+                    <Stack spacing={1.2} sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
+                      {recurringItems.length === 0 ? (
+                        <Box sx={{ py: 4, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                          <Typography variant="body2">No recurring bills added yet.</Typography>
+                        </Box>
+                      ) : (
+                        recurringItems.map((item) => (
+                          <TiltCard
+                            key={item.id}
+                            maxTilt={2}
+                            enableRefraction={false}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: '10px',
+                              bgcolor: 'var(--bg-secondary)',
+                              border: '1px solid var(--card-border)',
+                            }}
+                          >
+                            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {item.description}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                  Due {new Date(item.dueDate).toLocaleDateString()} • {item.frequency}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#EF4444' }}>
+                                  -{formatINR(item.amount)}
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handlePayRecurring(item.id)}
+                                  title="Log Payment"
+                                  sx={{ color: '#10B981' }}
+                                >
+                                  <CheckCircleIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteRecurring(item.id)}
+                                  sx={{ color: 'var(--text-secondary)' }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 17 }} />
+                                </IconButton>
+                              </Stack>
                             </Stack>
-                          </Stack>
-                        </TiltCard>
-                      ))
-                    )}
-                  </Stack>
-                </TiltCard>
+                          </TiltCard>
+                        ))
+                      )}
+                    </Stack>
+                  </TiltCard>
+                </ResizablePanel>
               </Grid>
             </Grid>
 
-            {/* Latest Transactions Table */}
-            <TiltCard
-              maxTilt={1.5}
-              enableRefraction={false}
-              sx={{
-                p: 2.5,
-                borderRadius: 'var(--radius-card)',
-              }}
-            >
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                    Latest Transactions
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    Showing records for {dateFilter === 'this_month' ? 'this month' : dateFilter}
-                  </Typography>
-                </Box>
-                <Chip
-                  label={`${filteredTransactions.length} items`}
-                  size="small"
-                  sx={{ fontWeight: 700, bgcolor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
-                />
-              </Stack>
+            {/* Quick Actions & Finance Operations Panel (Replaces duplicated Latest Transactions) */}
+            <ResizablePanel pageId="finance" componentId="finance_actions_operations" defaultHeight={180} minHeight={140} maxHeight={360}>
+              <TiltCard
+                maxTilt={1.5}
+                enableRefraction={false}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 'var(--radius-card)',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                }}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1.5, mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Finance Operations & Snapshot
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                      Quick financial workflows, budgeting controls, and transaction audit log
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                    <Chip
+                      size="small"
+                      label={`${transactions.length} Total Tx`}
+                      sx={{ fontWeight: 700, bgcolor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${budgets.length} Budgets`}
+                      sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6' }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${recurringItems.length} Commitments`}
+                      sx={{ fontWeight: 700, bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}
+                    />
+                  </Stack>
+                </Stack>
 
-              {filteredTransactions.length === 0 ? (
-                <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <Typography variant="body2">No transactions match your current filters.</Typography>
-                </Box>
-              ) : (
-                <Box sx={{ overflowX: 'auto' }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: 'var(--bg-primary)' }}>
-                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Description</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Category</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Date</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Type</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Amount</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredTransactions.slice(0, 10).map((t) => {
-                        const isIncome = t.type.toLowerCase() === 'income';
-                        return (
-                          <TableRow key={t.id} hover>
-                            <TableCell sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {t.description}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                size="small"
-                                label={t.category}
-                                sx={{ fontSize: '11px', fontWeight: 600, bgcolor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                              />
-                            </TableCell>
-                            <TableCell sx={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                              {new Date(t.date).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                size="small"
-                                label={isIncome ? 'Income' : 'Expense'}
-                                sx={{
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  bgcolor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                  color: isIncome ? '#10B981' : '#EF4444',
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
-                              {isIncome ? '+' : '-'}{formatINR(t.amount)}
-                            </TableCell>
-                            <TableCell align="center">
-                              <IconButton size="small" onClick={() => openEditDialog(t)} sx={{ p: 0.5 }}>
-                                <EditIcon sx={{ fontSize: 16, color: 'var(--text-secondary)' }} />
-                              </IconButton>
-                              <IconButton size="small" onClick={() => handleDeleteTransaction(t.id)} sx={{ p: 0.5 }}>
-                                <DeleteIcon sx={{ fontSize: 16, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }} />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </Box>
-              )}
-            </TiltCard>
+                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.2 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<TrendingUpIcon />}
+                    onClick={openCreateIncomeDialog}
+                    sx={{
+                      bgcolor: '#10B981',
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { bgcolor: '#059669' },
+                    }}
+                  >
+                    + Add Income
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<TrendingDownIcon />}
+                    onClick={openCreateExpenseDialog}
+                    sx={{
+                      bgcolor: '#EF4444',
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { bgcolor: '#DC2626' },
+                    }}
+                  >
+                    - Add Expense
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenCreateBudget}
+                    sx={{
+                      borderColor: 'var(--accent-primary)',
+                      color: 'var(--accent-primary)',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' },
+                    }}
+                  >
+                    Manage Budgets
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AccountBalanceWalletIcon />}
+                    onClick={() => setRecDialogOpen(true)}
+                    sx={{
+                      borderColor: 'var(--card-border)',
+                      color: 'var(--text-primary)',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { borderColor: 'var(--accent-primary)', bgcolor: 'var(--bg-secondary)' },
+                    }}
+                  >
+                    + Recurring Commitment
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<HistoryIcon />}
+                    onClick={() => setLogOpen(true)}
+                    sx={{
+                      borderColor: 'var(--card-border)',
+                      color: 'var(--text-primary)',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { borderColor: 'var(--accent-primary)', bgcolor: 'var(--bg-secondary)' },
+                    }}
+                  >
+                    Open Finance Log
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={handleExportFinanceExcel}
+                    disabled={transactions.length === 0}
+                    sx={{
+                      borderColor: 'var(--card-border)',
+                      color: 'var(--text-primary)',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      px: 2,
+                      py: 0.9,
+                      '&:hover': { borderColor: '#10B981', bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10B981' },
+                    }}
+                  >
+                    Export Records
+                  </Button>
+                </Stack>
+              </TiltCard>
+            </ResizablePanel>
           </Stack>
         )}
       </Box>
@@ -1682,6 +1777,25 @@ const Finance: React.FC = () => {
                 </Select>
               </FormControl>
 
+              <FormControl size="small" sx={{ minWidth: '150px' }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={logCategoryFilter}
+                  label="Category"
+                  onChange={(e) => {
+                    setLogCategoryFilter(e.target.value);
+                    setLogPage(0);
+                  }}
+                >
+                  <MenuItem value="All">All Categories</MenuItem>
+                  {availableCategories.map((cat) => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <FormControl size="small" sx={{ minWidth: '140px' }}>
                 <InputLabel>Period</InputLabel>
                 <Select
@@ -1762,6 +1876,7 @@ const Finance: React.FC = () => {
                     <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Date</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Type</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Amount</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1796,6 +1911,26 @@ const Finance: React.FC = () => {
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 800, color: isIncome ? '#10B981' : '#EF4444' }}>
                           {isIncome ? '+' : '-'}{formatINR(t.amount)}
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              openEditDialog(t);
+                            }}
+                            title="Edit transaction"
+                            sx={{ p: 0.5 }}
+                          >
+                            <EditIcon sx={{ fontSize: 16, color: 'var(--text-secondary)', '&:hover': { color: 'var(--accent-primary)' } }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteTransaction(t.id)}
+                            title="Delete transaction"
+                            sx={{ p: 0.5 }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 16, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }} />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     );

@@ -40,6 +40,8 @@ import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import { useAuth } from '../context/AuthContext';
 import { formatINR } from './Finance';
 
@@ -312,6 +314,7 @@ const AIInsights: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <ResetLayoutButton pageId="insights" pageName="AI Insights" />
             <ReportExporter module="AiInsights" />
             <IconSlideButton
               variant="contained"
@@ -471,9 +474,10 @@ const AIInsights: React.FC = () => {
             <Grid container spacing={3}>
               {/* Left Column: Weekly Progress & Priority Tasks */}
               <Grid size={{ xs: 12, lg: 7 }}>
-                <Stack spacing={3}>
-                  {/* Weekly Progress Bar Chart */}
-                  <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)' }}>
+                <ResizablePanel pageId="insights" componentId="insights_left_column" defaultHeight={650} minHeight={420} maxHeight={1400}>
+                  <Stack spacing={3} sx={{ height: '100%', overflowY: 'auto', pr: 0.5 }}>
+                    {/* Weekly Progress Bar Chart */}
+                    <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)' }}>
                     <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Box>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -655,11 +659,13 @@ const AIInsights: React.FC = () => {
                     </Grid>
                   </Grid>
                 </Stack>
-              </Grid>
+              </ResizablePanel>
+            </Grid>
 
-              {/* Right Column: PriMaX Dynamic AI Insights */}
-              <Grid size={{ xs: 12, lg: 5 }}>
-                <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%' }}>
+            {/* Right Column: PriMaX Dynamic AI Insights */}
+            <Grid size={{ xs: 12, lg: 5 }}>
+              <ResizablePanel pageId="insights" componentId="insights_right_column" defaultHeight={650} minHeight={420} maxHeight={1400}>
+                <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', overflowY: 'auto' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
                     <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                       <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}>
@@ -778,7 +784,8 @@ const AIInsights: React.FC = () => {
                     </Stack>
                   </Paper>
                 </TiltCard>
-              </Grid>
+              </ResizablePanel>
+            </Grid>
             </Grid>
           </Box>
         )}

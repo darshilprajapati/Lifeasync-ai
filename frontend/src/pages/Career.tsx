@@ -43,6 +43,8 @@ import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -564,6 +566,7 @@ const Career: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <ResetLayoutButton pageId="career" pageName="Career" />
             <IconSlideButton
               variant="outlined"
               startIcon={<HistoryIcon />}
@@ -761,19 +764,23 @@ const Career: React.FC = () => {
             <LogoLoader />
           </Box>
         ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(5, 1fr)',
-              },
-              gap: 2,
-              alignItems: 'start',
-            }}
-          >
+          <ResizablePanel pageId="career" componentId="career_kanban_board" defaultHeight={680} minHeight={450} maxHeight={1400}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                  lg: 'repeat(5, 1fr)',
+                },
+                gap: 2,
+                alignItems: 'start',
+                height: '100%',
+                overflowY: 'auto',
+                pr: 0.5,
+              }}
+            >
             {STAGES.map((s) => {
               const jobs = stageGroups[s.key] || [];
               const isOver = dragOverStage === s.key;
@@ -1009,7 +1016,8 @@ const Career: React.FC = () => {
               );
             })}
           </Box>
-        )}
+        </ResizablePanel>
+      )}
       </Box>
 
       {/* JOB DETAILS DRAWER (Shows complete Stage History) */}

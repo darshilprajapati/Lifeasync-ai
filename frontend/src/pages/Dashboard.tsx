@@ -31,6 +31,8 @@ import { useThemeSystem } from '../context/ThemeContext';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import LifeScoreCompetitionCard from '../components/LifeScoreCompetitionCard';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import { formatINR } from './Finance';
 
 const parseDateSafe = (dateStr: string) => {
@@ -541,6 +543,7 @@ const Dashboard: React.FC = () => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
             <IconSlideButton
               variant="outlined"
               onClick={fetchDashboardData}
@@ -712,17 +715,21 @@ const Dashboard: React.FC = () => {
 
               {/* Row 2: Life Score Competition Leaderboard and Score Feedback split */}
               <Grid size={{ xs: 12, md: 8 }}>
-                <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <LifeScoreCompetitionCard />
-                </motion.div>
+                <ResizablePanel pageId="dashboard" componentId="competition_card" defaultHeight={420} minHeight={300} maxHeight={750}>
+                  <motion.div variants={cardVariants} style={{ height: '100%' }}>
+                    <LifeScoreCompetitionCard />
+                  </motion.div>
+                </ResizablePanel>
               </Grid>
 
               <Grid size={{ xs: 12, md: 4 }}>
-                <motion.div variants={cardVariants} style={{ height: '100%' }}>
-                  <TiltCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {renderLifeScoreFeedback()}
-                  </TiltCard>
-                </motion.div>
+                <ResizablePanel pageId="dashboard" componentId="feedback_card" defaultHeight={420} minHeight={300} maxHeight={750}>
+                  <motion.div variants={cardVariants} style={{ height: '100%' }}>
+                    <TiltCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      {renderLifeScoreFeedback()}
+                    </TiltCard>
+                  </motion.div>
+                </ResizablePanel>
               </Grid>
             </Grid>
           </motion.div>

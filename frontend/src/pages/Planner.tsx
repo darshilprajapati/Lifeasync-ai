@@ -43,6 +43,8 @@ import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
@@ -621,6 +623,7 @@ const Planner: React.FC = () => {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <ResetLayoutButton pageId="planner" pageName="Planner" />
             <IconSlideButton
               variant="outlined"
               startIcon={<HistoryIcon />}
@@ -771,74 +774,79 @@ const Planner: React.FC = () => {
             <LogoLoader />
           </Box>
         ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                lg: 'repeat(4, 1fr)',
-              },
-              gap: 2.5,
-              alignItems: 'start',
-            }}
-          >
-            {/* Column 1: To Do */}
-            {renderKanbanColumn(
-              'todo',
-              'To Do',
-              columns.todo,
-              '#F59E0B',
-              true,
-              'Todo',
-              handleDragOver,
-              handleDragLeave,
-              () => handleDrop('todo'),
-              dragOverCol === 'todo'
-            )}
+          <ResizablePanel pageId="planner" componentId="kanban_board" defaultHeight={680} minHeight={450} maxHeight={1400}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  lg: 'repeat(4, 1fr)',
+                },
+                gap: 2.5,
+                alignItems: 'start',
+                height: '100%',
+                overflowY: 'auto',
+                pr: 0.5,
+              }}
+            >
+              {/* Column 1: To Do */}
+              {renderKanbanColumn(
+                'todo',
+                'To Do',
+                columns.todo,
+                '#F59E0B',
+                true,
+                'Todo',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('todo'),
+                dragOverCol === 'todo'
+              )}
 
-            {/* Column 2: In Progress */}
-            {renderKanbanColumn(
-              'in_progress',
-              'In Progress',
-              columns.in_progress,
-              '#3B82F6',
-              true,
-              'InProgress',
-              handleDragOver,
-              handleDragLeave,
-              () => handleDrop('in_progress'),
-              dragOverCol === 'in_progress'
-            )}
+              {/* Column 2: In Progress */}
+              {renderKanbanColumn(
+                'in_progress',
+                'In Progress',
+                columns.in_progress,
+                '#3B82F6',
+                true,
+                'InProgress',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('in_progress'),
+                dragOverCol === 'in_progress'
+              )}
 
-            {/* Column 3: Completed */}
-            {renderKanbanColumn(
-              'completed',
-              'Completed',
-              columns.completed,
-              '#10B981',
-              true,
-              'Completed',
-              handleDragOver,
-              handleDragLeave,
-              () => handleDrop('completed'),
-              dragOverCol === 'completed'
-            )}
+              {/* Column 3: Completed */}
+              {renderKanbanColumn(
+                'completed',
+                'Completed',
+                columns.completed,
+                '#10B981',
+                true,
+                'Completed',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('completed'),
+                dragOverCol === 'completed'
+              )}
 
-            {/* Column 4: Overdue */}
-            {renderKanbanColumn(
-              'overdue',
-              'Overdue',
-              columns.overdue,
-              '#EF4444',
-              false,
-              'Todo',
-              handleDragOver,
-              handleDragLeave,
-              () => handleDrop('overdue'),
-              dragOverCol === 'overdue'
-            )}
-          </Box>
+              {/* Column 4: Overdue */}
+              {renderKanbanColumn(
+                'overdue',
+                'Overdue',
+                columns.overdue,
+                '#EF4444',
+                false,
+                'Todo',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('overdue'),
+                dragOverCol === 'overdue'
+              )}
+            </Box>
+          </ResizablePanel>
         )}
       </Box>
 
