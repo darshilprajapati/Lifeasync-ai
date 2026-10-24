@@ -29,6 +29,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import AddIcon from '@mui/icons-material/Add';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { useNotification } from '../../../context/NotificationContext';
 import { useThemeSystem } from '../../../context/ThemeContext';
 import type { Exercise } from '../types/workout';
@@ -65,6 +67,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
 
   // Create Custom Exercise modal state
   const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+  const [selectedDetailExercise, setSelectedDetailExercise] = useState<Exercise | null>(null);
   const [isSubmittingCustom, setIsSubmittingCustom] = useState<boolean>(false);
   const [customFormError, setCustomFormError] = useState<string | null>(null);
 
@@ -203,12 +206,14 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
       slotProps={{
         paper: {
           sx: {
-            borderRadius: isProf ? '0px !important' : '20px',
+            m: { xs: 1, sm: 2 },
+            width: { xs: 'calc(100% - 16px)', sm: 'auto' },
+            maxHeight: { xs: 'calc(100% - 16px)', sm: '90vh' },
+            borderRadius: isProf ? '0px !important' : { xs: '16px', sm: '20px' },
             bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
             color: 'var(--text-primary)',
             backgroundImage: 'none',
-            border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
-            maxHeight: '90vh'
+            border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)')
           }
         }
       }}
@@ -238,12 +243,15 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, overflowY: 'auto' }}>
         {/* Top Filters: Mode Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}>
           <Tabs
             value={equipmentTab}
             onChange={(_, val) => setEquipmentTab(val)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             textColor="primary"
             indicatorColor="primary"
             sx={{
@@ -251,9 +259,10 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 700,
-                fontSize: '13px',
+                fontSize: { xs: '12px', sm: '13px' },
                 minHeight: 40,
-                py: 1
+                py: 1,
+                px: { xs: 1.5, sm: 2 }
               }
             }}
           >
@@ -287,8 +296,8 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
             sx={{ width: { xs: '100%', md: 320 } }}
           />
 
-          <Stack direction="row" spacing={1.5} sx={{ width: { xs: '100%', md: 'auto' }, flexWrap: 'wrap', alignItems: 'center' }}>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+          <Stack direction="row" spacing={1.5} sx={{ width: { xs: '100%', md: 'auto' }, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 120, flex: { xs: 1, sm: 'none' } }}>
               <InputLabel id="library-category-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
                 Category
               </InputLabel>
@@ -307,7 +316,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 120, flex: { xs: 1, sm: 'none' } }}>
               <InputLabel id="library-difficulty-label" sx={{ bgcolor: 'var(--card-bg, #ffffff)', px: 0.6, borderRadius: '4px' }}>
                 Difficulty
               </InputLabel>
@@ -334,6 +343,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                 setCreateModalOpen(true);
               }}
               sx={{
+                width: { xs: '100%', sm: 'auto' },
                 borderRadius: '10px',
                 textTransform: 'none',
                 fontWeight: 700,
@@ -448,6 +458,55 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
                     </Typography>
                   </Box>
 
+                  {/* Explicit Secondary Action Row: View Instructions & Watch Demo */}
+                  <Stack direction="row" spacing={1} sx={{ mb: 1.2, mt: 'auto' }}>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      startIcon={<MenuBookIcon sx={{ fontSize: 13 }} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDetailExercise(ex);
+                      }}
+                      sx={{
+                        fontSize: '11px',
+                        py: 0.6,
+                        borderRadius: isProf ? '0px' : '8px',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
+                        color: 'var(--text-primary)'
+                      }}
+                    >
+                      View Instructions
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      component="a"
+                      href={ex.videoUrl ? ex.videoUrl : `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' proper exercise technique form')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      startIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      sx={{
+                        fontSize: '11px',
+                        py: 0.6,
+                        borderRadius: isProf ? '0px' : '8px',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
+                        color: 'var(--accent-primary, #FF6F26)'
+                      }}
+                    >
+                      Watch Demo
+                    </Button>
+                  </Stack>
+
                   <Button
                     fullWidth
                     variant="contained"
@@ -504,7 +563,10 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: isProf ? '0px !important' : '20px',
+              m: { xs: 1, sm: 2 },
+              width: { xs: 'calc(100% - 16px)', sm: 'auto' },
+              maxHeight: { xs: 'calc(100% - 16px)', sm: '90vh' },
+              borderRadius: isProf ? '0px !important' : { xs: '16px', sm: '20px' },
               bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
               color: 'var(--text-primary)',
               backgroundImage: 'none',
@@ -775,6 +837,231 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      {/* Dedicated Exercise Details & Movement Demonstration Modal */}
+      <Dialog
+        open={Boolean(selectedDetailExercise)}
+        onClose={() => setSelectedDetailExercise(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              m: { xs: 1, sm: 2 },
+              width: { xs: 'calc(100% - 16px)', sm: 'auto' },
+              maxHeight: { xs: 'calc(100% - 16px)', sm: '90vh' },
+              borderRadius: isProf ? '0px !important' : { xs: '16px', sm: '20px' },
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+              color: 'var(--text-primary)',
+              backgroundImage: 'none',
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)')
+            }
+          }
+        }}
+      >
+        {selectedDetailExercise && (
+          <>
+            <DialogTitle sx={{ p: 2.5, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.8, flexWrap: 'wrap', gap: 0.5 }}>
+                  <Chip
+                    label={selectedDetailExercise.category}
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(99, 102, 241, 0.12)',
+                      color: 'var(--accent-primary, #6366f1)',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      height: 22
+                    }}
+                  />
+                  <Chip
+                    label={selectedDetailExercise.difficultyLevel}
+                    size="small"
+                    sx={{ height: 22, fontSize: '11px', fontWeight: 600 }}
+                  />
+                  <Chip
+                    label={selectedDetailExercise.requiresEquipment ? selectedDetailExercise.equipmentType : 'Bodyweight'}
+                    size="small"
+                    sx={{ height: 22, fontSize: '11px', fontWeight: 600 }}
+                  />
+                  {selectedDetailExercise.isCustom && (
+                    <Chip
+                      label="Custom Exercise"
+                      size="small"
+                      sx={{
+                        height: 22,
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        bgcolor: 'rgba(236, 72, 153, 0.12)',
+                        color: '#ec4899',
+                        border: '1px solid rgba(236, 72, 153, 0.3)'
+                      }}
+                    />
+                  )}
+                </Stack>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {selectedDetailExercise.name}
+                </Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setSelectedDetailExercise(null)}>
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+
+            <DialogContent sx={{ p: 2.5, pt: 1, overflowY: 'auto' }}>
+              {/* Animation/Media Preview */}
+              <Box sx={{ mb: 2 }}>
+                <ExerciseDemonstrationMedia
+                  exerciseName={selectedDetailExercise.name}
+                  category={selectedDetailExercise.category}
+                  targetMuscles={selectedDetailExercise.targetMuscles}
+                  secondaryMuscles={selectedDetailExercise.secondaryMuscles}
+                  instructions={selectedDetailExercise.instructions}
+                  description={selectedDetailExercise.description}
+                  postureTips={selectedDetailExercise.postureTips}
+                  commonMistakes={selectedDetailExercise.commonMistakes}
+                  safetyTips={selectedDetailExercise.safetyTips}
+                  difficultyLevel={selectedDetailExercise.difficultyLevel}
+                  equipmentType={selectedDetailExercise.equipmentType}
+                  requiresEquipment={selectedDetailExercise.requiresEquipment}
+                  defaultSets={selectedDetailExercise.defaultSets}
+                  defaultReps={selectedDetailExercise.defaultReps}
+                  defaultRestSeconds={selectedDetailExercise.defaultRestSeconds}
+                  animationUrl={selectedDetailExercise.animationUrl}
+                  thumbnailUrl={selectedDetailExercise.thumbnailUrl}
+                  videoUrl={selectedDetailExercise.videoUrl}
+                  isCustom={selectedDetailExercise.isCustom}
+                  size="compact"
+                  autoPlay={true}
+                />
+              </Box>
+
+              <Stack spacing={2}>
+                {selectedDetailExercise.description && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                      Description
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      {selectedDetailExercise.description}
+                    </Typography>
+                  </Box>
+                )}
+
+                {selectedDetailExercise.instructions && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                      Step-by-Step Instructions
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.6,
+                        whiteSpace: 'pre-line',
+                        bgcolor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                        p: 1.5,
+                        borderRadius: '10px',
+                        border: isDark ? '1px solid rgba(255, 255, 255, 0.07)' : '1px solid rgba(0, 0, 0, 0.05)'
+                      }}
+                    >
+                      {selectedDetailExercise.instructions}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Target Anatomy */}
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.8 }}>
+                    Target Anatomy
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.8 }}>
+                    {selectedDetailExercise.targetMuscles && (
+                      <Chip
+                        label={`Primary: ${selectedDetailExercise.targetMuscles}`}
+                        size="small"
+                        sx={{
+                          fontWeight: 600,
+                          bgcolor: 'rgba(99, 102, 241, 0.1)',
+                          color: 'var(--accent-primary, #6366f1)'
+                        }}
+                      />
+                    )}
+                    {selectedDetailExercise.secondaryMuscles && (
+                      <Chip
+                        label={`Secondary: ${selectedDetailExercise.secondaryMuscles}`}
+                        size="small"
+                        sx={{
+                          fontWeight: 600,
+                          bgcolor: 'rgba(16, 185, 129, 0.1)',
+                          color: '#10b981'
+                        }}
+                      />
+                    )}
+                  </Stack>
+                </Box>
+
+                {/* Posture & Form Technique */}
+                {selectedDetailExercise.postureTips && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                      Posture & Form Technique
+                    </Typography>
+                    <Alert severity="info" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                      {selectedDetailExercise.postureTips}
+                    </Alert>
+                  </Box>
+                )}
+
+                {/* Common Mistakes & Safety Tips */}
+                {(selectedDetailExercise.commonMistakes || selectedDetailExercise.safetyTips) && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                      Safety & Form Cues
+                    </Typography>
+                    <Stack spacing={1}>
+                      {selectedDetailExercise.commonMistakes && (
+                        <Alert severity="warning" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                          <strong>Avoid:</strong> {selectedDetailExercise.commonMistakes}
+                        </Alert>
+                      )}
+                      {selectedDetailExercise.safetyTips && (
+                        <Alert severity="success" sx={{ py: 0.5, borderRadius: '10px', fontSize: '13px' }}>
+                          <strong>Tip:</strong> {selectedDetailExercise.safetyTips}
+                        </Alert>
+                      )}
+                    </Stack>
+                  </Box>
+                )}
+              </Stack>
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2, pt: 1, borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)' }}>
+              <Button onClick={() => setSelectedDetailExercise(null)} sx={{ fontWeight: 700, borderRadius: '10px' }}>
+                Close
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  const ex = selectedDetailExercise;
+                  setSelectedDetailExercise(null);
+                  onSelectExercise(ex);
+                  onClose();
+                }}
+                sx={{
+                  fontWeight: 700,
+                  borderRadius: isProf ? '0px' : '10px',
+                  bgcolor: 'var(--accent-primary, #FF6F26)',
+                  '&:hover': { bgcolor: '#e05307' }
+                }}
+              >
+                {actionType === 'replace' ? 'Replace with This' : 'Add to Workout'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </Dialog>
   );

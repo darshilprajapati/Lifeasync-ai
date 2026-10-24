@@ -57,7 +57,6 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   const isProf = designSystem === 'professional';
   const isDark = mode === 'dark';
   const [confirmSyncOpen, setConfirmSyncOpen] = React.useState(false);
-  const [mobileTab, setMobileTab] = React.useState<'plan' | 'progress' | 'history'>('plan');
   const [selectedMobileDayIdx, setSelectedMobileDayIdx] = React.useState<number>(0);
   const [showAllExercises, setShowAllExercises] = React.useState(false);
 
@@ -281,47 +280,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
       {isMobile ? (
         /* Dedicated Mobile View matching Reference Image 1 */
         <Stack spacing={2} sx={{ pb: 3 }}>
-          {/* 1. Segmented Control Tabs (Plan, Progress, History) */}
-          <Box
-            sx={{
-              display: 'flex',
-              p: 0.5,
-              borderRadius: '24px',
-              bgcolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-              border: '1px solid var(--card-border)',
-            }}
-          >
-            {[
-              { key: 'plan', label: 'Plan' },
-              { key: 'progress', label: 'Progress' },
-              { key: 'history', label: 'History' },
-            ].map((tab) => {
-              const active = mobileTab === tab.key;
-              return (
-                <Box
-                  key={tab.key}
-                  onClick={() => setMobileTab(tab.key as any)}
-                  sx={{
-                    flex: 1,
-                    textAlign: 'center',
-                    py: 0.9,
-                    borderRadius: '20px',
-                    bgcolor: active ? (isDark ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF') : 'transparent',
-                    color: active ? '#1a1a1a' : 'var(--text-secondary)',
-                    fontWeight: 750,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    boxShadow: active ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {tab.label}
-                </Box>
-              );
-            })}
-          </Box>
-
-          {/* 2. Horizontal Weekday Selector (Mon-Sun with active coral pill) */}
+          {/* Horizontal Weekday Selector (Mon-Sun with active coral pill) */}
           <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, alignItems: 'center' }}>
             {orderedDays.map((day, idx) => {
               const cardDate = new Date(currentMonday);

@@ -307,19 +307,52 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         MuiDialog: {
           styleOverrides: {
+            root: {
+              zIndex: 1300,
+            },
             paper: {
               borderRadius: isProf ? '0px' : '20px',
               backgroundColor: bgPaper,
               color: textPrimary,
               border: cardBorder,
               backgroundImage: 'none',
+              maxWidth: 'calc(100vw - 32px)',
+              maxHeight: 'calc(100% - 32px)',
+              margin: '16px',
+              boxSizing: 'border-box',
+            },
+          },
+        },
+        MuiDialogContent: {
+          styleOverrides: {
+            root: {
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            },
+          },
+        },
+        MuiDialogActions: {
+          styleOverrides: {
+            root: {
+              flexWrap: 'wrap',
+              gap: '8px',
             },
           },
         },
         MuiMenu: {
           styleOverrides: {
+            root: {
+              zIndex: 1450,
+            },
             paper: {
               borderRadius: isProf ? '0px' : '14px',
+            },
+          },
+        },
+        MuiPopover: {
+          styleOverrides: {
+            root: {
+              zIndex: 1450,
             },
           },
         },

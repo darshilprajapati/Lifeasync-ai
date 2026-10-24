@@ -17,7 +17,6 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
-import ChatIcon from '@mui/icons-material/Chat';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useThemeSystem } from '../context/ThemeContext';
@@ -842,31 +841,6 @@ const AppLayout: React.FC = () => {
 
       {/* Mobile Fixed Bottom Navigation Bar */}
       <MobileBottomNav onOpenChat={() => setChatOpen(true)} />
-
-      {/* Floating Chatbot Launch Toggle Button */}
-      <IconButton
-        onClick={() => setChatOpen((prev) => !prev)}
-        sx={{
-          position: 'fixed',
-          bottom: { xs: '76px', md: 24 },
-          right: { xs: 16, md: dockPosition === 'right' ? 'auto' : 24 },
-          left: { xs: 'auto', md: dockPosition === 'right' ? 24 : 'auto' },
-          width: { xs: 48, md: 56 },
-          height: { xs: 48, md: 56 },
-          bgcolor: 'var(--accent-primary)',
-          color: 'white',
-          boxShadow: '0 4px 16px rgba(232, 90, 79, 0.35)',
-          zIndex: 1100,
-          transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
-          '&:hover': {
-            bgcolor: 'var(--accent-secondary)',
-            transform: 'scale(1.08) rotate(8deg)',
-            boxShadow: '0 6px 20px rgba(232, 90, 79, 0.45)'
-          }
-        }}
-      >
-        <ChatIcon sx={{ fontSize: { xs: 22, md: 24 } }} />
-      </IconButton>
 
       {/* Slide-in Companion Chat Widget Panel Drawer */}
       <CompanionChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} anchor={dockPosition === 'right' ? 'left' : 'right'} />
