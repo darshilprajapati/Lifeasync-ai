@@ -52,8 +52,18 @@ namespace LifeSyncAI.Core.Services
             try
             {
                 var clientToday = clientDate.Date;
+                var clientTomorrow = clientToday.AddDays(1);
+
+                // If dto.LogDate was converted to UTC before transmission and fell into the previous calendar day,
+                // adjust it to the client's local calendar day so it is attributed to today
+                var effectiveLogDate = dto.LogDate;
+                if (effectiveLogDate.Date < clientToday && effectiveLogDate.Date >= clientToday.AddDays(-1))
+                {
+                    effectiveLogDate = clientToday.Add(dto.LogDate.TimeOfDay);
+                }
+
                 var currentSum = await _context.HealthLogs
-                    .Where(l => l.UserId == userId && l.LogDate >= clientToday && l.LogType == dto.LogType)
+                    .Where(l => l.UserId == userId && l.LogDate >= clientToday && l.LogDate < clientTomorrow && l.LogType == dto.LogType)
                     .SumAsync(l => l.LogValue);
 
                 if (dto.LogType == "Water" && currentSum + dto.LogValue > 10000)
@@ -78,7 +88,7 @@ namespace LifeSyncAI.Core.Services
                     LogType = dto.LogType,
                     LogValue = dto.LogValue,
                     Details = dto.Details,
-                    LogDate = dto.LogDate,
+                    LogDate = effectiveLogDate,
                     UserId = userId
                 };
 
@@ -91,7 +101,7 @@ namespace LifeSyncAI.Core.Services
                     LogType = dto.LogType,
                     LogValue = dto.LogValue,
                     Details = dto.Details,
-                    LogDate = dto.LogDate,
+                    LogDate = effectiveLogDate,
                     UserId = userId
                 };
 

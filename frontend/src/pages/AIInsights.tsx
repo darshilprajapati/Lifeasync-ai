@@ -8,7 +8,6 @@ import {
   Stack,
   Paper,
   Chip,
-  Checkbox,
   Button,
 } from '@mui/material';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -21,7 +20,6 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import ShieldIcon from '@mui/icons-material/Shield';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -86,15 +84,33 @@ const AIInsights: React.FC = () => {
   const [workoutLogged, setWorkoutLogged] = useState<boolean>(false);
   const [careerCount, setCareerCount] = useState<number>(0);
   const [vaultCount, setVaultCount] = useState<number>(0);
-  const [priorityTasks, setPriorityTasks] = useState<PlannerItem[]>([]);
   const [weeklyProgress, setWeeklyProgress] = useState<WeeklyDataPoint[]>([]);
 
   // Time of day greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (hour >= 22 || hour < 5) return 'Good night';
     if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
+    if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  };
+
+  const getRecommendationRoute = (category: string) => {
+    switch ((category || '').toLowerCase()) {
+      case 'finance':
+        return '/finance';
+      case 'health':
+        return '/health';
+      case 'productivity':
+      case 'planner':
+        return '/planner';
+      case 'career':
+        return '/career';
+      case 'vault':
+        return '/vault';
+      default:
+        return null;
+    }
   };
 
   const loadAllMetrics = useCallback(async () => {
@@ -133,20 +149,6 @@ const AIInsights: React.FC = () => {
           (t) => (t.status || '').toLowerCase() === 'completed'
         ).length;
         setTasksToday({ completed: completedCount, total: todayTasks.length });
-
-        // Priority tasks (incomplete, sorted by priority)
-        const incomplete = events.filter(
-          (t) => (t.status || '').toLowerCase() !== 'completed'
-        );
-        const sortedPriority = incomplete
-          .sort((a, b) => {
-            const pMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
-            const pA = pMap[(a.priority || '').toLowerCase()] || 0;
-            const pB = pMap[(b.priority || '').toLowerCase()] || 0;
-            return pB - pA;
-          })
-          .slice(0, 6);
-        setPriorityTasks(sortedPriority);
 
         // Calculate accurate 7-day task distribution using date strings
         const last7Days: WeeklyDataPoint[] = [];
@@ -253,20 +255,6 @@ const AIInsights: React.FC = () => {
       window.removeEventListener('lifesync:task-updated', handleSync);
     };
   }, [loadAllMetrics]);
-
-  const handleToggleTask = async (task: PlannerItem) => {
-    try {
-      const updated = { ...task, status: 'Completed' };
-      const res = await apiClient.put(`/api/planner/${task.id}`, updated);
-      if (res.data.isSuccess) {
-        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
-        window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
-        loadAllMetrics();
-      }
-    } catch (err: any) {
-      console.error('Failed to complete priority task', err);
-    }
-  };
 
   const handleGenerateInsights = async () => {
     setError(null);
@@ -606,103 +594,6 @@ const AIInsights: React.FC = () => {
                     </TiltCard>
                   </ResizablePanel>
 
-                  {/* Priority Tasks Checklist */}
-                  <ResizablePanel pageId="insights" componentId="insights_priority_tasks" defaultHeight={300} minHeight={220} maxHeight={550}>
-                    <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                            Priority Tasks Checklist
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                            High and medium priority items from your Planner
-                          </Typography>
-                        </Box>
-                        <Chip
-                          size="small"
-                          label={`${priorityTasks.length} pending`}
-                          sx={{ bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)', fontWeight: 700 }}
-                        />
-                      </Stack>
-
-                      <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
-                        {priorityTasks.length === 0 ? (
-                          <Paper sx={{ p: 3, textAlign: 'center', bgcolor: 'transparent', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-                            <CheckCircleIcon sx={{ fontSize: 36, color: '#4CAF50', mb: 1, opacity: 0.8 }} />
-                            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-                              All priority tasks completed! Great job staying focused.
-                            </Typography>
-                          </Paper>
-                        ) : (
-                          <Stack spacing={1.5}>
-                            {priorityTasks.map((t) => (
-                              <Box
-                                key={t.id}
-                                sx={{
-                                  p: 1.5,
-                                  borderRadius: '12px',
-                                  bgcolor: 'var(--bg-secondary)',
-                                  border: '1px solid var(--border-color)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                }}
-                              >
-                                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                                  <Checkbox
-                                    size="small"
-                                    checked={false}
-                                    onChange={() => handleToggleTask(t)}
-                                    title="Mark task completed"
-                                    sx={{
-                                      color: 'var(--accent-primary)',
-                                      '&.Mui-checked': { color: 'var(--accent-primary)' },
-                                    }}
-                                  />
-                                  <Box>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                      {t.title}
-                                    </Typography>
-                                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.3 }}>
-                                      <AccessTimeIcon sx={{ fontSize: 13, color: 'var(--text-secondary)' }} />
-                                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                                        {t.startTime ? new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Flexible'}
-                                      </Typography>
-                                      {t.category && (
-                                        <Chip
-                                          size="small"
-                                          label={t.category}
-                                          sx={{ height: 18, fontSize: '10px', bgcolor: 'rgba(0,0,0,0.06)' }}
-                                        />
-                                      )}
-                                    </Stack>
-                                  </Box>
-                                </Stack>
-                                <Chip
-                                  size="small"
-                                  label={(t.priority || 'medium').toUpperCase()}
-                                  sx={{
-                                    height: 22,
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    bgcolor:
-                                      (t.priority || '').toLowerCase() === 'high'
-                                        ? 'rgba(232, 90, 79, 0.15)'
-                                        : 'rgba(255, 152, 0, 0.15)',
-                                    color:
-                                      (t.priority || '').toLowerCase() === 'high'
-                                        ? 'var(--accent-primary)'
-                                        : '#E65100',
-                                  }}
-                                />
-                              </Box>
-                            ))}
-                          </Stack>
-                        )}
-                      </Box>
-                    </TiltCard>
-                  </ResizablePanel>
-
                   {/* Areas Needing Attention & System Integrity */}
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -809,9 +700,16 @@ const AIInsights: React.FC = () => {
                     <Stack spacing={2} sx={{ mt: 1 }}>
                       {insights.map((insight) => {
                         const theme = getCategoryTheme(insight.category);
+                        const route = getRecommendationRoute(insight.category);
                         return (
                           <Paper
                             key={insight.id}
+                            onClick={() => {
+                              if (route) {
+                                trackAction('ai_insight_action_clicked', { category: insight.category, route });
+                                navigate(route);
+                              }
+                            }}
                             sx={{
                               p: 2.5,
                               borderRadius: '16px',
@@ -820,6 +718,7 @@ const AIInsights: React.FC = () => {
                               borderTop: '1px solid var(--border-color)',
                               borderRight: '1px solid var(--border-color)',
                               borderBottom: '1px solid var(--border-color)',
+                              cursor: route ? 'pointer' : 'default',
                               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                               '&:hover': {
                                 transform: 'translateY(-2px)',
@@ -845,11 +744,18 @@ const AIInsights: React.FC = () => {
                               {insight.insightText}
                             </Typography>
 
-                            <Stack direction="row" spacing={0.8} sx={{ mt: 2, alignItems: 'center', color: 'var(--text-secondary)' }}>
-                              <InfoIcon sx={{ fontSize: 14 }} />
-                              <Typography variant="caption" sx={{ fontSize: '11px' }}>
-                                Source: Verified {insight.category.toLowerCase()} telemetry
-                              </Typography>
+                            <Stack direction="row" sx={{ mt: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', color: 'var(--text-secondary)' }}>
+                                <InfoIcon sx={{ fontSize: 14 }} />
+                                <Typography variant="caption" sx={{ fontSize: '11px' }}>
+                                  Source: Verified {insight.category.toLowerCase()} telemetry
+                                </Typography>
+                              </Stack>
+                              {route && (
+                                <Typography variant="caption" sx={{ color: theme.tagColor, fontWeight: 700, fontSize: '11.5px' }}>
+                                  Go to {insight.category} &rarr;
+                                </Typography>
+                              )}
                             </Stack>
                           </Paper>
                         );

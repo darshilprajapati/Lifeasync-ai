@@ -231,7 +231,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       onMouseLeave={() => !isResizing && setIsHovered(false)}
       sx={{
         position: 'relative',
-        height: `${height}px`,
+        height: isMobile ? 'auto' : `${height}px`,
         width: effectiveWidth,
         maxWidth: '100%',
         transition: isResizing ? 'none' : 'height 0.15s ease-out, width 0.15s ease-out',
@@ -251,18 +251,18 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         sx={{
           flex: 1,
           minHeight: 0,
-          height: '100%',
+          height: isMobile ? 'auto' : '100%',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
+          overflow: isMobile ? 'visible' : 'hidden',
           pointerEvents: isResizing ? 'none' : 'auto'
         }}
       >
         {children}
       </Box>
 
-      {/* Subtle Individual Reset Size Badge on top/bottom when customized */}
-      {isCustomized && (isHovered || isResizing) && (
+      {/* Subtle Individual Reset Size Badge on top/bottom when customized (desktop only) */}
+      {!isMobile && isCustomized && (isHovered || isResizing) && (
         <Tooltip title={`Reset ${title || componentId} size to default (or double click handle)`} arrow placement="top">
           <Box
             onClick={handleResetSize}
@@ -302,82 +302,85 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         </Tooltip>
       )}
 
-      {/* Right Edge Handle (when width resize enabled) */}
-      {enableWidthResize && !isMobile && (
-        <Box
-          role="separator"
-          aria-label={`Resize width of ${title || componentId}`}
-          onPointerDown={(e) => startResize(e, 'right')}
-          sx={{
-            position: 'absolute',
-            top: 0,
-            right: -3,
-            width: 8,
-            height: '100%',
-            cursor: 'ew-resize',
-            zIndex: 9,
-            touchAction: 'none',
-            '&:hover': {
-              bgcolor: isProf ? 'var(--accent-primary)' : 'rgba(255, 111, 38, 0.4)'
-            }
-          }}
-        />
-      )}
+      {/* Desktop-only Resize Handles */}
+      {!isMobile && (
+        <>
+          {/* Right Edge Handle (when width resize enabled) */}
+          {enableWidthResize && (
+            <Box
+              role="separator"
+              aria-label={`Resize width of ${title || componentId}`}
+              onPointerDown={(e) => startResize(e, 'right')}
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: -3,
+                width: 8,
+                height: '100%',
+                cursor: 'ew-resize',
+                zIndex: 9,
+                touchAction: 'none',
+                '&:hover': {
+                  bgcolor: isProf ? 'var(--accent-primary)' : 'rgba(255, 111, 38, 0.4)'
+                }
+              }}
+            />
+          )}
 
-      {/* Bottom Edge Handle (height) */}
-      <Box
-        role="separator"
-        aria-label={`Resize height of ${title || componentId}`}
-        onPointerDown={(e) => startResize(e, 'bottom')}
-        sx={{
-          position: 'absolute',
-          bottom: -3,
-          left: 0,
-          right: 24,
-          height: 8,
-          cursor: 'ns-resize',
-          zIndex: 9,
-          touchAction: 'none',
-          '&:hover': {
-            bgcolor: isProf ? 'var(--accent-primary)' : 'rgba(255, 111, 38, 0.3)'
-          }
-        }}
-      />
+          {/* Bottom Edge Handle (height) */}
+          <Box
+            role="separator"
+            aria-label={`Resize height of ${title || componentId}`}
+            onPointerDown={(e) => startResize(e, 'bottom')}
+            sx={{
+              position: 'absolute',
+              bottom: -3,
+              left: 0,
+              right: 24,
+              height: 8,
+              cursor: 'ns-resize',
+              zIndex: 9,
+              touchAction: 'none',
+              '&:hover': {
+                bgcolor: isProf ? 'var(--accent-primary)' : 'rgba(255, 111, 38, 0.3)'
+              }
+            }}
+          />
 
-      {/* Bottom-Right Corner Handle (2D / Corner) */}
-      <Box
-        role="separator"
-        aria-label={`Resize ${title || componentId}`}
-        aria-valuenow={height}
-        aria-valuemin={minHeight}
-        aria-valuemax={maxHeight}
-        tabIndex={0}
-        onPointerDown={(e) => startResize(e, 'corner')}
-        onDoubleClick={handleResetSize}
-        onKeyDown={handleKeyDown}
-        title="Drag to resize card • Double-click to reset size • Arrow keys when focused"
-        sx={{
-          position: 'absolute',
-          bottom: 2,
-          right: 2,
-          width: { xs: 28, sm: 24 },
-          height: { xs: 28, sm: 24 },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: enableWidthResize && !isMobile ? 'nwse-resize' : 'ns-resize',
-          zIndex: 11,
-          opacity: isHovered || isResizing ? 0.95 : 0.3,
-          transition: 'opacity 0.2s ease, transform 0.15s ease',
-          transform: isHovered || isResizing ? 'scale(1.1)' : 'scale(1)',
-          userSelect: 'none',
-          touchAction: 'none',
-          borderRadius: isProf ? 0 : '6px',
-          bgcolor: isHovered || isResizing
-            ? isDark
-              ? 'rgba(255, 255, 255, 0.16)'
-              : 'rgba(0, 0, 0, 0.08)'
-            : 'transparent',
+          {/* Bottom-Right Corner Handle (2D / Corner) */}
+          <Box
+            role="separator"
+            aria-label={`Resize ${title || componentId}`}
+            aria-valuenow={height}
+            aria-valuemin={minHeight}
+            aria-valuemax={maxHeight}
+            tabIndex={0}
+            onPointerDown={(e) => startResize(e, 'corner')}
+            onDoubleClick={handleResetSize}
+            onKeyDown={handleKeyDown}
+            title="Drag to resize card • Double-click to reset size • Arrow keys when focused"
+            sx={{
+              position: 'absolute',
+              bottom: 2,
+              right: 2,
+              width: 24,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: enableWidthResize ? 'nwse-resize' : 'ns-resize',
+              zIndex: 11,
+              opacity: isHovered || isResizing ? 0.95 : 0.3,
+              transition: 'opacity 0.2s ease, transform 0.15s ease',
+              transform: isHovered || isResizing ? 'scale(1.1)' : 'scale(1)',
+              userSelect: 'none',
+              touchAction: 'none',
+              borderRadius: isProf ? 0 : '6px',
+              bgcolor: isHovered || isResizing
+                ? isDark
+                  ? 'rgba(255, 255, 255, 0.16)'
+                  : 'rgba(0, 0, 0, 0.08)'
+                : 'transparent',
           '&:focus-visible': {
             outline: '2px solid var(--accent-primary)',
             opacity: 1
@@ -390,9 +393,10 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           <circle cx="10" cy="6" r="1.3" fill={isProf ? 'var(--text-secondary)' : 'var(--accent-primary)'} />
           <circle cx="2" cy="10" r="1.3" fill={isProf ? 'var(--text-secondary)' : 'var(--accent-primary)'} />
           <circle cx="6" cy="10" r="1.3" fill={isProf ? 'var(--text-secondary)' : 'var(--accent-primary)'} />
-          <circle cx="10" cy="10" r="1.3" fill={isProf ? 'var(--text-secondary)' : 'var(--accent-primary)'} />
         </svg>
       </Box>
+        </>
+      )}
     </Box>
   );
 };

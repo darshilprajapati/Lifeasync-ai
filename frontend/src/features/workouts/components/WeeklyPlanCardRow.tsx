@@ -117,11 +117,24 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
     <Box sx={{ mb: 3 }}>
       {/* Weekly Header Controls */}
       <Stack
-        direction="row"
-        sx={{ mb: 2, flexWrap: 'wrap', gap: 1.5, justifyContent: 'space-between', alignItems: 'center' }}
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1.2, sm: 2 }}
+        sx={{
+          mb: 2,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: 1.2
+        }}
       >
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.8 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              fontSize: { xs: '1.05rem', sm: '1.25rem' }
+            }}
+          >
             Weekly Workout Planner
           </Typography>
           <Chip
@@ -133,7 +146,8 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
               border: isProf ? '1px solid var(--accent-primary)' : '1px solid rgba(255, 115, 56, 0.25)',
               color: 'var(--accent-primary)',
               fontWeight: 700,
-              fontSize: '11px'
+              fontSize: '11px',
+              maxWidth: { xs: 180, sm: 'none' }
             }}
           />
           <Chip
@@ -149,7 +163,17 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
           />
         </Stack>
 
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 0.8,
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'flex-start', sm: 'flex-end' }
+          }}
+        >
           <Button
             size="small"
             variant="outlined"
@@ -158,12 +182,14 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             sx={{
               borderRadius: isProf ? '0px !important' : '10px',
               textTransform: 'none',
-              fontSize: '12px',
+              fontSize: { xs: '11px', sm: '12px' },
               fontWeight: 700,
               borderColor: isProf ? 'var(--accent-primary)' : 'rgba(255, 115, 56, 0.35)',
               color: 'var(--accent-primary)',
               boxShadow: !isProf ? '0 2px 8px rgba(255, 115, 56, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4)' : 'none',
               transition: isProf ? 'background-color 0.15s ease' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              px: { xs: 1, sm: 1.4 },
+              py: { xs: 0.4, sm: 0.6 },
               '&:hover': {
                 bgcolor: 'rgba(255, 115, 56, 0.08)',
                 borderColor: 'var(--accent-primary)',
@@ -187,11 +213,13 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
               sx={{
                 borderRadius: isProf ? '0px !important' : '10px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 600,
                 borderColor: isProf ? 'var(--card-border)' : 'rgba(255, 255, 255, 0.2)',
                 color: 'var(--text-primary)',
                 boxShadow: !isProf ? '0 2px 8px rgba(0, 0, 0, 0.05)' : 'none',
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.4, sm: 0.6 },
                 '&:hover': {
                   bgcolor: isProf ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)',
                   transform: isProf ? 'none' : 'translateY(-2px)'
@@ -216,13 +244,13 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
               boxShadow: isProf ? 'var(--shadow-soft)' : '0 4px 14px rgba(0,0,0,0.06)'
             }}
           >
-            <IconButton size="small" onClick={handlePrevWeek}>
+            <IconButton size="small" onClick={handlePrevWeek} sx={{ p: 0.4 }}>
               <ChevronLeftIcon sx={{ fontSize: 18 }} />
             </IconButton>
-            <Typography variant="caption" sx={{ px: 1, fontWeight: 600, color: 'var(--text-primary)' }}>
+            <Typography variant="caption" sx={{ px: 0.8, fontWeight: 600, color: 'var(--text-primary)', fontSize: { xs: '10.5px', sm: '12px' } }}>
               {weekRangeString}
             </Typography>
-            <IconButton size="small" onClick={handleNextWeek}>
+            <IconButton size="small" onClick={handleNextWeek} sx={{ p: 0.4 }}>
               <ChevronRightIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Stack>
@@ -234,10 +262,11 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
             startIcon={<TodayIcon sx={{ fontSize: '15px !important' }} />}
             sx={{
               textTransform: 'none',
-              fontSize: '12px',
+              fontSize: { xs: '11px', sm: '12px' },
               fontWeight: 600,
               color: 'var(--text-secondary)',
               borderRadius: isProf ? '0px !important' : '8px',
+              px: { xs: 0.8, sm: 1.2 },
               '&:hover': {
                 color: 'var(--accent-primary)',
                 bgcolor: 'rgba(255, 115, 56, 0.06)'

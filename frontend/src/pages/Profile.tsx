@@ -110,15 +110,19 @@ const Profile: React.FC = () => {
   }, [user]);
 
   const handleSelectDesign = (ds: DesignSystem) => {
-    // Local draft only — updates Profile preview without prematurely applying globally
     setPrefDesign(ds);
-    setAppearanceSaved(false);
+    setDesignSystem(ds);
+    localStorage.setItem('lifesync_design_system', ds);
+    setAppearanceSaved(true);
+    setTimeout(() => setAppearanceSaved(false), 2000);
   };
 
   const handleSelectMode = (m: ThemeMode) => {
-    // Local draft only — updates Profile preview without prematurely applying globally
     setPrefMode(m);
-    setAppearanceSaved(false);
+    setMode(m);
+    localStorage.setItem('lifesync_theme', m);
+    setAppearanceSaved(true);
+    setTimeout(() => setAppearanceSaved(false), 2000);
   };
 
   const handleSaveAppearance = () => {

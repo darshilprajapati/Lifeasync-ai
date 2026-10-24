@@ -8,7 +8,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Chip,
+  Button,
   IconButton
 } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -27,7 +27,6 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import CloseIcon from '@mui/icons-material/Close';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
-import StyleIcon from '@mui/icons-material/Style';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeSystem } from '../../context/ThemeContext';
 import { trackAction } from '../../utils/analytics';
@@ -40,7 +39,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenChat }) 
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { designSystem, mode, toggleDesignSystem, toggleMode } = useThemeSystem();
+  const { designSystem, mode, setDesignSystem, setMode } = useThemeSystem();
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false);
 
   const isProf = designSystem === 'professional';
@@ -366,39 +365,94 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenChat }) 
         <Divider sx={{ my: 1.5 }} />
 
         {/* Theme Settings row */}
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-          <Chip
-            icon={<StyleIcon sx={{ fontSize: '16px !important' }} />}
-            label={isProf ? 'Professional Style' : 'Modern 3D Style'}
-            onClick={toggleDesignSystem}
-            clickable
-            sx={{
-              flex: 1,
-              py: 2,
-              fontWeight: 700,
-              fontSize: '12px',
-              borderRadius: isProf ? 0 : '12px',
-              bgcolor: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-            }}
-          />
-          <Chip
-            icon={isDark ? <DarkModeIcon sx={{ fontSize: '16px !important' }} /> : <LightModeIcon sx={{ fontSize: '16px !important' }} />}
-            label={isDark ? 'Night Mode' : 'Light Mode'}
-            onClick={toggleMode}
-            clickable
-            sx={{
-              flex: 1,
-              py: 2,
-              fontWeight: 700,
-              fontSize: '12px',
-              borderRadius: isProf ? 0 : '12px',
-              bgcolor: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-            }}
-          />
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', fontSize: '9.5px', display: 'block', mb: 0.6 }}>
+            Design System
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.8, bgcolor: 'var(--bg-secondary)', p: 0.4, borderRadius: isProf ? 0 : '10px', border: '1px solid var(--border-color)' }}>
+            <Button
+              size="small"
+              onClick={() => setDesignSystem('professional')}
+              sx={{
+                flex: 1,
+                py: 0.5,
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: isProf ? 0 : '8px',
+                bgcolor: isProf ? 'var(--accent-primary)' : 'transparent',
+                color: isProf ? '#FFFFFF' : 'var(--text-primary)',
+                boxShadow: isProf ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+                '&:hover': { bgcolor: isProf ? 'var(--accent-primary)' : 'rgba(0,0,0,0.06)' }
+              }}
+            >
+              Professional
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setDesignSystem('modern3d')}
+              sx={{
+                flex: 1,
+                py: 0.5,
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: isProf ? 0 : '8px',
+                bgcolor: !isProf ? 'var(--accent-primary)' : 'transparent',
+                color: !isProf ? '#FFFFFF' : 'var(--text-primary)',
+                boxShadow: !isProf ? '0 2px 6px rgba(255, 111, 38, 0.3)' : 'none',
+                '&:hover': { bgcolor: !isProf ? 'var(--accent-primary)' : 'rgba(0,0,0,0.06)' }
+              }}
+            >
+              Modern 3D
+            </Button>
+          </Box>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', fontSize: '9.5px', display: 'block', mb: 0.6 }}>
+            Appearance Mode
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.8, bgcolor: 'var(--bg-secondary)', p: 0.4, borderRadius: isProf ? 0 : '10px', border: '1px solid var(--border-color)' }}>
+            <Button
+              size="small"
+              startIcon={<LightModeIcon sx={{ fontSize: '13px !important' }} />}
+              onClick={() => setMode('light')}
+              sx={{
+                flex: 1,
+                py: 0.5,
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: isProf ? 0 : '8px',
+                bgcolor: !isDark ? 'var(--accent-primary)' : 'transparent',
+                color: !isDark ? '#FFFFFF' : 'var(--text-primary)',
+                boxShadow: !isDark ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+                '&:hover': { bgcolor: !isDark ? 'var(--accent-primary)' : 'rgba(0,0,0,0.06)' }
+              }}
+            >
+              Light
+            </Button>
+            <Button
+              size="small"
+              startIcon={<DarkModeIcon sx={{ fontSize: '13px !important' }} />}
+              onClick={() => setMode('dark')}
+              sx={{
+                flex: 1,
+                py: 0.5,
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: isProf ? 0 : '8px',
+                bgcolor: isDark ? 'var(--accent-primary)' : 'transparent',
+                color: isDark ? '#FFFFFF' : 'var(--text-primary)',
+                boxShadow: isDark ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+                '&:hover': { bgcolor: isDark ? 'var(--accent-primary)' : 'rgba(0,0,0,0.06)' }
+              }}
+            >
+              Night
+            </Button>
+          </Box>
         </Box>
 
         <ListItemButton

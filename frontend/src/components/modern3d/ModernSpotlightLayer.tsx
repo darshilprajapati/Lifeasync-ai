@@ -24,7 +24,8 @@ export const ModernSpotlightLayer: React.FC = () => {
   const isTouchOrReduced = typeof window !== 'undefined' && (
     window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
     ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) ||
-    window.matchMedia('(pointer: coarse)').matches
+    window.matchMedia('(pointer: coarse)').matches ||
+    window.innerWidth < 900
   );
 
   useEffect(() => {

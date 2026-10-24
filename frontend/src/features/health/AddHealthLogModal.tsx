@@ -98,11 +98,15 @@ export const AddHealthLogModal: React.FC<AddHealthLogModalProps> = ({
 
     setSubmitting(true);
     try {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localDateTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
       const res = await apiClient.post('/api/health', {
         logType,
         logValue: val,
         details: logDetails || `Manual ${logType} entry`,
-        logDate: new Date().toISOString()
+        logDate: localDateTime
       });
 
       if (res.data.isSuccess) {

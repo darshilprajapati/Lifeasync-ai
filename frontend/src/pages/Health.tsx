@@ -31,23 +31,16 @@ import { PredictAiModal } from '../features/health/PredictAiModal';
 import { ResizablePanel } from '../components/resizable/ResizablePanel';
 import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 
-const parseDateSafe = (dateStr: string) => {
+const parseDateSafe = (dateStr: string | Date | undefined): Date => {
   if (!dateStr) return new Date();
-  const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
-  const parts = datePart.split('-');
-  if (parts.length === 3) {
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const d = parseInt(parts[2], 10);
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-      const rawDate = new Date(dateStr);
-      if (!isNaN(rawDate.getTime())) {
-        return new Date(y, m, d, rawDate.getHours(), rawDate.getMinutes(), rawDate.getSeconds());
-      }
-      return new Date(y, m, d);
-    }
+  if (dateStr instanceof Date) return dateStr;
+  const str = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
   }
-  return new Date(dateStr);
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? new Date() : d;
 };
 
 const isSameDay = (date1: Date, date2: Date) => {
@@ -200,11 +193,15 @@ const Health: React.FC = () => {
     }
 
     try {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localDateTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
       const res = await apiClient.post('/api/health', {
         logType: type,
         logValue: value,
         details: details,
-        logDate: new Date().toISOString()
+        logDate: localDateTime
       });
 
       if (res.data.isSuccess) {
@@ -298,7 +295,16 @@ const Health: React.FC = () => {
           </MuiStack>
 
           {/* Header Action Buttons */}
-          <MuiStack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.8 }}>
+          <MuiStack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: { xs: 0.7, sm: 0.8 },
+              width: { xs: '100%', md: 'auto' }
+            }}
+          >
             <MuiButton
               size="small"
               variant="contained"
@@ -307,12 +313,12 @@ const Health: React.FC = () => {
               sx={{
                 borderRadius: isProf ? '0px !important' : '9px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 700,
                 bgcolor: 'var(--accent-primary)',
                 color: '#ffffff',
-                px: 1.5,
-                py: 0.6,
+                px: { xs: 1.1, sm: 1.5 },
+                py: { xs: 0.45, sm: 0.6 },
                 boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.3)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' }
               }}
@@ -328,12 +334,12 @@ const Health: React.FC = () => {
               sx={{
                 borderRadius: isProf ? '0px !important' : '9px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 650,
                 borderColor: 'rgba(156, 39, 176, 0.35)',
                 color: '#9C27B0',
-                px: 1.4,
-                py: 0.6,
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
                 '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.08)', borderColor: '#9C27B0' }
               }}
             >
@@ -348,12 +354,12 @@ const Health: React.FC = () => {
               sx={{
                 borderRadius: isProf ? '0px !important' : '9px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 650,
                 borderColor: 'rgba(255, 111, 38, 0.35)',
                 color: 'var(--accent-primary)',
-                px: 1.4,
-                py: 0.6,
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
                 '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
               }}
             >
@@ -368,12 +374,12 @@ const Health: React.FC = () => {
               sx={{
                 borderRadius: isProf ? '0px !important' : '9px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 650,
                 borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
                 color: 'var(--text-primary)',
-                px: 1.4,
-                py: 0.6,
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
                 '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
               }}
             >
@@ -388,12 +394,12 @@ const Health: React.FC = () => {
               sx={{
                 borderRadius: isProf ? '0px !important' : '9px',
                 textTransform: 'none',
-                fontSize: '12px',
+                fontSize: { xs: '11px', sm: '12px' },
                 fontWeight: 650,
                 borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
                 color: 'var(--text-primary)',
-                px: 1.4,
-                py: 0.6,
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
                 '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
               }}
             >
@@ -428,11 +434,11 @@ const Health: React.FC = () => {
             sx={{
               display: 'grid',
               gridTemplateColumns: {
-                xs: '1fr',
+                xs: 'repeat(2, 1fr)',
                 sm: 'repeat(2, 1fr)',
                 md: 'repeat(5, 1fr)'
               },
-              gap: 1.5,
+              gap: { xs: 1.2, sm: 1.5 },
               height: '100%'
             }}
           >
@@ -641,7 +647,8 @@ const Health: React.FC = () => {
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                gridColumn: { xs: 'span 2', sm: 'span 2', md: 'span 1' }
               }}
             >
               <MuiBox>

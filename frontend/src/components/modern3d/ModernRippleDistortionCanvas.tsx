@@ -34,6 +34,7 @@ export const ModernRippleDistortionCanvas: React.FC<{
     // Accessibility & touch safeguards
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) return;
+    if (window.innerWidth < 900) return;
 
     const container = containerRef.current;
     const canvas = canvasRef.current;
