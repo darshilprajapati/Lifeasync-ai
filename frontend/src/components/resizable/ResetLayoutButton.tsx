@@ -59,30 +59,33 @@ export const ResetLayoutButton: React.FC<ResetLayoutButtonProps> = ({
         startIcon={<RestartAltIcon sx={{ fontSize: '15px !important' }} />}
         onClick={() => setConfirmOpen(true)}
         title={`Reset ${displayName} component sizes to default`}
-        sx={{
-          borderRadius: isProf ? '0px !important' : '10px',
-          textTransform: 'none',
-          fontSize: '12px',
-          fontWeight: 650,
-          borderColor: isProf
-            ? 'var(--card-border)'
-            : hasCustomLayout
-            ? 'rgba(255, 111, 38, 0.4)'
-            : isDark
-            ? 'rgba(255, 255, 255, 0.15)'
-            : 'rgba(0, 0, 0, 0.12)',
-          color: hasCustomLayout ? 'var(--accent-primary)' : 'var(--text-secondary)',
-          bgcolor: isProf ? 'var(--card-bg)' : undefined,
-          px: 1.5,
-          py: 0.55,
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            borderColor: 'var(--accent-primary)',
-            color: 'var(--accent-primary)',
-            bgcolor: isProf ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 111, 38, 0.08)'
+        sx={[
+          {
+            display: { xs: 'none', lg: 'inline-flex' },
+            borderRadius: isProf ? '0px !important' : '10px',
+            textTransform: 'none',
+            fontSize: '12px',
+            fontWeight: 650,
+            borderColor: isProf
+              ? 'var(--card-border)'
+              : hasCustomLayout
+              ? 'rgba(255, 111, 38, 0.4)'
+              : isDark
+              ? 'rgba(255, 255, 255, 0.15)'
+              : 'rgba(0, 0, 0, 0.12)',
+            color: hasCustomLayout ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            bgcolor: isProf ? 'var(--card-bg)' : undefined,
+            px: 1.5,
+            py: 0.55,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              borderColor: 'var(--accent-primary)',
+              color: 'var(--accent-primary)',
+              bgcolor: isProf ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 111, 38, 0.08)'
+            }
           },
-          ...sx
-        }}
+          ...(Array.isArray(sx) ? sx : [sx])
+        ]}
       >
         Reset Layout
       </Button>

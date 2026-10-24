@@ -1,7 +1,6 @@
 import React from 'react';
-import { Box, Typography, IconButton, Avatar, Badge } from '@mui/material';
+import { Box, Typography, IconButton, Avatar } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeSystem } from '../../context/ThemeContext';
@@ -12,8 +11,7 @@ interface MobileTopBarProps {
 }
 
 export const MobileTopBar: React.FC<MobileTopBarProps> = ({
-  onOpenDrawer,
-  onOpenNotifications
+  onOpenDrawer
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -126,44 +124,8 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
         </Typography>
       </Box>
 
-      {/* Right: Notification Bell & Profile Avatar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton
-          onClick={onOpenNotifications || (() => navigate('/profile'))}
-          aria-label="Notifications"
-          size="small"
-          sx={{
-            width: 38,
-            height: 38,
-            borderRadius: isProf ? '0px' : '12px',
-            bgcolor: isProf
-              ? 'transparent'
-              : isDark
-              ? 'rgba(255, 255, 255, 0.06)'
-              : 'rgba(232, 90, 79, 0.06)',
-            color: 'var(--text-primary)',
-            border: isProf ? 'none' : '1px solid var(--border-color)',
-            '&:hover': {
-              bgcolor: 'rgba(232, 90, 79, 0.12)',
-            },
-          }}
-        >
-          <Badge
-            variant="dot"
-            color="error"
-            overlap="circular"
-            sx={{
-              '& .MuiBadge-badge': {
-                bgcolor: 'var(--accent-primary)',
-                width: 7,
-                height: 7,
-              },
-            }}
-          >
-            <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
-          </Badge>
-        </IconButton>
-
+      {/* Right: Profile Avatar */}
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <Avatar
           onClick={() => navigate('/profile')}
           sx={{

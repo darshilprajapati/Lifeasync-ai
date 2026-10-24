@@ -765,7 +765,6 @@ const AppLayout: React.FC = () => {
       {/* Mobile Top Bar */}
       <MobileTopBar
         onOpenDrawer={() => setMobileDrawerOpen(true)}
-        onOpenNotifications={() => navigate('/profile')}
       />
 
       {/* Mobile Navigation Drawer */}

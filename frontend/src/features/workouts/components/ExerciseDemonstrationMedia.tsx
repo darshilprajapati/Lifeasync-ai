@@ -17,7 +17,6 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
-import SpeedIcon from '@mui/icons-material/Speed';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -135,10 +134,116 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
     const cat = category.toLowerCase();
     const name = exerciseName.toLowerCase();
 
-    // 1. Horizontal Push / Plank (Chest, Pushups, Bench, Tricep Extensions, Dips)
-    if (cat === 'chest' || name.includes('push') || name.includes('dip') || name.includes('bench') || name.includes('extension')) {
+    // 1. Chair Tricep Dips
+    if (name.includes('dip')) {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
+          {/* Floor Plane */}
+          <line x1="10" y1="86" x2="90" y2="86" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+          {/* Chair/Bench behind torso */}
+          <rect x="22" y="52" width="16" height="34" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          <line x1="38" y1="52" x2="38" y2="86" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+          {/* Head */}
+          <circle cx="48" cy="32" r="5.5" fill={themeColor} />
+          {/* Vertical Torso dipping down */}
+          <line x1="48" y1="38" x2="48" y2="64" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Arm gripping chair edge with elbow flexed 90 deg behind */}
+          <path d="M 48,43 L 36,46 L 38,52" stroke={themeColor} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          {/* Active Tricep Contraction Node */}
+          <circle cx="36" cy="46" r="3.5" fill="#ef4444" />
+          {/* Anterior Deltoid node */}
+          <circle cx="48" cy="43" r="3" fill="#f59e0b" />
+          {/* Thighs extending forward from hips */}
+          <line x1="48" y1="64" x2="68" y2="64" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+          {/* Shins to floor */}
+          <line x1="68" y1="64" x2="68" y2="86" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+          {/* Motion Vector (Vertical extension arrow) */}
+          <line x1="56" y1="58" x2="56" y2="44" stroke={themeColor} strokeWidth="1.5" strokeDasharray="3 2" />
+          <polygon points="56,40 53,46 59,46" fill={themeColor} />
+        </svg>
+      );
+    }
+
+    // 2. Bodyweight Tricep Extensions
+    if (name.includes('extension') && !name.includes('overhead')) {
+      return (
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
+          {/* Floor Plane */}
+          <line x1="10" y1="84" x2="90" y2="84" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+          {/* Raised Surface/Bench */}
+          <rect x="70" y="56" width="20" height="28" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          {/* Head */}
+          <circle cx="68" cy="40" r="5.5" fill={themeColor} />
+          {/* Straight Plank Line (Feet at floor to Shoulders) */}
+          <line x1="22" y1="80" x2="64" y2="46" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Tricep Extension Arms: Forearms lowering to surface */}
+          <path d="M 64,46 L 68,54 L 72,56" stroke={themeColor} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          {/* Tricep Brachii Contraction Node */}
+          <circle cx="68" cy="54" r="3.5" fill="#ef4444" />
+          {/* Core Stability Node */}
+          <circle cx="44" cy="62" r="3" fill="#f59e0b" />
+          {/* Kinetic Arc for Tricep Press */}
+          <path d="M 64,36 Q 72,32 78,38" fill="none" stroke={themeColor} strokeWidth="1.5" strokeDasharray="3 2" />
+        </svg>
+      );
+    }
+
+    // 3. Dumbbell Overhead Tricep Extension / Skull Crushers
+    if (name.includes('overhead') && name.includes('tricep')) {
+      return (
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
+          {/* Ground */}
+          <line x1="15" y1="86" x2="85" y2="86" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+          {/* Head */}
+          <circle cx="50" cy="36" r="5.5" fill={themeColor} />
+          {/* Torso */}
+          <line x1="50" y1="42" x2="50" y2="68" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Upper arms pointing vertical */}
+          <line x1="50" y1="46" x2="48" y2="24" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+          {/* Forearm bent backward behind head holding dumbbell */}
+          <path d="M 48,24 L 44,38" stroke={themeColor} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          {/* Triceps Long Head Node */}
+          <circle cx="48" cy="24" r="3.5" fill="#ef4444" />
+          {/* Dumbbell behind head */}
+          <rect x="40" y="36" width="8" height="6" rx="1.5" fill="rgba(255,255,255,0.8)" />
+          {/* Legs */}
+          <line x1="50" y1="68" x2="44" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="50" y1="68" x2="56" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
+    // 4. Dumbbell Bicep Curls / Hammer Curls
+    if (name.includes('curl') || name.includes('bicep')) {
+      return (
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
+          {/* Ground */}
+          <line x1="15" y1="86" x2="85" y2="86" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+          {/* Head */}
+          <circle cx="45" cy="30" r="5.5" fill={themeColor} />
+          {/* Torso */}
+          <line x1="45" y1="36" x2="45" y2="68" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Upper Arm stationary vertical along ribs */}
+          <line x1="45" y1="42" x2="45" y2="56" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Forearm curling upward toward shoulder */}
+          <path d="M 45,56 L 58,40" stroke={themeColor} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+          {/* Bicep Brachii Contraction Node */}
+          <circle cx="50" cy="46" r="4" fill="#ef4444" />
+          {/* Dumbbell at top of curl */}
+          <circle cx="58" cy="40" r="4.5" fill="rgba(255,255,255,0.85)" />
+          {/* Curling Trajectory Arc */}
+          <path d="M 52,58 Q 62,54 58,42" fill="none" stroke={themeColor} strokeWidth="1.5" strokeDasharray="3 2" />
+          {/* Legs */}
+          <line x1="45" y1="68" x2="40" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="45" y1="68" x2="52" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
+    // 5. Horizontal Push / Chest Press / Pushups
+    if (cat === 'chest' || name.includes('push') || name.includes('bench') || name.includes('chest') || name.includes('flye')) {
+      return (
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Ground Floor Plane */}
           <line x1="10" y1="76" x2="90" y2="76" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeDasharray="4 3" />
           {/* Head */}
@@ -149,7 +254,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
           <line x1="35" y1="58" x2="20" y2="75" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
           {/* Arms: Flexing Elbow down to Palm on Floor */}
           <path
-            d={isPlaying ? 'M 66,50 L 64,62 L 65,75' : 'M 66,50 L 68,60 L 65,75'}
+            d="M 66,50 L 64,62 L 65,75"
             stroke={themeColor}
             strokeWidth="3.5"
             strokeLinecap="round"
@@ -165,10 +270,10 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 2. Vertical / Horizontal Pull (Back, Pull-ups, Rows, Lat Pulldowns)
+    // 6. Vertical / Horizontal Pull (Back, Pull-ups, Rows, Lat Pulldowns)
     if (cat === 'back' || name.includes('pull') || name.includes('row') || name.includes('lat')) {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Overhead Grip Bar */}
           <line x1="20" y1="20" x2="80" y2="20" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" />
           {/* Head */}
@@ -194,10 +299,10 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 3. Squat & Knee Flexion (Legs, Squat, Lunge, Split Squat)
-    if (name.includes('squat') || name.includes('lunge') || name.includes('split') || name.includes('calf')) {
+    // 7. Squat & Knee Flexion (Legs, Squat, Lunge, Split Squat)
+    if (name.includes('squat') || name.includes('lunge') || name.includes('split') || name.includes('calf') || cat === 'legs') {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Floor Plane */}
           <line x1="15" y1="84" x2="85" y2="84" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
           {/* Head */}
@@ -219,13 +324,13 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 4. Posterior Chain & Hip Hinge (Deadlift, Glute Bridge, Hamstrings)
+    // 8. Posterior Chain & Hip Hinge (Deadlift, Glute Bridge, Hamstrings)
     if (name.includes('bridge') || name.includes('deadlift') || name.includes('hinge')) {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Floor */}
           <line x1="15" y1="78" x2="85" y2="78" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-          {/* Supine Glute Bridge Pose: Head on floor, Hips elevated */}
+          {/* Supine Glute Bridge Pose */}
           <circle cx="28" cy="74" r="5" fill={themeColor} />
           <path d="M 33,74 L 50,56 L 68,76" stroke="#ffffff" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           <line x1="68" y1="76" x2="78" y2="76" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
@@ -239,10 +344,10 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 5. Overhead Shoulder Press & Deltoids (Shoulders, Press, Pike)
+    // 9. Overhead Shoulder Press & Deltoids (Shoulders, Press, Pike)
     if (cat === 'shoulders' || name.includes('shoulder') || name.includes('press') || name.includes('pike') || name.includes('raise')) {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Head */}
           <circle cx="50" cy="38" r="6" fill={themeColor} />
           {/* Torso */}
@@ -262,34 +367,10 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 6. Arm Isolation: Biceps / Triceps (Curl, Dips)
-    if (cat === 'arms' || name.includes('curl') || name.includes('bicep') || name.includes('tricep')) {
-      return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
-          {/* Head */}
-          <circle cx="45" cy="30" r="5.5" fill={themeColor} />
-          {/* Torso */}
-          <line x1="45" y1="36" x2="45" y2="68" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-          {/* Upper Arm Vertical */}
-          <line x1="45" y1="42" x2="48" y2="56" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
-          {/* Forearm Curling Articulation Arc */}
-          <path d="M 48,56 L 62,42" stroke={themeColor} strokeWidth="3.5" strokeLinecap="round" fill="none" />
-          {/* Bicep / Tricep Muscle Bellies */}
-          <circle cx="54" cy="48" r="4" fill="#ef4444" />
-          <circle cx="46" cy="48" r="3" fill="#f59e0b" />
-          {/* Dumbbell Weight */}
-          <circle cx="64" cy="40" r="4.5" fill="rgba(255,255,255,0.7)" />
-          {/* Legs */}
-          <line x1="45" y1="68" x2="40" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="45" y1="68" x2="52" y2="86" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-        </svg>
-      );
-    }
-
-    // 7. Core Stabilization & Flexion (Core, Plank, Crunch, Abdominals)
+    // 10. Core Stabilization & Flexion (Core, Plank, Crunch, Abdominals)
     if (cat === 'core' || name.includes('plank') || name.includes('crunch') || name.includes('bicycle')) {
       return (
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
           {/* Floor */}
           <line x1="15" y1="74" x2="85" y2="74" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
           {/* Prone Plank Line: Straight rigid line from head to heels */}
@@ -307,9 +388,9 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
       );
     }
 
-    // 8. Cardio & Explosive Locomotion (Cardio, Burpees, Jumping, Running)
+    // 11. Cardio & Explosive Locomotion (Cardio, Burpees, Jumping, Running)
     return (
-      <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 12px ${themeColor}66)` }}>
+      <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter: `drop-shadow(0 0 10px ${themeColor}55)` }}>
         {/* Head */}
         <circle cx="56" cy="28" r="6" fill={themeColor} />
         {/* Dynamic Forward-Leaning Torso */}
@@ -363,7 +444,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
           }}
         />
       ) : (
-        /* Biomechanical Kinetic Demonstration Vector Guide */
+        /* Biomechanical Movement Anatomy Vector Guide - Clean, Static, Accurate */
         <Box
           sx={{
             width: '100%',
@@ -390,7 +471,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
             }}
           />
 
-          {/* Kinetic Anatomy Vector Motion */}
+          {/* Biomechanical Anatomy Vector - Truly Static, No Zoom In/Out Animation */}
           <Box
             sx={{
               position: 'relative',
@@ -399,12 +480,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: isPlaying ? 'pulseContraction 2.4s ease-in-out infinite' : 'none',
-              '@keyframes pulseContraction': {
-                '0%': { transform: 'scale(0.96)', opacity: 0.88 },
-                '50%': { transform: 'scale(1.04)', opacity: 1 },
-                '100%': { transform: 'scale(0.96)', opacity: 0.88 }
-              }
+              animation: 'none'
             }}
           >
             {renderBiomechanicalPose()}
@@ -444,7 +520,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
               whiteSpace: 'nowrap'
             }}
           >
-            {targetMuscles || `${category} Biomechanics`}
+            {targetMuscles || `${category} Form Guide`}
           </Typography>
         </Box>
       )}
@@ -481,8 +557,8 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
         />
 
         <Chip
-          icon={<SpeedIcon sx={{ fontSize: '12px !important', color: '#10b981 !important' }} />}
-          label={isPlaying ? 'Kinetic Guide Active' : 'Paused'}
+          icon={hasValidMedia ? <PlayArrowIcon sx={{ fontSize: '12px !important', color: '#10b981 !important' }} /> : <FitnessCenterIcon sx={{ fontSize: '12px !important', color: `${themeColor} !important` }} />}
+          label={hasValidMedia ? (isPlaying ? 'Video Playing' : 'Video Paused') : 'Technique Form Guide'}
           size="small"
           sx={{
             height: 22,
@@ -497,7 +573,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
         />
       </Box>
 
-      {/* Bottom Floating Play/Pause & Form Cue Controls */}
+      {/* Bottom Floating Controls */}
       <Box
         sx={{
           position: 'absolute',
@@ -510,29 +586,49 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
           zIndex: 2
         }}
       >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Tooltip title={isPlaying ? 'Pause Movement' : 'Play Movement'}>
-            <IconButton
-              size="small"
-              onClick={() => setIsPlaying(!isPlaying)}
+        {hasValidMedia ? (
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Tooltip title={isPlaying ? 'Pause Video' : 'Play Video'}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPlaying(!isPlaying);
+                }}
+                sx={{
+                  bgcolor: 'rgba(15, 23, 42, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  width: 26,
+                  height: 26,
+                  '&:hover': { bgcolor: themeColor, borderColor: themeColor }
+                }}
+              >
+                {isPlaying ? <PauseIcon sx={{ fontSize: 15 }} /> : <PlayArrowIcon sx={{ fontSize: 15 }} />}
+              </IconButton>
+            </Tooltip>
+            <Typography
+              variant="caption"
               sx={{
-                bgcolor: 'rgba(15, 23, 42, 0.85)',
-                backdropFilter: 'blur(8px)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                width: 26,
-                height: 26,
-                '&:hover': { bgcolor: themeColor, borderColor: themeColor }
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontSize: '9.5px',
+                fontWeight: 600,
+                bgcolor: 'rgba(15, 23, 42, 0.75)',
+                px: 0.8,
+                py: 0.25,
+                borderRadius: '6px',
+                backdropFilter: 'blur(4px)'
               }}
             >
-              {isPlaying ? <PauseIcon sx={{ fontSize: 15 }} /> : <PlayArrowIcon sx={{ fontSize: 15 }} />}
-            </IconButton>
-          </Tooltip>
-
+              Video Demo
+            </Typography>
+          </Stack>
+        ) : (
           <Typography
             variant="caption"
             sx={{
-              color: 'rgba(255, 255, 255, 0.8)',
+              color: 'rgba(255, 255, 255, 0.85)',
               fontSize: '9.5px',
               fontWeight: 600,
               bgcolor: 'rgba(15, 23, 42, 0.75)',
@@ -542,9 +638,9 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
               backdropFilter: 'blur(4px)'
             }}
           >
-            Tempo: 3s Ecc · 1s Iso · 1s Con
+            {requiresEquipment !== false && equipmentType ? equipmentType : 'Bodyweight Movement'}
           </Typography>
-        </Stack>
+        )}
 
         <Tooltip title="View exercise details and demonstration" arrow placement="top">
           <IconButton
@@ -700,17 +796,17 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
                 }}
               >
                 <FitnessCenterIcon sx={{ fontSize: 36, color: 'var(--text-secondary)', mb: 1, opacity: 0.6 }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)', mb: 0.5 }}>
-                  No verified demonstration video attached
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                  Embedded Video Demonstration Unavailable
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 1.5 }}>
-                  Review the written posture guide below or explore demonstration videos online.
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 1.5, maxWidth: '420px', mx: 'auto' }}>
+                  A direct video file is not embedded for this movement. Review the verified step-by-step instructions and posture guidance below, or watch verified demonstration videos online.
                 </Typography>
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
-                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + ' proper form')}`}
+                  startIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + ' exercise proper form technique')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
@@ -720,7 +816,7 @@ export const ExerciseDemonstrationMedia: React.FC<ExerciseDemonstrationMediaProp
                     fontSize: '12px'
                   }}
                 >
-                  Find Demonstration
+                  Watch Demo on YouTube
                 </Button>
               </Box>
             )}
