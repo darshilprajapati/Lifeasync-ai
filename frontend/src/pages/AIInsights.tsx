@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -8,6 +9,7 @@ import {
   Paper,
   Chip,
   Checkbox,
+  Button,
 } from '@mui/material';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
@@ -23,6 +25,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import {
   ResponsiveContainer,
   BarChart,
@@ -63,13 +66,14 @@ interface PlannerItem {
 }
 
 interface WeeklyDataPoint {
+  dateStr: string;
   day: string;
   tasks: number;
-  focusScore: number;
 }
 
 const AIInsights: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [insights, setInsights] = useState<AiRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +97,7 @@ const AIInsights: React.FC = () => {
     return 'Good evening';
   };
 
-  const loadAllMetrics = async () => {
+  const loadAllMetrics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -144,38 +148,45 @@ const AIInsights: React.FC = () => {
           .slice(0, 6);
         setPriorityTasks(sortedPriority);
 
-        // Calculate 7-day task distribution
-        const daysMap: Record<string, { tasks: number; focusScore: number }> = {};
+        // Calculate accurate 7-day task distribution using date strings
+        const last7Days: WeeklyDataPoint[] = [];
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         for (let i = 6; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          const key = dayNames[d.getDay()];
-          daysMap[key] = { tasks: 0, focusScore: 50 + (i * 7) % 45 };
+          const dateStr = d.toISOString().split('T')[0];
+          const day = dayNames[d.getDay()];
+          last7Days.push({ dateStr, day, tasks: 0 });
         }
 
         events.forEach((e) => {
-          if (e.startTime) {
-            const dayKey = dayNames[new Date(e.startTime).getDay()];
-            if (daysMap[dayKey] && (e.status || '').toLowerCase() === 'completed') {
-              daysMap[dayKey].tasks += 1;
+          if (e.startTime && (e.status || '').toLowerCase() === 'completed') {
+            const eDateStr = new Date(e.startTime).toISOString().split('T')[0];
+            const match = last7Days.find((d) => d.dateStr === eDateStr);
+            if (match) {
+              match.tasks += 1;
             }
           }
         });
 
-        setWeeklyProgress(
-          Object.keys(daysMap).map((k) => ({
-            day: k,
-            tasks: daysMap[k].tasks,
-            focusScore: daysMap[k].focusScore,
-          }))
-        );
+        setWeeklyProgress(last7Days);
       }
 
-      // 3. Finance
+      // 3. Finance (compute current month expenses from transaction array)
       if (financeRes.status === 'fulfilled' && financeRes.value.data.isSuccess) {
-        const fData = financeRes.value.data.data;
-        setMonthlyExpense(fData?.monthlyExpenses || 0);
+        const fRaw = financeRes.value.data.data;
+        const transactions: any[] = Array.isArray(fRaw) ? fRaw : [];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const monthExpenses = transactions
+          .filter((t) => {
+            const isExpense = (t.type || '').toLowerCase() === 'expense';
+            const tDate = t.date || t.transactionDate ? new Date(t.date || t.transactionDate) : null;
+            return isExpense && tDate && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        setMonthlyExpense(monthExpenses);
       }
 
       // 4. Career
@@ -190,21 +201,27 @@ const AIInsights: React.FC = () => {
         setVaultCount(vData.length);
       }
 
-      // 6. LifeScore
+      // 6. LifeScore (handle both finalScore and score)
       if (lifeScoreRes.status === 'fulfilled' && lifeScoreRes.value.data.isSuccess) {
         const ls = lifeScoreRes.value.data.data;
-        if (ls?.score !== undefined) {
-          setLifeScore(Math.round(ls.score));
+        const scoreVal = ls?.finalScore ?? ls?.score;
+        if (scoreVal !== undefined) {
+          setLifeScore(Math.round(scoreVal));
         }
       }
 
-      // 7. Health / Workout
+      // 7. Health / Workout (check logDate and logType/activityType)
       if (healthRes.status === 'fulfilled' && healthRes.value.data.isSuccess) {
         const logs = healthRes.value.data.data || [];
         const todayStr = new Date().toISOString().split('T')[0];
         const hasWorkoutToday = logs.some((l: any) => {
-          const lDate = l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : '';
-          return lDate === todayStr;
+          const rawDate = l.logDate || l.createdAt;
+          const lDate = rawDate ? new Date(rawDate).toISOString().split('T')[0] : '';
+          const isWorkout =
+            (l.logType || '').toLowerCase() === 'workout' ||
+            (l.activityType || '').toLowerCase().includes('workout') ||
+            (l.exerciseName && l.durationMinutes > 0);
+          return lDate === todayStr && isWorkout;
         });
         setWorkoutLogged(hasWorkoutToday);
       }
@@ -215,11 +232,41 @@ const AIInsights: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadAllMetrics();
-  }, []);
+
+    // Cross-module real-time sync listeners
+    const handleSync = () => {
+      loadAllMetrics();
+    };
+    window.addEventListener('lifesync:score-updated', handleSync);
+    window.addEventListener('lifesync:finance-updated', handleSync);
+    window.addEventListener('lifesync:health-updated', handleSync);
+    window.addEventListener('lifesync:task-updated', handleSync);
+
+    return () => {
+      window.removeEventListener('lifesync:score-updated', handleSync);
+      window.removeEventListener('lifesync:finance-updated', handleSync);
+      window.removeEventListener('lifesync:health-updated', handleSync);
+      window.removeEventListener('lifesync:task-updated', handleSync);
+    };
+  }, [loadAllMetrics]);
+
+  const handleToggleTask = async (task: PlannerItem) => {
+    try {
+      const updated = { ...task, status: 'Completed' };
+      const res = await apiClient.put(`/api/planner/${task.id}`, updated);
+      if (res.data.isSuccess) {
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
+        loadAllMetrics();
+      }
+    } catch (err: any) {
+      console.error('Failed to complete priority task', err);
+    }
+  };
 
   const handleGenerateInsights = async () => {
     setError(null);
@@ -470,24 +517,23 @@ const AIInsights: React.FC = () => {
               </Grid>
             </Grid>
 
-            {/* Main Content Grid: PriMaX Layout */}
+            {/* Main Content Grid */}
             <Grid container spacing={3}>
               {/* Left Column: Weekly Progress & Priority Tasks */}
               <Grid size={{ xs: 12, lg: 7 }}>
-                <ResizablePanel pageId="insights" componentId="insights_left_column" defaultHeight={650} minHeight={420} maxHeight={1400}>
-                  <Stack spacing={3} sx={{ height: '100%', overflowY: 'auto', pr: 0.5 }}>
-                    {/* Weekly Progress Bar Chart */}
-                    <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)' }}>
-                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                          Weekly Productivity & Focus
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                          Daily task throughput across the current cycle
-                        </Typography>
-                      </Box>
-                      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Stack spacing={3}>
+                  {/* Weekly Progress Bar Chart */}
+                  <ResizablePanel pageId="insights" componentId="insights_productivity_chart" defaultHeight={330} minHeight={260} maxHeight={600}>
+                    <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Weekly Productivity & Focus
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                            Daily task throughput across the current cycle
+                          </Typography>
+                        </Box>
                         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                           <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'var(--accent-primary)' }} />
                           <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
@@ -495,135 +541,178 @@ const AIInsights: React.FC = () => {
                           </Typography>
                         </Stack>
                       </Stack>
-                    </Stack>
 
-                    <Box sx={{ height: 230, width: '100%', mt: 1 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={weeklyProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.15)" />
-                          <XAxis dataKey="day" stroke="var(--text-secondary)" tickLine={false} />
-                          <YAxis stroke="var(--text-secondary)" tickLine={false} allowDecimals={false} />
-                          <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: 'var(--bg-primary)',
-                              borderColor: 'var(--border-color)',
-                              borderRadius: '10px',
-                              color: 'var(--text-primary)',
-                              boxShadow: 'var(--shadow-soft)',
-                            }}
-                          />
-                          <Bar
-                            dataKey="tasks"
-                            fill="var(--accent-primary)"
-                            radius={[6, 6, 0, 0]}
-                            name="Completed Tasks"
-                            barSize={28}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Box>
-                  </TiltCard>
-
-                  {/* Priority Tasks Checklist */}
-                  <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)' }}>
-                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                          Priority Tasks Checklist
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                          High and medium priority items from your Planner
-                        </Typography>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={`${priorityTasks.length} pending`}
-                        sx={{ bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)', fontWeight: 700 }}
-                      />
-                    </Stack>
-
-                    {priorityTasks.length === 0 ? (
-                      <Paper sx={{ p: 3, textAlign: 'center', bgcolor: 'transparent', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-                        <CheckCircleIcon sx={{ fontSize: 36, color: '#4CAF50', mb: 1, opacity: 0.8 }} />
-                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-                          All priority tasks completed! Great job staying focused.
-                        </Typography>
-                      </Paper>
-                    ) : (
-                      <Stack spacing={1.5}>
-                        {priorityTasks.map((t) => (
-                          <Box
-                            key={t.id}
+                      <Box sx={{ flex: 1, width: '100%', minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {weeklyProgress.every((p) => p.tasks === 0) ? (
+                          <Paper
                             sx={{
-                              p: 1.5,
-                              borderRadius: '12px',
-                              bgcolor: 'var(--bg-secondary)',
-                              border: '1px solid var(--border-color)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
+                              p: 3,
+                              width: '100%',
+                              textAlign: 'center',
+                              bgcolor: 'rgba(0,0,0,0.01)',
+                              border: '1px dashed var(--border-color)',
+                              borderRadius: '14px',
                             }}
                           >
-                            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                              <Checkbox
-                                size="small"
-                                checked={false}
-                                sx={{
-                                  color: 'var(--accent-primary)',
-                                  '&.Mui-checked': { color: 'var(--accent-primary)' },
+                            <EventAvailableIcon sx={{ fontSize: 36, color: 'var(--text-secondary)', opacity: 0.6, mb: 1 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)', mb: 0.5 }}>
+                              No Completed Tasks This Week
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 2 }}>
+                              Schedule and finish tasks in Planner to track your weekly throughput and focus trends.
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => navigate('/planner')}
+                              sx={{
+                                textTransform: 'none',
+                                borderColor: 'var(--accent-primary)',
+                                color: 'var(--accent-primary)',
+                                borderRadius: '10px',
+                                px: 2,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Go to Planner
+                            </Button>
+                          </Paper>
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={weeklyProgress} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.15)" />
+                              <XAxis dataKey="day" stroke="var(--text-secondary)" tickLine={false} />
+                              <YAxis stroke="var(--text-secondary)" tickLine={false} allowDecimals={false} />
+                              <RechartsTooltip
+                                contentStyle={{
+                                  backgroundColor: 'var(--bg-primary)',
+                                  borderColor: 'var(--border-color)',
+                                  borderRadius: '10px',
+                                  color: 'var(--text-primary)',
+                                  boxShadow: 'var(--shadow-soft)',
                                 }}
                               />
-                              <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                  {t.title}
-                                </Typography>
-                                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.3 }}>
-                                  <AccessTimeIcon sx={{ fontSize: 13, color: 'var(--text-secondary)' }} />
-                                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                                    {t.startTime ? new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Flexible'}
-                                  </Typography>
-                                  {t.category && (
-                                    <Chip
-                                      size="small"
-                                      label={t.category}
-                                      sx={{ height: 18, fontSize: '10px', bgcolor: 'rgba(0,0,0,0.06)' }}
-                                    />
-                                  )}
-                                </Stack>
-                              </Box>
-                            </Stack>
-                            <Chip
-                              size="small"
-                              label={(t.priority || 'medium').toUpperCase()}
-                              sx={{
-                                height: 22,
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                bgcolor:
-                                  (t.priority || '').toLowerCase() === 'high'
-                                    ? 'rgba(232, 90, 79, 0.15)'
-                                    : 'rgba(255, 152, 0, 0.15)',
-                                color:
-                                  (t.priority || '').toLowerCase() === 'high'
-                                    ? 'var(--accent-primary)'
-                                    : '#E65100',
-                              }}
-                            />
-                          </Box>
-                        ))}
-                      </Stack>
-                    )}
-                  </TiltCard>
+                              <Bar
+                                dataKey="tasks"
+                                fill="var(--accent-primary)"
+                                radius={[6, 6, 0, 0]}
+                                name="Completed Tasks"
+                                barSize={28}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </Box>
+                    </TiltCard>
+                  </ResizablePanel>
 
-                  {/* Areas Needing Attention & Achievements */}
+                  {/* Priority Tasks Checklist */}
+                  <ResizablePanel pageId="insights" componentId="insights_priority_tasks" defaultHeight={300} minHeight={220} maxHeight={550}>
+                    <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Priority Tasks Checklist
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                            High and medium priority items from your Planner
+                          </Typography>
+                        </Box>
+                        <Chip
+                          size="small"
+                          label={`${priorityTasks.length} pending`}
+                          sx={{ bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)', fontWeight: 700 }}
+                        />
+                      </Stack>
+
+                      <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
+                        {priorityTasks.length === 0 ? (
+                          <Paper sx={{ p: 3, textAlign: 'center', bgcolor: 'transparent', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                            <CheckCircleIcon sx={{ fontSize: 36, color: '#4CAF50', mb: 1, opacity: 0.8 }} />
+                            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+                              All priority tasks completed! Great job staying focused.
+                            </Typography>
+                          </Paper>
+                        ) : (
+                          <Stack spacing={1.5}>
+                            {priorityTasks.map((t) => (
+                              <Box
+                                key={t.id}
+                                sx={{
+                                  p: 1.5,
+                                  borderRadius: '12px',
+                                  bgcolor: 'var(--bg-secondary)',
+                                  border: '1px solid var(--border-color)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                                  <Checkbox
+                                    size="small"
+                                    checked={false}
+                                    onChange={() => handleToggleTask(t)}
+                                    title="Mark task completed"
+                                    sx={{
+                                      color: 'var(--accent-primary)',
+                                      '&.Mui-checked': { color: 'var(--accent-primary)' },
+                                    }}
+                                  />
+                                  <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                      {t.title}
+                                    </Typography>
+                                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.3 }}>
+                                      <AccessTimeIcon sx={{ fontSize: 13, color: 'var(--text-secondary)' }} />
+                                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                        {t.startTime ? new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Flexible'}
+                                      </Typography>
+                                      {t.category && (
+                                        <Chip
+                                          size="small"
+                                          label={t.category}
+                                          sx={{ height: 18, fontSize: '10px', bgcolor: 'rgba(0,0,0,0.06)' }}
+                                        />
+                                      )}
+                                    </Stack>
+                                  </Box>
+                                </Stack>
+                                <Chip
+                                  size="small"
+                                  label={(t.priority || 'medium').toUpperCase()}
+                                  sx={{
+                                    height: 22,
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    bgcolor:
+                                      (t.priority || '').toLowerCase() === 'high'
+                                        ? 'rgba(232, 90, 79, 0.15)'
+                                        : 'rgba(255, 152, 0, 0.15)',
+                                    color:
+                                      (t.priority || '').toLowerCase() === 'high'
+                                        ? 'var(--accent-primary)'
+                                        : '#E65100',
+                                  }}
+                                />
+                              </Box>
+                            ))}
+                          </Stack>
+                        )}
+                      </Box>
+                    </TiltCard>
+                  </ResizablePanel>
+
+                  {/* Areas Needing Attention & System Integrity */}
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <Paper
+                      <TiltCard
                         sx={{
                           p: 2.5,
                           borderRadius: '16px',
                           bgcolor: 'rgba(255, 152, 0, 0.05)',
-                          border: '1px solid rgba(255, 152, 0, 0.2)',
+                          border: '1px solid rgba(255, 152, 0, 0.25)',
+                          height: '100%',
                         }}
                       >
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
@@ -635,15 +724,16 @@ const AIInsights: React.FC = () => {
                         <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', lineHeight: 1.5 }}>
                           Incomplete tasks past deadline deduct <strong>−2 points</strong> from your Life Score. Complete or reschedule them in Planner to safeguard your standing.
                         </Typography>
-                      </Paper>
+                      </TiltCard>
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <Paper
+                      <TiltCard
                         sx={{
                           p: 2.5,
                           borderRadius: '16px',
                           bgcolor: 'rgba(76, 175, 80, 0.05)',
-                          border: '1px solid rgba(76, 175, 80, 0.2)',
+                          border: '1px solid rgba(76, 175, 80, 0.25)',
+                          height: '100%',
                         }}
                       >
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
@@ -655,37 +745,38 @@ const AIInsights: React.FC = () => {
                         <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', lineHeight: 1.5 }}>
                           All cross-module metrics synchronize seamlessly. Encrypted Vault credentials remain local and strictly excluded from AI prompts.
                         </Typography>
-                      </Paper>
+                      </TiltCard>
                     </Grid>
                   </Grid>
                 </Stack>
-              </ResizablePanel>
-            </Grid>
+              </Grid>
 
-            {/* Right Column: PriMaX Dynamic AI Insights */}
-            <Grid size={{ xs: 12, lg: 5 }}>
-              <ResizablePanel pageId="insights" componentId="insights_right_column" defaultHeight={650} minHeight={420} maxHeight={1400}>
-                <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', overflowY: 'auto' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                      <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}>
-                        <PsychologyIcon />
-                      </Box>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                          Dynamic AI Insights
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                          Deterministic & ML-driven actionable recommendations
-                        </Typography>
-                      </Box>
+              {/* Right Column: PriMaX Dynamic AI Insights */}
+              <Grid size={{ xs: 12, lg: 5 }}>
+                <ResizablePanel pageId="insights" componentId="insights_dynamic_recommendations" defaultHeight={680} minHeight={450} maxHeight={1200}>
+                  <TiltCard sx={{ p: 3, borderRadius: '20px', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                        <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)' }}>
+                          <PsychologyIcon />
+                        </Box>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                            Dynamic AI Insights
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                            Deterministic & ML-driven actionable recommendations
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Chip
+                        size="small"
+                        label={`${insights.length} active`}
+                        sx={{ bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)', fontWeight: 700 }}
+                      />
                     </Stack>
-                    <Chip
-                      size="small"
-                      label={`${insights.length} active`}
-                      sx={{ bgcolor: 'rgba(232, 90, 79, 0.1)', color: 'var(--accent-primary)', fontWeight: 700 }}
-                    />
-                  </Stack>
+
+                    <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
 
                   {insights.length === 0 ? (
                     <Paper
@@ -765,8 +856,9 @@ const AIInsights: React.FC = () => {
                       })}
                     </Stack>
                   )}
+                    </Box>
 
-                  {/* Security / Non-sensitive Guarantee Note */}
+                    {/* Security / Non-sensitive Guarantee Note */}
                   <Paper
                     sx={{
                       p: 2,

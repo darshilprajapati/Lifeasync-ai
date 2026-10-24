@@ -28,8 +28,9 @@ namespace LifeSyncAI.API.Controllers
             var userId = GetUserId();
             var clientDateStr = Request.Headers["X-Client-Date"].ToString();
             var clientDate = DateTime.TryParse(clientDateStr, out var parsedDate) ? parsedDate : DateTime.UtcNow;
+            int clientOffset = int.TryParse(Request.Headers["X-Client-Offset"].ToString(), out var parsedOffset) ? parsedOffset : 0;
 
-            var result = await _lifeScoreService.GetDailyLifeScoreAsync(userId, clientDate);
+            var result = await _lifeScoreService.GetDailyLifeScoreAsync(userId, clientDate, clientOffset);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -48,8 +49,9 @@ namespace LifeSyncAI.API.Controllers
                 var clientDateStr = Request.Headers["X-Client-Date"].ToString();
                 targetDate = DateTime.TryParse(clientDateStr, out var cd) ? cd : DateTime.UtcNow;
             }
+            int clientOffset = int.TryParse(Request.Headers["X-Client-Offset"].ToString(), out var parsedOffset) ? parsedOffset : 0;
 
-            var result = await _lifeScoreService.GetDailyLifeScoreAsync(userId, targetDate);
+            var result = await _lifeScoreService.GetDailyLifeScoreAsync(userId, targetDate, clientOffset);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }
@@ -60,8 +62,9 @@ namespace LifeSyncAI.API.Controllers
             var userId = GetUserId();
             var clientDateStr = Request.Headers["X-Client-Date"].ToString();
             var clientDate = DateTime.TryParse(clientDateStr, out var cd) ? cd : DateTime.UtcNow;
+            int clientOffset = int.TryParse(Request.Headers["X-Client-Offset"].ToString(), out var parsedOffset) ? parsedOffset : 0;
 
-            var result = await _lifeScoreService.GetHistoricalScoresAsync(userId, clientDate, Math.Min(30, Math.Max(1, days)));
+            var result = await _lifeScoreService.GetHistoricalScoresAsync(userId, clientDate, Math.Min(30, Math.Max(1, days)), clientOffset);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

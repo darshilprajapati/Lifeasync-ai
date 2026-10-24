@@ -44,6 +44,9 @@ export const ResetLayoutButton: React.FC<ResetLayoutButtonProps> = ({
 
   const handleConfirm = () => {
     resetLayout();
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
     setConfirmOpen(false);
     notify.info(`${displayName} layout restored to default view.`, 'Layout Reset');
   };

@@ -210,6 +210,8 @@ const Health: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('health_log_created', { module: 'health', action: 'create_log', item_type: type.toLowerCase() });
         await fetchHealthLogs();
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:health-updated'));
         const unit = type === 'Water' ? 'ml' : type === 'Sleep' ? 'hours' : type === 'Steps' ? 'steps' : type === 'Calories' ? 'kcal' : 'mins';
         notify.success(`+${value} ${unit} added to today's ${type}!`, 'Log Updated');
       }
@@ -226,6 +228,8 @@ const Health: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('health_log_deleted', { module: 'health', action: 'delete_log' });
         await fetchHealthLogs();
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:health-updated'));
         window.dispatchEvent(new CustomEvent('lifesync:workout-updated'));
         notify.info('Health log removed.', 'Record Deleted');
       }
@@ -682,22 +686,23 @@ const Health: React.FC = () => {
         {/* ========================================================
             ROW 3: COHESIVE MAIN WORKSPACE (Weekly Workout Planner, Focus & Tips)
             ======================================================== */}
-        <MuiBox 
-          sx={{ 
-            flex: 1, 
-            minHeight: 0, 
-            overflowY: 'auto', 
-            pr: { xs: 0, md: 0.5 },
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <WorkoutPlannerDashboard 
-            onWorkoutChanged={fetchHealthLogs}
-            openAiGeneratorExternal={workoutGeneratorOpen}
-            onCloseAiGeneratorExternal={() => setWorkoutGeneratorOpen(false)}
-          />
-        </MuiBox>
+        <ResizablePanel pageId="health" componentId="health_workout_planner" defaultHeight={620} minHeight={420} maxHeight={1400}>
+          <MuiBox 
+            sx={{ 
+              height: '100%', 
+              overflowY: 'auto', 
+              pr: { xs: 0, md: 0.5 },
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <WorkoutPlannerDashboard 
+              onWorkoutChanged={fetchHealthLogs}
+              openAiGeneratorExternal={workoutGeneratorOpen}
+              onCloseAiGeneratorExternal={() => setWorkoutGeneratorOpen(false)}
+            />
+          </MuiBox>
+        </ResizablePanel>
 
         {/* Configurable Health Targets Modal */}
         <HealthSettingsModal

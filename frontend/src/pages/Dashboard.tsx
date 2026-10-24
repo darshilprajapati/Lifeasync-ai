@@ -235,9 +235,6 @@ const Dashboard: React.FC = () => {
         setHistoricalScores(historyRes.data.data);
       }
       setSelectedDate(null);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
-      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -247,6 +244,24 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const handleSync = () => {
+      fetchDashboardData();
+    };
+
+    window.addEventListener('lifesync:score-updated', handleSync);
+    window.addEventListener('lifesync:finance-updated', handleSync);
+    window.addEventListener('lifesync:health-updated', handleSync);
+    window.addEventListener('lifesync:task-updated', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      window.removeEventListener('lifesync:score-updated', handleSync);
+      window.removeEventListener('lifesync:finance-updated', handleSync);
+      window.removeEventListener('lifesync:health-updated', handleSync);
+      window.removeEventListener('lifesync:task-updated', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
   }, []);
 
   const handleSelectHistoryDate = async (dateStr: string) => {

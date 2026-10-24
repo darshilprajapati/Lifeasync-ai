@@ -19,6 +19,7 @@ namespace LifeSyncAI.Core.DTO.Output.LifeScore
     {
         public string Date { get; set; } = string.Empty;
         public double FinalScore { get; set; }
+        public double Score => FinalScore;
         public double PositiveScore { get; set; }
         public int PenaltyPoints { get; set; }
         public int MissedDeadlinesCount { get; set; }

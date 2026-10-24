@@ -9,6 +9,7 @@ using LifeSyncAI.Core.DTO.Input.Planner;
 using LifeSyncAI.Core.Enums;
 using LifeSyncAI.Core.Models;
 using LifeSyncAI.Core.Services;
+using LifeSyncAI.Core.DTO.Output.LifeScore;
 using Xunit;
 
 namespace LifeSyncAI.Tests
@@ -553,6 +554,139 @@ namespace LifeSyncAI.Tests
             int rank3m = milestoneRank["Inactivity_3m"];
             bool is3mSuperseded = existingSuccessfulMilestones.Any(l => milestoneRank.TryGetValue(l, out var r) && r >= rank3m);
             Assert.False(is3mSuperseded);
+        }
+
+        [Fact]
+        public async Task LifeScore_WithTimezoneOffset_AggregatesLocalWindowCorrectly()
+        {
+            var user = await CreateTestUserAsync();
+            var localDate = new DateTime(2026, 10, 25);
+            // IST offset: -330 mins (Local midnight = 2026-10-24 18:30:00 UTC)
+            int istOffset = -330;
+
+            // Log created at 2026-10-24 19:30:00 UTC (which is 2026-10-25 01:00 AM IST)
+            var utcLogTime = new DateTime(2026, 10, 24, 19, 30, 0, DateTimeKind.Utc);
+            _context.HealthLogs.Add(new HealthLog
+            {
+                UserId = user.Id,
+                LogType = "Water",
+                LogValue = 2000,
+                LogDate = utcLogTime
+            });
+            await _context.SaveChangesAsync();
+
+            // When queried with offset -330 for local date 2026-10-25, it must be included!
+            var res = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, localDate, istOffset);
+            Assert.True(res.IsSuccess);
+            Assert.Equal(30.0, res.Data.Breakdown.Hydration);
+            Assert.True(res.Data.FinalScore >= 35.0); // Baseline 5 + Hydration 30
+        }
+
+        [Fact]
+        public async Task LifeScore_OverduePenalty_RemainsIdempotentAcrossMultipleQueries()
+        {
+            var user = await CreateTestUserAsync();
+            var today = DateTime.UtcNow.Date;
+
+            // Add overdue task
+            _context.PlannerEvents.Add(new PlannerEvent
+            {
+                UserId = user.Id,
+                Title = "Overdue Task",
+                StartTime = today.AddHours(2),
+                EndTime = today.AddHours(3),
+                IsCompleted = false,
+                MissedDeadlinePenalized = true
+            });
+            await _context.SaveChangesAsync();
+
+            // First query
+            var res1 = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.True(res1.IsSuccess);
+            Assert.Equal(1, res1.Data.MissedDeadlinesCount);
+            Assert.Equal(2, res1.Data.PenaltyPoints);
+
+            // Second query (must be strictly idempotent)
+            var res2 = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.True(res2.IsSuccess);
+            Assert.Equal(1, res2.Data.MissedDeadlinesCount);
+            Assert.Equal(2, res2.Data.PenaltyPoints);
+            Assert.Equal(res1.Data.FinalScore, res2.Data.FinalScore);
+        }
+
+        [Fact]
+        public void DailyLifeScoreDto_ExposesBothFinalScoreAndScore()
+        {
+            var dto = new DailyLifeScoreDto
+            {
+                FinalScore = 84.5
+            };
+            Assert.Equal(84.5, dto.FinalScore);
+            Assert.Equal(84.5, dto.Score);
+        }
+
+        [Fact]
+        public async Task LifeScore_HealthLogDeletion_ReversesScoreContribution()
+        {
+            var user = await CreateTestUserAsync();
+            var today = DateTime.UtcNow.Date;
+
+            var log = new HealthLog
+            {
+                UserId = user.Id,
+                LogType = "Water",
+                LogValue = 2000,
+                LogDate = today.AddHours(2)
+            };
+            _context.HealthLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            var scoreWithLog = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.Equal(30.0, scoreWithLog.Data.Breakdown.Hydration);
+
+            // Remove log
+            _context.HealthLogs.Remove(log);
+            await _context.SaveChangesAsync();
+
+            var scoreAfterDelete = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.Equal(0.0, scoreAfterDelete.Data.Breakdown.Hydration);
+        }
+
+        [Fact]
+        public async Task LifeScore_FinancialTransactionDeletion_ReversesScoreContribution()
+        {
+            var user = await CreateTestUserAsync();
+            var today = DateTime.UtcNow.Date;
+
+            // Health baseline activity
+            _context.HealthLogs.Add(new HealthLog
+            {
+                UserId = user.Id,
+                LogType = "Water",
+                LogValue = 1000,
+                LogDate = today.AddHours(1)
+            });
+
+            var tx = new Transaction
+            {
+                UserId = user.Id,
+                Type = "Income",
+                Amount = 5000,
+                Date = today,
+                Category = "Salary"
+            };
+            _context.Transactions.Add(tx);
+            await _context.SaveChangesAsync();
+
+            var scoreWithIncome = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.Equal(5.0, scoreWithIncome.Data.Breakdown.Finance);
+
+            // Remove transaction
+            _context.Transactions.Remove(tx);
+            await _context.SaveChangesAsync();
+
+            var scoreWithoutIncome = await _lifeScoreService.GetDailyLifeScoreAsync(user.Id, today);
+            Assert.Equal(0.0, scoreWithoutIncome.Data.Breakdown.Finance);
         }
     }
 }

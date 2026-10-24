@@ -20,11 +20,12 @@ namespace LifeSyncAI.Core.Services
             _context = context;
         }
 
-        public async Task<ApiResponse<DailyLifeScoreDto>> GetDailyLifeScoreAsync(int userId, DateTime targetDate)
+        public async Task<ApiResponse<DailyLifeScoreDto>> GetDailyLifeScoreAsync(int userId, DateTime targetDate, int clientOffsetMinutes = 0)
         {
             try
             {
-                var startOfDay = targetDate.Date;
+                var localStart = targetDate.Date;
+                var startOfDay = clientOffsetMinutes != 0 ? localStart.AddMinutes(clientOffsetMinutes) : localStart;
                 var endOfDay = startOfDay.AddDays(1);
                 var nowUtc = DateTime.UtcNow;
 
@@ -171,7 +172,7 @@ namespace LifeSyncAI.Core.Services
             }
         }
 
-        public async Task<ApiResponse<List<HistoricalLifeScoreDto>>> GetHistoricalScoresAsync(int userId, DateTime clientDate, int days = 7)
+        public async Task<ApiResponse<List<HistoricalLifeScoreDto>>> GetHistoricalScoresAsync(int userId, DateTime clientDate, int days = 7, int clientOffsetMinutes = 0)
         {
             try
             {
@@ -212,7 +213,7 @@ namespace LifeSyncAI.Core.Services
                         break;
                     }
 
-                    var dayScoreResult = await GetDailyLifeScoreAsync(userId, targetDay);
+                    var dayScoreResult = await GetDailyLifeScoreAsync(userId, targetDay, clientOffsetMinutes);
 
                     if (dayScoreResult.IsSuccess && dayScoreResult.Data != null)
                     {

@@ -80,6 +80,22 @@ export const usePageLayout = (pageId: string) => {
     [storageKey]
   );
 
+  const resetDimension = useCallback(
+    (componentId: string) => {
+      setDimensions((prev) => {
+        const next = { ...prev };
+        delete next[componentId];
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch (e) {
+          console.warn('Failed to reset component layout:', e);
+        }
+        return next;
+      });
+    },
+    [storageKey]
+  );
+
   const resetLayout = useCallback(() => {
     try {
       localStorage.removeItem(storageKey);
@@ -93,13 +109,16 @@ export const usePageLayout = (pageId: string) => {
   }, [storageKey, pageId]);
 
   const hasCustomLayout = Object.keys(dimensions).length > 0;
+  const isCustomized = useCallback((componentId: string) => Boolean(dimensions[componentId]), [dimensions]);
 
   return {
     dimensions,
     getDimension,
     setDimension,
+    resetDimension,
     resetLayout,
     hasCustomLayout,
+    isCustomized,
     confirmOpen,
     setConfirmOpen,
     pageId

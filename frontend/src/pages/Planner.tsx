@@ -334,6 +334,8 @@ const Planner: React.FC = () => {
         if (res.data.isSuccess) {
           trackAction('planner_event_updated', { module: 'planner', action: 'edit' });
           setEvents((prev) => prev.map((ev) => (ev.id === editingId ? res.data.data : ev)));
+          window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+          window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
           notify.success(`Task "${title.trim()}" updated successfully.`);
           setDialogOpen(false);
         }
@@ -352,6 +354,8 @@ const Planner: React.FC = () => {
         if (res.data.isSuccess) {
           trackAction('planner_event_created', { module: 'planner', action: 'create' });
           setEvents((prev) => [...prev, res.data.data]);
+          window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+          window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
           notify.success(`Task "${title.trim()}" created in ${targetStatus}.`);
           setDialogOpen(false);
         }
@@ -371,6 +375,8 @@ const Planner: React.FC = () => {
       if (res.data.isSuccess) {
         trackAction('planner_event_deleted', { module: 'planner', action: 'delete' });
         setEvents((prev) => prev.filter((ev) => ev.id !== id));
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
         notify.success('Task removed from planner.');
       }
     } catch (err: any) {
@@ -397,6 +403,8 @@ const Planner: React.FC = () => {
               : item
           )
         );
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
         notify.success(nextCompleted ? `Task completed!` : `Task marked active.`);
       }
     } catch (err: any) {
@@ -474,6 +482,8 @@ const Planner: React.FC = () => {
         setEvents(prevEvents);
         notify.error('Failed to update status on server.');
       } else {
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:task-updated'));
         notify.success(`Moved to ${targetColKey === 'in_progress' ? 'In Progress' : targetColKey === 'completed' ? 'Completed' : 'To Do'}`);
       }
     } catch (err: any) {

@@ -492,6 +492,8 @@ const Finance: React.FC = () => {
           // Refresh summary
           const sumRes = await apiClient.get('/api/finance/summary');
           if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+          window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+          window.dispatchEvent(new CustomEvent('lifesync:finance-updated'));
         }
       } else {
         const res = await apiClient.post('/api/finance', {
@@ -509,6 +511,8 @@ const Finance: React.FC = () => {
           // Refresh summary
           const sumRes = await apiClient.get('/api/finance/summary');
           if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+          window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+          window.dispatchEvent(new CustomEvent('lifesync:finance-updated'));
         }
       }
     } catch (err: any) {
@@ -527,6 +531,8 @@ const Finance: React.FC = () => {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
         const sumRes = await apiClient.get('/api/finance/summary');
         if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:finance-updated'));
       }
     } catch (err: any) {
       notify.error(err.response?.data?.message || 'Failed to delete transaction.');
@@ -585,6 +591,8 @@ const Finance: React.FC = () => {
         );
         const sumRes = await apiClient.get('/api/finance/summary');
         if (sumRes.data.isSuccess) setSummary(sumRes.data.data);
+        window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+        window.dispatchEvent(new CustomEvent('lifesync:finance-updated'));
       }
     } catch (err: any) {
       notify.error(err.response?.data?.message || 'Failed to process recurring payment.');
@@ -678,10 +686,10 @@ const Finance: React.FC = () => {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
             <IconSlideButton
               variant="outlined"
-              startIcon={<HistoryIcon />}
+              startIcon={<HistoryIcon sx={{ fontSize: 16 }} />}
               onClick={() => {
                 setLogPage(0);
                 setLogOpen(true);
@@ -691,8 +699,9 @@ const Finance: React.FC = () => {
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
                 fontWeight: 650,
-                px: 2,
-                py: 0.8,
+                fontSize: '12.5px',
+                px: 1.8,
+                py: 0.65,
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
@@ -701,7 +710,7 @@ const Finance: React.FC = () => {
 
             <IconSlideButton
               variant="outlined"
-              startIcon={<FileDownloadIcon />}
+              startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
               onClick={handleExportFinanceExcel}
               disabled={transactions.length === 0}
               sx={{
@@ -709,8 +718,9 @@ const Finance: React.FC = () => {
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
                 fontWeight: 650,
-                px: 2,
-                py: 0.8,
+                fontSize: '12.5px',
+                px: 1.8,
+                py: 0.65,
                 '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981', color: '#10B981' },
               }}
             >
@@ -719,15 +729,16 @@ const Finance: React.FC = () => {
 
             <IconSlideButton
               variant="outlined"
-              startIcon={<AddIcon />}
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
               onClick={() => setRecDialogOpen(true)}
               sx={{
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
                 fontWeight: 650,
-                px: 2,
-                py: 0.8,
+                fontSize: '12.5px',
+                px: 1.8,
+                py: 0.65,
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
@@ -736,14 +747,15 @@ const Finance: React.FC = () => {
 
             <IconSlideButton
               variant="contained"
-              startIcon={<AddIcon />}
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
               onClick={() => openCreateDialog('Expense')}
               sx={{
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
                 fontWeight: 700,
-                px: 2.5,
-                py: 0.8,
+                fontSize: '12.5px',
+                px: 2.2,
+                py: 0.65,
                 boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' },
               }}
@@ -961,8 +973,58 @@ const Finance: React.FC = () => {
                     </Stack>
 
                     {incomeVsExpenseData.every((d) => d.income === 0 && d.expense === 0) ? (
-                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                        <Typography variant="body2">No historical transaction data available to plot chart.</Typography>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 3,
+                          textAlign: 'center',
+                          bgcolor: 'rgba(16, 185, 129, 0.02)',
+                          borderRadius: '12px',
+                          border: '1px dashed var(--card-border)',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(16, 185, 129, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#10B981',
+                            mb: 1.5,
+                          }}
+                        >
+                          <TrendingUpIcon sx={{ fontSize: 28 }} />
+                        </Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
+                          No Cash Activity Recorded
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', maxWidth: 340, mb: 2 }}>
+                          Log your income and expenses to visualize 6-month financial performance and trends.
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<AddIcon />}
+                          onClick={() => openCreateDialog('Expense')}
+                          sx={{
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            bgcolor: 'var(--accent-primary)',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            px: 2,
+                            py: 0.6,
+                          }}
+                        >
+                          Add First Transaction
+                        </Button>
                       </Box>
                     ) : (
                       <Box sx={{ flex: 1, width: '100%', minHeight: 250 }}>
@@ -1021,8 +1083,59 @@ const Finance: React.FC = () => {
                     </Typography>
 
                     {categoryChartData.length === 0 ? (
-                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                        <Typography variant="body2">No expense records logged in this period.</Typography>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 3,
+                          textAlign: 'center',
+                          bgcolor: 'rgba(232, 90, 79, 0.02)',
+                          borderRadius: '12px',
+                          border: '1px dashed var(--card-border)',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(232, 90, 79, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--accent-primary)',
+                            mb: 1.5,
+                          }}
+                        >
+                          <AccountBalanceWalletIcon sx={{ fontSize: 26 }} />
+                        </Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
+                          No Expense Records
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', maxWidth: 280, mb: 2 }}>
+                          Expense categories will form a distribution donut chart here once transactions are recorded.
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<AddIcon />}
+                          onClick={() => openCreateDialog('Expense')}
+                          sx={{
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            color: 'var(--accent-primary)',
+                            borderColor: 'var(--accent-primary)',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            px: 2,
+                            py: 0.5,
+                          }}
+                        >
+                          Log Expense
+                        </Button>
                       </Box>
                     ) : (
                       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -1095,23 +1208,62 @@ const Finance: React.FC = () => {
                       Monthly net savings (positive vs deficit)
                     </Typography>
 
-                    <Box sx={{ flex: 1, width: '100%', minHeight: 200 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={cashFlowData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                          <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
-                          <YAxis stroke="var(--text-secondary)" fontSize={11} />
-                          <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: 'var(--card-bg)',
-                              borderColor: 'var(--card-border)',
-                              borderRadius: '10px',
-                            }}
-                          />
-                          <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Box>
+                    {cashFlowData.every((d) => d.cashFlow === 0) ? (
+                      <Box
+                        sx={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 3,
+                          textAlign: 'center',
+                          bgcolor: 'rgba(59, 130, 246, 0.02)',
+                          borderRadius: '12px',
+                          border: '1px dashed var(--card-border)',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 50,
+                            height: 50,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(59, 130, 246, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#3B82F6',
+                            mb: 1.5,
+                          }}
+                        >
+                          <SavingsIcon sx={{ fontSize: 26 }} />
+                        </Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
+                          Net Cash Flow Is Neutral
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', maxWidth: 280 }}>
+                          Monthly savings surplus or deficit will plot here as income and expenses are logged.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ flex: 1, width: '100%', minHeight: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={cashFlowData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                            <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
+                            <YAxis stroke="var(--text-secondary)" fontSize={11} />
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--card-bg)',
+                                borderColor: 'var(--card-border)',
+                                borderRadius: '10px',
+                              }}
+                            />
+                            <Bar dataKey="cashFlow" name="Net Flow" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    )}
                   </TiltCard>
                 </ResizablePanel>
               </Grid>

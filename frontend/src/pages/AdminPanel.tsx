@@ -13,6 +13,8 @@ import LogoLoader from '../components/LogoLoader';
 import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { TiltCard } from '../components/modern3d/TiltCard';
+import { ResizablePanel } from '../components/resizable/ResizablePanel';
+import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 
 interface ManagedUser {
   id: number;
@@ -274,6 +276,7 @@ const AdminPanel: React.FC = () => {
               System Administration
             </Typography>
           </Stack>
+          <ResetLayoutButton pageId="admin" pageName="Admin Panel" />
         </Stack>
         <Typography variant="body1" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
           Manage user accounts, approve registrations, configure status pipelines, and inspect audit activity logs.
@@ -298,8 +301,9 @@ const AdminPanel: React.FC = () => {
           </Tabs>
         </Box>
 
-        <TiltCard sx={{ minHeight: '500px', display: 'flex', flexDirection: 'column', p: 2 }}>
-          <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <ResizablePanel pageId="admin" componentId="admin_user_management" defaultHeight={600} minHeight={420} maxHeight={1400}>
+          <TiltCard sx={{ height: '100%', minHeight: '400px', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {activeTab === 1 ? (
               // PENDING REGISTRATIONS QUEUE
               <>
@@ -533,6 +537,7 @@ const AdminPanel: React.FC = () => {
             )}
           </CardContent>
         </TiltCard>
+        </ResizablePanel>
 
         {/* DIALOG 1: RESET PASSWORD */}
         <Dialog open={resetDialogOpen} onClose={handleCloseResetDialog} slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}>

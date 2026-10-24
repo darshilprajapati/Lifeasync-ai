@@ -8,8 +8,8 @@ namespace LifeSyncAI.Core.Contracts.Interfaces.Services
 {
     public interface ILifeScoreService
     {
-        Task<ApiResponse<DailyLifeScoreDto>> GetDailyLifeScoreAsync(int userId, DateTime targetDate);
-        Task<ApiResponse<List<HistoricalLifeScoreDto>>> GetHistoricalScoresAsync(int userId, DateTime clientDate, int days = 7);
+        Task<ApiResponse<DailyLifeScoreDto>> GetDailyLifeScoreAsync(int userId, DateTime targetDate, int clientOffsetMinutes = 0);
+        Task<ApiResponse<List<HistoricalLifeScoreDto>>> GetHistoricalScoresAsync(int userId, DateTime clientDate, int days = 7, int clientOffsetMinutes = 0);
         Task<double> GetCumulativeTotalLifeScoreAsync(int userId);
         Task<ApiResponse<LeaderboardResponseDto>> GetLeaderboardAsync(int currentUserId, string scope, int page = 1, int pageSize = 20);
     }
