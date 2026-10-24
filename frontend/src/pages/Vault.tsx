@@ -442,7 +442,7 @@ const Vault: React.FC = () => {
         {/* 4 CipherVault Category Summary Cards */}
         <Grid container spacing={2.5} sx={{ mb: 3 }}>
           {/* Total Status */}
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
             <TiltCard
               maxTilt={3.5}
               sx={{
@@ -467,7 +467,7 @@ const Vault: React.FC = () => {
           </Grid>
 
           {/* Password Manager */}
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
             <TiltCard
               maxTilt={3.5}
               onClick={() => setActiveCategory('Login')}
@@ -519,7 +519,7 @@ const Vault: React.FC = () => {
           </Grid>
 
           {/* Secure Notes */}
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
             <TiltCard
               maxTilt={3.5}
               onClick={() => setActiveCategory('Note')}
@@ -571,7 +571,7 @@ const Vault: React.FC = () => {
           </Grid>
 
           {/* Links & Bookmarks */}
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
             <TiltCard
               maxTilt={3.5}
               onClick={() => setActiveCategory('Link')}

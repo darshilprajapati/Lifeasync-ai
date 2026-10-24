@@ -268,7 +268,7 @@ const AdminPanel: React.FC = () => {
 
   return (
     <PageWrapper>
-      <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
+      <Box sx={{ padding: { xs: '16px', sm: '20px', md: '24px' }, height: '100%', overflowY: 'auto' }}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
             <AdminPanelSettingsIcon sx={{ color: 'var(--accent-primary)', fontSize: 32 }} />

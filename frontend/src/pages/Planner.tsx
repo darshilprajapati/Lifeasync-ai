@@ -24,6 +24,8 @@ import {
   Select,
   InputLabel,
   FormControl,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -136,6 +138,9 @@ export const isDateInPeriod = (
 
 const Planner: React.FC = () => {
   const { notify } = useNotification();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileCol, setMobileCol] = useState<'todo' | 'in_progress' | 'completed' | 'overdue'>('todo');
   const [events, setEvents] = useState<PlannerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -778,12 +783,124 @@ const Planner: React.FC = () => {
           )}
         </TiltCard>
 
+        {/* Mobile Status Selector Tabs (Reference Image 3) */}
+        {isMobile && (
+          <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 2, alignItems: 'center' }}>
+            {(
+              [
+                { key: 'todo', label: 'To Do', count: columns.todo.length, color: '#F59E0B' },
+                { key: 'in_progress', label: 'In Progress', count: columns.in_progress.length, color: '#3B82F6' },
+                { key: 'completed', label: 'Completed', count: columns.completed.length, color: '#10B981' },
+                { key: 'overdue', label: 'Overdue', count: columns.overdue.length, color: '#EF4444' },
+              ] as const
+            ).map((col) => {
+              const active = mobileCol === col.key;
+              return (
+                <Box
+                  key={col.key}
+                  onClick={() => setMobileCol(col.key)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.8,
+                    px: 1.8,
+                    py: 0.7,
+                    borderRadius: '20px',
+                    bgcolor: active ? (col.key === 'todo' ? '#F59E0B' : 'var(--accent-primary)') : 'var(--card-bg)',
+                    color: active ? '#FFFFFF' : 'var(--text-primary)',
+                    boxShadow: active ? '0 3px 10px rgba(0,0,0,0.15)' : 'none',
+                    border: '1px solid',
+                    borderColor: active ? 'transparent' : 'var(--card-border)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: active ? '#FFFFFF' : col.color }} />
+                  <span>{col.label}</span>
+                  <Box
+                    sx={{
+                      px: 0.7,
+                      py: 0.1,
+                      borderRadius: '10px',
+                      bgcolor: active ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {col.count}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Stack>
+        )}
+
         {/* Kanban Board Columns */}
         {loading ? (
           <Box sx={{ py: 8 }}>
             <LogoLoader />
           </Box>
+        ) : isMobile ? (
+          /* Mobile Single-Column Agile View */
+          <Box sx={{ pb: 3 }}>
+            {mobileCol === 'todo' &&
+              renderKanbanColumn(
+                'todo',
+                'To Do',
+                columns.todo,
+                '#F59E0B',
+                true,
+                'Todo',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('todo'),
+                dragOverCol === 'todo'
+              )}
+            {mobileCol === 'in_progress' &&
+              renderKanbanColumn(
+                'in_progress',
+                'In Progress',
+                columns.in_progress,
+                '#3B82F6',
+                true,
+                'InProgress',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('in_progress'),
+                dragOverCol === 'in_progress'
+              )}
+            {mobileCol === 'completed' &&
+              renderKanbanColumn(
+                'completed',
+                'Completed',
+                columns.completed,
+                '#10B981',
+                true,
+                'Completed',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('completed'),
+                dragOverCol === 'completed'
+              )}
+            {mobileCol === 'overdue' &&
+              renderKanbanColumn(
+                'overdue',
+                'Overdue',
+                columns.overdue,
+                '#EF4444',
+                false,
+                'Todo',
+                handleDragOver,
+                handleDragLeave,
+                () => handleDrop('overdue'),
+                dragOverCol === 'overdue'
+              )}
+          </Box>
         ) : (
+          /* Desktop 4-Column Agile Board */
           <ResizablePanel pageId="planner" componentId="kanban_board" defaultHeight={680} minHeight={450} maxHeight={1400}>
             <Box
               sx={{
@@ -1388,24 +1505,96 @@ const Planner: React.FC = () => {
         {/* Task Cards List */}
         <Stack spacing={1.6} sx={{ flex: 1, overflowY: 'auto' }}>
           {tasks.length === 0 ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                py: 6,
-                color: 'var(--text-secondary)',
-                border: '1px dashed var(--card-border)',
-                borderRadius: '12px',
-                bgcolor: 'var(--card-bg)',
-                opacity: 0.7,
-              }}
-            >
-              <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                No tasks
-              </Typography>
-            </Box>
+            isMobile ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: 5,
+                  px: 3,
+                  textAlign: 'center',
+                  bgcolor: 'var(--card-bg)',
+                  borderRadius: '24px',
+                  border: '1px solid var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                }}
+              >
+                {/* 3D Clipboard Illustration */}
+                <Box sx={{ width: 130, height: 130, mb: 2, position: 'relative' }}>
+                  <svg width="130" height="130" viewBox="0 0 130 130" fill="none">
+                    <ellipse cx="65" cy="88" rx="52" ry="24" fill="rgba(255, 120, 100, 0.12)" />
+                    <rect x="30" y="24" width="70" height="88" rx="12" fill="#FFAB91" />
+                    <rect x="32" y="26" width="66" height="84" rx="10" fill="#FF8A65" />
+                    <rect x="50" y="16" width="30" height="14" rx="5" fill="#FFE0B2" />
+                    <rect x="56" y="20" width="18" height="6" rx="3" fill="#FFB74D" />
+                    <rect x="38" y="32" width="54" height="74" rx="6" fill="#FFFFFF" />
+                    <rect x="44" y="44" width="12" height="12" rx="3" fill="none" stroke="#FF7043" strokeWidth="2" />
+                    <path d="M47 50 L50 53 L54 46" stroke="#FF7043" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="62" y1="50" x2="82" y2="50" stroke="#FFE0B2" strokeWidth="3" strokeLinecap="round" />
+                    <rect x="44" y="64" width="12" height="12" rx="3" fill="none" stroke="#FF7043" strokeWidth="2" />
+                    <path d="M47 70 L50 73 L54 66" stroke="#FF7043" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="62" y1="70" x2="82" y2="70" stroke="#FFE0B2" strokeWidth="3" strokeLinecap="round" />
+                    <line x1="44" y1="88" x2="72" y2="88" stroke="#FFE0B2" strokeWidth="3" strokeLinecap="round" />
+                    <g transform="translate(86, 52) rotate(28)">
+                      <rect x="0" y="0" width="10" height="42" rx="2" fill="#FFA726" />
+                      <polygon points="0,42 10,42 5,52" fill="#FFE0B2" />
+                      <polygon points="3,48 7,48 5,52" fill="#3E2723" />
+                      <rect x="0" y="0" width="10" height="6" rx="2" fill="#E57373" />
+                    </g>
+                  </svg>
+                </Box>
+
+                <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.8, fontSize: '18px' }}>
+                  No tasks yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 3, maxWidth: 260, fontSize: '13px', lineHeight: 1.4 }}>
+                  Create your first task to get started and stay productive.
+                </Typography>
+
+                {allowCreate && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => openCreateDialog(targetCreateStatus)}
+                    sx={{
+                      bgcolor: 'var(--accent-primary)',
+                      color: '#FFFFFF',
+                      fontWeight: 750,
+                      px: 3.5,
+                      py: 1.1,
+                      fontSize: '14px',
+                      borderRadius: '16px',
+                      boxShadow: '0 6px 20px rgba(232, 90, 79, 0.4)',
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                    }}
+                  >
+                    New Task
+                  </Button>
+                )}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: 6,
+                  color: 'var(--text-secondary)',
+                  border: '1px dashed var(--card-border)',
+                  borderRadius: '12px',
+                  bgcolor: 'var(--card-bg)',
+                  opacity: 0.7,
+                }}
+              >
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                  No tasks
+                </Typography>
+              </Box>
+            )
           ) : (
             tasks.map((task) => {
               const catConfig = CATEGORY_COLORS[task.category || 'General'] || CATEGORY_COLORS.General;

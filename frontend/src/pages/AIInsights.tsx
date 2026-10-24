@@ -397,7 +397,7 @@ const AIInsights: React.FC = () => {
             {/* Top Stat Cards (PriMaX Style) */}
             <Grid container spacing={2.5} sx={{ mb: 3.5 }}>
               {/* Card 1: Tasks Today */}
-              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 2.4 }}>
                 <TiltCard sx={{ p: 2.5, height: '100%', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'rgba(33, 150, 243, 0.1)', color: '#2196F3' }}>
@@ -419,7 +419,7 @@ const AIInsights: React.FC = () => {
               </Grid>
 
               {/* Card 2: Growth / Life Score */}
-              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 2.4 }}>
                 <TiltCard sx={{ p: 2.5, height: '100%', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'rgba(156, 39, 176, 0.1)', color: '#9C27B0' }}>
@@ -446,7 +446,7 @@ const AIInsights: React.FC = () => {
               </Grid>
 
               {/* Card 3: Spending */}
-              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 2.4 }}>
                 <TiltCard sx={{ p: 2.5, height: '100%', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'rgba(255, 152, 0, 0.1)', color: '#FF9800' }}>
@@ -468,7 +468,7 @@ const AIInsights: React.FC = () => {
               </Grid>
 
               {/* Card 4: Workout / Fitness */}
-              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 2.4 }}>
                 <TiltCard sx={{ p: 2.5, height: '100%', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'rgba(76, 175, 80, 0.1)', color: '#4CAF50' }}>
@@ -495,7 +495,7 @@ const AIInsights: React.FC = () => {
               </Grid>
 
               {/* Card 5: Vault & Career */}
-              <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+              <Grid size={{ xs: 6, sm: 6, md: 2.4 }}>
                 <TiltCard sx={{ p: 2.5, height: '100%', borderRadius: '18px', border: '1px solid var(--border-color)' }}>
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'rgba(0, 188, 212, 0.1)', color: '#00BCD4' }}>

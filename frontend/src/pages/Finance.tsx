@@ -864,83 +864,84 @@ const Finance: React.FC = () => {
           </Box>
         ) : (
           <Stack spacing={3}>
-            {/* Top Metric Cards (Cashly Style) */}
-            <Grid container spacing={2.5}>
+            {/* Top Metric Cards (Cashly Style 2x2 on Mobile - Reference Image 4) */}
+            <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
               {/* Total Balance */}
-              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <TiltCard sx={{ p: 2.2, height: '100%' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      Total Balance (All Time)
+              <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+                <TiltCard sx={{ p: { xs: 1.5, sm: 2, md: 2.2 }, height: '100%' }}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: { xs: '11px', sm: '13px' } }}>
+                      Total Balance
                     </Typography>
-                    <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                    <AccountBalanceWalletIcon sx={{ color: 'var(--accent-primary)', fontSize: { xs: 16, sm: 20 } }} />
                   </Stack>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5, fontSize: { xs: '16px', sm: '22px', md: '26px' } }}>
                     {formatINR(summary.balance)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    Combined net holdings across all accounts
+                  <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 600, fontSize: { xs: '10px', sm: '11.5px' } }}>
+                    ↑ 0.0%
                   </Typography>
                 </TiltCard>
               </Grid>
 
               {/* Monthly Income (Period Based) */}
-              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <TiltCard sx={{ p: 2.2, height: '100%' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+                <TiltCard sx={{ p: { xs: 1.5, sm: 2, md: 2.2 }, height: '100%' }}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: { xs: '11px', sm: '13px' } }}>
                       Period Income
                     </Typography>
-                    <TrendingUpIcon sx={{ color: '#10B981', fontSize: 20 }} />
+                    <TrendingUpIcon sx={{ color: '#10B981', fontSize: { xs: 16, sm: 20 } }} />
                   </Stack>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: '#10B981', mb: 0.5 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#10B981', mb: 0.5, fontSize: { xs: '16px', sm: '22px', md: '26px' } }}>
                     +{formatINR(periodAnalytics.income)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    Inflow for selected period
+                  <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 600, fontSize: { xs: '10px', sm: '11.5px' } }}>
+                    ↑ 0.0%
                   </Typography>
                 </TiltCard>
               </Grid>
 
               {/* Monthly Expense (Period Based) */}
-              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <TiltCard sx={{ p: 2.2, height: '100%' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+                <TiltCard sx={{ p: { xs: 1.5, sm: 2, md: 2.2 }, height: '100%' }}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: { xs: '11px', sm: '13px' } }}>
                       Period Expenses
                     </Typography>
-                    <TrendingDownIcon sx={{ color: '#EF4444', fontSize: 20 }} />
+                    <TrendingDownIcon sx={{ color: '#EF4444', fontSize: { xs: 16, sm: 20 } }} />
                   </Stack>
-                  <Typography variant="h4" sx={{ fontWeight: 800, color: '#EF4444', mb: 0.5 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#EF4444', mb: 0.5, fontSize: { xs: '16px', sm: '22px', md: '26px' } }}>
                     -{formatINR(periodAnalytics.expense)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    Outflow for selected period
+                  <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600, fontSize: { xs: '10px', sm: '11.5px' } }}>
+                    ↓ 0.0%
                   </Typography>
                 </TiltCard>
               </Grid>
 
               {/* Net Cash Flow / Savings */}
-              <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-                <TiltCard sx={{ p: 2.2, height: '100%' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <Grid size={{ xs: 6, sm: 6, lg: 3 }}>
+                <TiltCard sx={{ p: { xs: 1.5, sm: 2, md: 2.2 }, height: '100%' }}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: { xs: '11px', sm: '13px' } }}>
                       Net Cash Flow
                     </Typography>
-                    <SavingsIcon sx={{ color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444', fontSize: 20 }} />
+                    <SavingsIcon sx={{ color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444', fontSize: { xs: 16, sm: 20 } }} />
                   </Stack>
                   <Typography
-                    variant="h4"
+                    variant="h5"
                     sx={{
                       fontWeight: 800,
                       color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444',
                       mb: 0.5,
+                      fontSize: { xs: '16px', sm: '22px', md: '26px' },
                     }}
                   >
                     {periodAnalytics.netFlow >= 0 ? '+' : ''}{formatINR(periodAnalytics.netFlow)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                    Savings Rate: {periodAnalytics.savingsRate.toFixed(1)}%
+                  <Typography variant="caption" sx={{ color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#EF4444', fontWeight: 600, fontSize: { xs: '10px', sm: '11.5px' } }}>
+                    {periodAnalytics.savingsRate.toFixed(1)}% savings
                   </Typography>
                 </TiltCard>
               </Grid>

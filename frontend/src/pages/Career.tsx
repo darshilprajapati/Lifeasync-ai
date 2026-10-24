@@ -24,6 +24,8 @@ import {
   TablePagination,
   Drawer,
   Link,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -145,6 +147,9 @@ const normalizeStage = (status: string): string => {
 
 const Career: React.FC = () => {
   const { notify } = useNotification();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileStage, setMobileStage] = useState<string>('Saved');
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -535,6 +540,269 @@ const Career: React.FC = () => {
     notify.success(`Exported ${exportRows.length} jobs matching active filters.`);
   };
 
+  const renderStageColumn = (s: typeof STAGES[number]) => {
+    const jobs = stageGroups[s.key] || [];
+    const isOver = dragOverStage === s.key;
+
+    return (
+      <Box
+        key={s.key}
+        onDragOver={(e) => handleDragOver(e, s.key)}
+        onDragLeave={handleDragLeave}
+        onDrop={() => handleDrop(s.key)}
+        sx={{
+          bgcolor: isOver ? 'rgba(232, 90, 79, 0.07)' : 'var(--bg-secondary)',
+          borderRadius: 'var(--radius-card)',
+          border: isOver ? '2px dashed var(--accent-primary)' : '1px solid var(--card-border)',
+          p: 1.8,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: isMobile ? 'auto' : '620px',
+          transition: '0.2s',
+        }}
+      >
+        {/* Column Header */}
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.8 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: s.color }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+              {s.label}
+            </Typography>
+            <Chip
+              label={jobs.length}
+              size="small"
+              sx={{
+                height: 18,
+                fontSize: '10.5px',
+                fontWeight: 800,
+                bgcolor: 'var(--card-bg)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--card-border)',
+              }}
+            />
+          </Stack>
+
+          <IconButton
+            size="small"
+            onClick={() => openCreateDialog(s.key)}
+            sx={{
+              p: 0.5,
+              bgcolor: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+            }}
+          >
+            <AddIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Stack>
+
+        {/* Cards List */}
+        <Stack spacing={1.5} sx={{ flex: 1, overflowY: 'auto' }}>
+          {jobs.length === 0 ? (
+            <Box
+              sx={{
+                py: 5,
+                textAlign: 'center',
+                border: '1px dashed var(--card-border)',
+                borderRadius: '10px',
+                bgcolor: 'var(--card-bg)',
+                opacity: 0.6,
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {isMobile ? 'No jobs in this stage' : 'Drop cards here'}
+              </Typography>
+            </Box>
+          ) : (
+            jobs.map((job) => {
+              const latestNote =
+                job.stageHistories && job.stageHistories.length > 0
+                  ? job.stageHistories[job.stageHistories.length - 1]?.note
+                  : null;
+
+              return (
+                <TiltCard
+                  key={job.id}
+                  maxTilt={3}
+                  enableRefraction={false}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, job.id)}
+                  onClick={() => setDetailsDrawerJob(job)}
+                  sx={{
+                    p: 1.8,
+                    borderRadius: '14px',
+                    bgcolor: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
+                    boxShadow: 'var(--shadow-soft)',
+                    cursor: 'grab',
+                    '&:active': { cursor: 'grabbing' },
+                  }}
+                >
+                  {/* Card Top: Company & Actions */}
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box
+                        sx={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '6px',
+                          bgcolor: 'rgba(232, 90, 79, 0.12)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <BusinessIcon sx={{ fontSize: 16, color: 'var(--accent-primary)' }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {job.company}
+                      </Typography>
+                    </Stack>
+
+                    <Stack direction="row" spacing={0.3} onClick={(e) => e.stopPropagation()}>
+                      <IconButton size="small" onClick={() => openEditDialog(job)} sx={{ p: 0.5 }}>
+                        <EditIcon sx={{ fontSize: 15, color: 'var(--text-secondary)' }} />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteJob(job.id)} sx={{ p: 0.5 }}>
+                        <DeleteIcon sx={{ fontSize: 15, color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }} />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+
+                  {/* Job Position Title */}
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.8 }}>
+                    {job.position}
+                  </Typography>
+
+                  {/* Metadata Pills */}
+                  <Stack direction="row" spacing={0.6} sx={{ flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                    {job.jobType && (
+                      <Chip
+                        label={job.jobType}
+                        size="small"
+                        sx={{ height: 18, fontSize: '10px', fontWeight: 600, bgcolor: 'rgba(232, 90, 79, 0.12)', color: 'var(--accent-primary)' }}
+                      />
+                    )}
+                    {job.workplaceType && (
+                      <Chip
+                        label={job.workplaceType}
+                        size="small"
+                        sx={{ height: 18, fontSize: '10px', fontWeight: 600, bgcolor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                      />
+                    )}
+                    {job.salary && (
+                      <Chip
+                        label={job.salary}
+                        size="small"
+                        sx={{ height: 18, fontSize: '10px', fontWeight: 700, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }}
+                      />
+                    )}
+                  </Stack>
+
+                  {/* Latest Transition Note snippet if available */}
+                  {latestNote && (
+                    <Box
+                      sx={{
+                        p: 1,
+                        mb: 1,
+                        borderRadius: '6px',
+                        bgcolor: 'var(--bg-secondary)',
+                        borderLeft: '2px solid var(--accent-primary)',
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '11px',
+                          color: 'var(--text-secondary)',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        "{latestNote}"
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Card Footer: Date, Location, and Link */}
+                  <Stack
+                    direction="row"
+                    sx={{
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      pt: 1,
+                      borderTop: '1px solid var(--border-color)',
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontSize: '10.5px' }}>
+                      {new Date(job.appliedDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    </Typography>
+
+                    {job.url ? (
+                      <Link
+                        href={job.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.3,
+                          color: 'var(--accent-primary)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        Posting <OpenInNewIcon sx={{ fontSize: 11 }} />
+                      </Link>
+                    ) : (
+                      <Typography variant="caption" sx={{ fontSize: '10.5px' }}>
+                        {job.stageHistories?.length || 1} transitions
+                      </Typography>
+                    )}
+                  </Stack>
+                </TiltCard>
+              );
+            })
+          )}
+
+          {/* Dashed Add Job Card on Mobile (Reference Image 5) */}
+          {isMobile && (
+            <Box
+              onClick={() => openCreateDialog(s.key)}
+              sx={{
+                p: 2,
+                borderRadius: '16px',
+                border: '2px dashed rgba(232, 90, 79, 0.45)',
+                bgcolor: 'rgba(232, 90, 79, 0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--accent-primary)',
+                fontWeight: 750,
+                fontSize: '14px',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  bgcolor: 'rgba(232, 90, 79, 0.08)',
+                  borderColor: 'var(--accent-primary)',
+                },
+              }}
+            >
+              <AddIcon sx={{ mr: 1, fontSize: 18 }} />
+              Add Job
+            </Box>
+          )}
+        </Stack>
+      </Box>
+    );
+  };
+
   return (
     <PageWrapper>
       <Box sx={{ padding: { xs: '16px', md: '28px' }, height: '100%', overflowY: 'auto', bgcolor: 'var(--bg-primary)' }}>
@@ -758,10 +1026,61 @@ const Career: React.FC = () => {
           )}
         </TiltCard>
 
-        {/* Applyarc Kanban Board (5 Columns) */}
+        {/* Mobile Stage Selector Tabs (Reference Image 5) */}
+        {isMobile && (
+          <Box sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, alignItems: 'center' }}>
+              {STAGES.map((s) => {
+                const jobs = stageGroups[s.key] || [];
+                const active = mobileStage === s.key;
+                return (
+                  <Box
+                    key={s.key}
+                    onClick={() => setMobileStage(s.key)}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '68px',
+                      py: 1,
+                      px: 1.2,
+                      borderRadius: '16px',
+                      bgcolor: active ? 'rgba(255, 107, 107, 0.14)' : 'var(--card-bg)',
+                      color: active ? 'var(--accent-primary)' : 'var(--text-primary)',
+                      border: '1.5px solid',
+                      borderColor: active ? 'var(--accent-primary)' : 'var(--card-border)',
+                      boxShadow: active ? '0 4px 12px rgba(232, 90, 79, 0.15)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color, mb: 0.5 }} />
+                    <Typography variant="caption" sx={{ fontWeight: 750, fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      {s.label.replace(' Jobs', '')}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '13px', mt: 0.2, color: active ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                      {jobs.length}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', textAlign: 'center', mt: 0.5, fontSize: '11px' }}>
+              Tap a stage to view jobs • Drag cards to move stages
+            </Typography>
+          </Box>
+        )}
+
+        {/* Applyarc Kanban Board */}
         {loading ? (
           <Box sx={{ py: 8 }}>
             <LogoLoader />
+          </Box>
+        ) : isMobile ? (
+          /* Mobile Single Stage View */
+          <Box sx={{ pb: 3 }}>
+            {renderStageColumn(STAGES.find((s) => s.key === mobileStage) || STAGES[0])}
           </Box>
         ) : (
           <ResizablePanel pageId="career" componentId="career_kanban_board" defaultHeight={680} minHeight={450} maxHeight={1400}>

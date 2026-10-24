@@ -8,8 +8,14 @@ import {
   Stack,
   Alert,
   Chip,
-  Tooltip
+  Tooltip,
+  useTheme,
+  useMediaQuery,
+  IconButton
 } from '@mui/material';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import ReportExporter from '../components/ReportExporter';
@@ -79,6 +85,8 @@ interface HistoricalScore {
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { designSystem, mode } = useThemeSystem();
   const isProf = designSystem === 'professional';
   const isDark = mode === 'dark';
@@ -547,17 +555,20 @@ const Dashboard: React.FC = () => {
 
   return (
     <PageWrapper>
-      <Box sx={{ padding: '24px', height: '100%', overflowY: 'auto' }}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ padding: { xs: '16px', sm: '20px', md: '24px' }, height: '100%', overflowY: 'auto' }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2.5, md: 4 }, gap: 1.5 }}
+        >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+            <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
               {getGreeting()}, {user?.fullName || 'User'}
             </Typography>
-            <Typography variant="body1" sx={{ color: 'var(--text-secondary)' }}>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
               {selectedDate ? `Reviewing historical performance for ${selectedDate}.` : 'Here is your daily habit intelligence and Life Score for today.'}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
             <IconSlideButton
               variant="outlined"
@@ -568,8 +579,9 @@ const Dashboard: React.FC = () => {
                 borderColor: isProf ? 'var(--card-border)' : 'rgba(232, 90, 79, 0.4)',
                 color: 'var(--accent-primary)',
                 fontWeight: 650,
-                px: 2.5,
-                py: 0.9,
+                px: 2,
+                py: 0.8,
+                fontSize: { xs: '12px', sm: '14px' },
                 bgcolor: 'var(--card-bg)',
                 '&:hover': {
                   bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(232, 90, 79, 0.08)',
@@ -585,7 +597,277 @@ const Dashboard: React.FC = () => {
 
         {loading ? (
           <LogoLoader />
+        ) : isMobile ? (
+          /* Mobile View matching Reference Image 2 */
+          <Stack spacing={2} sx={{ pb: 3 }}>
+            {/* 1. Neon Circular Ring Life Score Card */}
+            <TiltCard
+              sx={{
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: isProf ? 0 : '24px',
+                background: isProf
+                  ? 'var(--card-bg)'
+                  : isDark
+                  ? 'radial-gradient(circle at 50% 40%, rgba(255, 99, 71, 0.15) 0%, rgba(20, 16, 28, 0.9) 70%)'
+                  : 'radial-gradient(circle at 50% 40%, rgba(255, 120, 100, 0.15) 0%, rgba(255, 255, 255, 0.95) 75%)',
+                boxShadow: isProf ? 'none' : isDark ? '0 12px 32px rgba(0,0,0,0.45)' : '0 10px 30px rgba(232, 90, 79, 0.12)'
+              }}
+            >
+              {/* Circular SVG Gauge */}
+              <Box sx={{ position: 'relative', width: 170, height: 170, my: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="170" height="170" viewBox="0 0 170 170" style={{ transform: 'rotate(-90deg)' }}>
+                  <defs>
+                    <linearGradient id="scoreNeonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFA07A" />
+                      <stop offset="50%" stopColor="#FF6B6B" />
+                      <stop offset="100%" stopColor="#E85A4F" />
+                    </linearGradient>
+                  </defs>
+                  {/* Background Track */}
+                  <circle
+                    cx="85"
+                    cy="85"
+                    r="68"
+                    stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                    strokeWidth="10"
+                    fill="transparent"
+                  />
+                  {/* Progress Arc */}
+                  <circle
+                    cx="85"
+                    cy="85"
+                    r="68"
+                    stroke="url(#scoreNeonGrad)"
+                    strokeWidth="10"
+                    strokeDasharray={2 * Math.PI * 68}
+                    strokeDashoffset={2 * Math.PI * 68 - (Math.min(100, Math.max(0, lifeScore)) / 100) * (2 * Math.PI * 68)}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    style={{
+                      transition: 'stroke-dashoffset 1s ease-in-out',
+                      filter: isProf ? 'none' : 'drop-shadow(0 0 6px rgba(255, 107, 107, 0.6))'
+                    }}
+                  />
+                </svg>
+
+                {/* Inner Content */}
+                <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                  <FavoriteIcon sx={{ color: penaltyPoints > 0 ? '#ef4444' : '#E85A4F', fontSize: '26px', mb: 0.5 }} />
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>
+                    Life Score
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mt: 0.2 }}>
+                    {lifeScore.toFixed(1)} / 100
+                  </Typography>
+                </Box>
+              </Box>
+
+              {penaltyPoints > 0 && (
+                <Chip
+                  size="small"
+                  label={`−${penaltyPoints} pts penalty`}
+                  color="error"
+                  sx={{ mt: 1, height: '22px', fontSize: '11px', fontWeight: 700, borderRadius: isProf ? '0px !important' : '6px' }}
+                />
+              )}
+            </TiltCard>
+
+            {/* 2. 3 Compact Metric Cards in a Row (Balance, Water, Tasks) matching Reference Image 2 */}
+            <Grid container spacing={1.5}>
+              {/* Balance */}
+              <Grid size={{ xs: 4 }}>
+                <TiltCard
+                  sx={{
+                    p: 1.5,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '18px'
+                  }}
+                  onClick={() => navigate('/finance')}
+                >
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'rgba(232, 90, 79, 0.12)',
+                      color: '#E85A4F',
+                      mb: 1
+                    }}
+                  >
+                    <AccountBalanceWalletIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: balance >= 0 ? 'var(--text-primary)' : '#E85A4F', fontSize: '13px', lineHeight: 1.2 }}>
+                    {formatINR(balance)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
+                    Balance
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Water */}
+              <Grid size={{ xs: 4 }}>
+                <TiltCard
+                  sx={{
+                    p: 1.5,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '18px'
+                  }}
+                  onClick={() => navigate('/health')}
+                >
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'rgba(0, 188, 212, 0.12)',
+                      color: '#00BCD4',
+                      mb: 1
+                    }}
+                  >
+                    <LocalDrinkIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
+                    {todaysWater} ml
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
+                    Water
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Tasks */}
+              <Grid size={{ xs: 4 }}>
+                <TiltCard
+                  sx={{
+                    p: 1.5,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '18px'
+                  }}
+                  onClick={() => navigate('/planner')}
+                >
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'rgba(124, 58, 237, 0.12)',
+                      color: '#7C3AED',
+                      mb: 1
+                    }}
+                  >
+                    <CheckBoxOutlinedIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
+                    {completedTasks} / {totalTasks}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
+                    Tasks
+                  </Typography>
+                </TiltCard>
+              </Grid>
+            </Grid>
+
+            {/* 3. LifeSync Arena Mobile Banner Card matching Reference Image 2 */}
+            <TiltCard
+              sx={{
+                p: 2,
+                borderRadius: isProf ? 0 : '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                const el = document.getElementById('leaderboard-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: isProf ? 0 : '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, rgba(255, 107, 107, 0.2) 0%, rgba(232, 90, 79, 0.25) 100%)',
+                    color: '#E85A4F'
+                  }}
+                >
+                  <EmojiEventsIcon sx={{ fontSize: '24px' }} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 750, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                    LifeSync Arena
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11.5px', display: 'block' }}>
+                    Complete your location to join.
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--accent-primary)', fontSize: '10.5px', fontWeight: 600 }}>
+                    City • State • Country
+                  </Typography>
+                </Box>
+              </Stack>
+              <IconButton
+                sx={{
+                  width: 38,
+                  height: 38,
+                  bgcolor: '#E85A4F',
+                  color: '#fff',
+                  '&:hover': { bgcolor: '#d2483d' }
+                }}
+              >
+                <ArrowForwardIcon sx={{ fontSize: '18px' }} />
+              </IconButton>
+            </TiltCard>
+
+            {/* 4. Score Feedback & 7-Day History */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '20px' }}>
+              {renderLifeScoreFeedback()}
+            </TiltCard>
+
+            {/* 5. LifeScore Competition Leaderboard */}
+            <Box id="leaderboard-section">
+              <LifeScoreCompetitionCard />
+            </Box>
+          </Stack>
         ) : (
+          /* Desktop & Tablet Expanded View */
           <motion.div variants={containerVariants} initial="initial" animate="animate">
             <Grid container spacing={3}>
               {/* Card 1: Life Score Card */}
@@ -603,7 +885,6 @@ const Dashboard: React.FC = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    {/* Realistic 3D Glass Container Reflections (Modern 3D only) */}
                     {!isProf && (
                       <>
                         <Box sx={{
@@ -630,7 +911,6 @@ const Dashboard: React.FC = () => {
                       </>
                     )}
 
-                    {/* Fluid Progress Level Indicator */}
                     <Box sx={{
                       position: 'absolute',
                       bottom: 0,

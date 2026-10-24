@@ -21,12 +21,14 @@ export const ModernSpotlightLayer: React.FC = () => {
   const haloRef = useRef<HTMLDivElement>(null);
   const rafId = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!isModernDark) return;
+  const isTouchOrReduced = typeof window !== 'undefined' && (
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+    ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) ||
+    window.matchMedia('(pointer: coarse)').matches
+  );
 
-    // Accessibility & touch checks
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if ('ontouchstart' in window && !window.matchMedia('(pointer: fine)').matches) return;
+  useEffect(() => {
+    if (!isModernDark || isTouchOrReduced) return;
 
     let targetX = window.innerWidth / 2;
     let targetY = window.innerHeight / 2;
@@ -76,9 +78,9 @@ export const ModernSpotlightLayer: React.FC = () => {
       document.removeEventListener('mouseleave', handlePointerLeave);
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [isModernDark]);
+  }, [isModernDark, isTouchOrReduced]);
 
-  if (!isModernDark) return null;
+  if (!isModernDark || isTouchOrReduced) return null;
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, Tooltip, Avatar, Menu, MenuItem, ListItemIcon } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, Avatar, Menu, MenuItem, ListItemIcon, useTheme, useMediaQuery } from '@mui/material';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -26,6 +26,9 @@ import LogoLoader from '../components/LogoLoader';
 import { trackAction } from '../utils/analytics';
 import { ModernSpotlightLayer } from '../components/modern3d/ModernSpotlightLayer';
 import { ModernRippleDistortionCanvas } from '../components/modern3d/ModernRippleDistortionCanvas';
+import { MobileTopBar } from '../components/mobile/MobileTopBar';
+import { MobileBottomNav } from '../components/mobile/MobileBottomNav';
+import { MobileNavDrawer } from '../components/mobile/MobileNavDrawer';
 
 // Sidebar Item Structure
 interface SidebarItem {
@@ -40,12 +43,15 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { designSystem, mode } = useThemeSystem();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const isProf = designSystem === 'professional';
   const isModernDark = designSystem === 'modern3d' && mode === 'dark';
   const [collapsed, setCollapsed] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [pageChanging, setPageChanging] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const contentContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Draggable Docking Navigation Panel States (reverted to single active dock position)
@@ -595,8 +601,8 @@ const AppLayout: React.FC = () => {
       position: 'relative'
     }}>
 
-      {/* Permanent LifeSync Logo & Brand Mark (Sole Permanent Visibility Exception per Section 2) */}
-      {!navHidden && isModernDark && (
+      {/* Permanent LifeSync Logo & Brand Mark (Desktop Modern Dark Mode only) */}
+      {!isMobile && !navHidden && isModernDark && (
         <Box
           sx={{
             position: 'fixed',
@@ -646,8 +652,8 @@ const AppLayout: React.FC = () => {
       {/* True Application-Wide Spotlight Reveal Mask (Modern Night Mode only) */}
       <ModernSpotlightLayer />
 
-      {/* Floating Drag & Dock Zone Overlay Indicators (Active during dragging) */}
-      {isDragging && (
+      {/* Floating Drag & Dock Zone Overlay Indicators (Active during dragging on desktop) */}
+      {!isMobile && isDragging && (
         <Box sx={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
           {/* Left Zone */}
           <Box sx={{
@@ -723,8 +729,8 @@ const AppLayout: React.FC = () => {
         </Box>
       )}
 
-      {/* Floating Show Navbar Button (Visible when navbar is hidden) */}
-      {navHidden && (
+      {/* Floating Show Navbar Button (Visible on desktop when navbar is hidden) */}
+      {!isMobile && navHidden && (
         <Tooltip title="Show Navigation Menu" placement={dockPosition === 'right' ? 'left' : 'right'}>
           <IconButton
             onClick={() => setNavHidden(false)}
@@ -754,8 +760,21 @@ const AppLayout: React.FC = () => {
         </Tooltip>
       )}
 
-      {/* Draggable snappable single Navbar */}
-      {!navHidden && renderNavbar()}
+      {/* Desktop Draggable/Docked Single Navbar */}
+      {!isMobile && !navHidden && renderNavbar()}
+
+      {/* Mobile Top Bar */}
+      <MobileTopBar
+        onOpenDrawer={() => setMobileDrawerOpen(true)}
+        onOpenNotifications={() => navigate('/profile')}
+      />
+
+      {/* Mobile Navigation Drawer */}
+      <MobileNavDrawer
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        onOpenChat={() => setChatOpen(true)}
+      />
 
       {/* Main View Container */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -801,7 +820,18 @@ const AppLayout: React.FC = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden', height: '100%', position: 'relative', zIndex: 3 }}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  height: '100%',
+                  position: 'relative',
+                  zIndex: 3,
+                  pt: { xs: '58px', md: 0 },
+                  pb: { xs: '76px', md: 0 }
+                }}
               >
                 <Outlet />
               </Box>
@@ -810,20 +840,23 @@ const AppLayout: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Mobile Fixed Bottom Navigation Bar */}
+      <MobileBottomNav onOpenChat={() => setChatOpen(true)} />
+
       {/* Floating Chatbot Launch Toggle Button */}
       <IconButton
         onClick={() => setChatOpen((prev) => !prev)}
         sx={{
           position: 'fixed',
-          bottom: 24,
-          right: dockPosition === 'right' ? 'auto' : 24,
-          left: dockPosition === 'right' ? 24 : 'auto',
-          width: 56,
-          height: 56,
+          bottom: { xs: '76px', md: 24 },
+          right: { xs: 16, md: dockPosition === 'right' ? 'auto' : 24 },
+          left: { xs: 'auto', md: dockPosition === 'right' ? 24 : 'auto' },
+          width: { xs: 48, md: 56 },
+          height: { xs: 48, md: 56 },
           bgcolor: 'var(--accent-primary)',
           color: 'white',
           boxShadow: '0 4px 16px rgba(232, 90, 79, 0.35)',
-          zIndex: 1000,
+          zIndex: 1100,
           transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
           '&:hover': {
             bgcolor: 'var(--accent-secondary)',
@@ -832,7 +865,7 @@ const AppLayout: React.FC = () => {
           }
         }}
       >
-        <ChatIcon />
+        <ChatIcon sx={{ fontSize: { xs: 22, md: 24 } }} />
       </IconButton>
 
       {/* Slide-in Companion Chat Widget Panel Drawer */}
