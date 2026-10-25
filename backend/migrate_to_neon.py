@@ -11,6 +11,7 @@ import argparse
 import sqlite3
 from datetime import datetime
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import execute_batch
 
 TABLES_IN_DEPENDENCY_ORDER = [
@@ -23,6 +24,44 @@ TABLES_IN_DEPENDENCY_ORDER = [
     "AiRecommendations",
     "RecurringItems"
 ]
+
+ALLOWED_TABLES = set(TABLES_IN_DEPENDENCY_ORDER)
+
+def validate_table_name(table: str) -> str:
+    """Strictly validates table name against the dependency-ordered allowlist."""
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"Unauthorized or unknown table identifier: {table}")
+    return table
+
+# Static queries for SQLite to avoid raw string formatting
+SQLITE_COUNT_QUERIES = {
+    tbl: f'SELECT COUNT(*) FROM "{tbl}"' for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+SQLITE_SELECT_QUERIES = {
+    tbl: f'SELECT * FROM "{tbl}"' for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+
+# Pre-composed safe queries for PostgreSQL using psycopg2.sql.Identifier
+POSTGRES_COUNT_QUERIES = {
+    tbl: sql.SQL('SELECT COUNT(*) FROM {}').format(sql.Identifier(tbl))
+    for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+POSTGRES_DUPLICATE_QUERIES = {
+    tbl: sql.SQL('SELECT "Id", COUNT(*) FROM {} GROUP BY "Id" HAVING COUNT(*) > 1').format(sql.Identifier(tbl))
+    for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+POSTGRES_ORPHAN_QUERIES = {
+    tbl: sql.SQL('SELECT COUNT(*) FROM {} WHERE "UserId" NOT IN (SELECT "Id" FROM "Users")').format(sql.Identifier(tbl))
+    for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+POSTGRES_ID_QUERIES = {
+    tbl: sql.SQL('SELECT "Id" FROM {}').format(sql.Identifier(tbl))
+    for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
+POSTGRES_MAX_ID_QUERIES = {
+    tbl: sql.SQL('SELECT MAX("Id") FROM {}').format(sql.Identifier(tbl))
+    for tbl in TABLES_IN_DEPENDENCY_ORDER
+}
 
 def mask_connection_string(conn_str: str) -> str:
     """Masks credentials in connection string for safe console logging."""
@@ -54,9 +93,10 @@ def collect_source_row_counts(sqlite_path: str) -> dict:
     conn = sqlite3.connect(sqlite_path)
     cur = conn.cursor()
     for table in TABLES_IN_DEPENDENCY_ORDER:
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+        valid_table = validate_table_name(table)
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (valid_table,))
         if cur.fetchone():
-            cur.execute(f'SELECT COUNT(*) FROM "{table}"')
+            cur.execute(SQLITE_COUNT_QUERIES[valid_table])
             counts[table] = cur.fetchone()[0]
         else:
             counts[table] = 0
@@ -76,7 +116,8 @@ def validate_target_neon(tgt_cur, source_counts: dict) -> tuple[bool, list[str]]
 
     # 1. Row counts
     for table, expected_min in source_counts.items():
-        tgt_cur.execute(f'SELECT COUNT(*) FROM "{table}"')
+        valid_table = validate_table_name(table)
+        tgt_cur.execute(POSTGRES_COUNT_QUERIES[valid_table])
         neon_count = tgt_cur.fetchone()[0]
         print(f" - [{table}] Source={expected_min} | Neon={neon_count}")
         if neon_count < expected_min:
@@ -84,7 +125,8 @@ def validate_target_neon(tgt_cur, source_counts: dict) -> tuple[bool, list[str]]
 
     # 2. Primary key uniqueness
     for table in TABLES_IN_DEPENDENCY_ORDER:
-        tgt_cur.execute(f'SELECT "Id", COUNT(*) FROM "{table}" GROUP BY "Id" HAVING COUNT(*) > 1')
+        valid_table = validate_table_name(table)
+        tgt_cur.execute(POSTGRES_DUPLICATE_QUERIES[valid_table])
         duplicates = tgt_cur.fetchall()
         if duplicates:
             errors.append(f"Duplicate primary key(s) detected in '{table}': {duplicates}")
@@ -93,7 +135,8 @@ def validate_target_neon(tgt_cur, source_counts: dict) -> tuple[bool, list[str]]
     for table in TABLES_IN_DEPENDENCY_ORDER:
         if table == "Users":
             continue
-        tgt_cur.execute(f'SELECT COUNT(*) FROM "{table}" WHERE "UserId" NOT IN (SELECT "Id" FROM "Users")')
+        valid_table = validate_table_name(table)
+        tgt_cur.execute(POSTGRES_ORPHAN_QUERIES[valid_table])
         orphan_count = tgt_cur.fetchone()[0]
         if orphan_count > 0:
             errors.append(f"Foreign key violation: {orphan_count} orphaned records found in '{table}'.")
@@ -139,14 +182,15 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
 
     try:
         for table in TABLES_IN_DEPENDENCY_ORDER:
+            valid_table = validate_table_name(table)
             # Check if source table exists
-            src_cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+            src_cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (valid_table,))
             if not src_cur.fetchone():
                 print(f"[Skip] Source table '{table}' does not exist in SQLite.")
                 summary[table] = {"source_rows": 0, "migrated_rows": 0}
                 continue
 
-            src_cur.execute(f'SELECT * FROM "{table}"')
+            src_cur.execute(SQLITE_SELECT_QUERIES[valid_table])
             rows = src_cur.fetchall()
             row_count = len(rows)
 
@@ -156,25 +200,23 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
                 continue
 
             # Check if target table exists
-            tgt_cur.execute("SELECT to_regclass(%s)", (f'public."{table}"',))
+            tgt_cur.execute("SELECT to_regclass(%s)", (f'public."{valid_table}"',))
             if not tgt_cur.fetchone()[0]:
-                raise RuntimeError(f"Target table public.\"{table}\" does not exist in Neon. Run EF Core migrations first.")
+                raise RuntimeError(f"Target table public.\"{valid_table}\" does not exist in Neon. Run EF Core migrations first.")
 
             # Inspect PostgreSQL target table column types for accurate data type coercion (e.g. SQLite 0/1 to PostgreSQL boolean)
             tgt_cur.execute("""
                 SELECT column_name, data_type 
                 FROM information_schema.columns 
                 WHERE table_schema = 'public' AND table_name = %s
-            """, (table,))
+            """, (valid_table,))
             col_types = {r[0]: r[1].lower() for r in tgt_cur.fetchall()}
 
             # Extract column names from source
             col_names = [d[0] for d in src_cur.description]
-            cols_joined = ", ".join([f'"{c}"' for c in col_names])
-            placeholders = ", ".join(["%s"] * len(col_names))
 
             # Query existing IDs in Neon to guarantee idempotency and avoid duplicates
-            tgt_cur.execute(f'SELECT "Id" FROM "{table}"')
+            tgt_cur.execute(POSTGRES_ID_QUERIES[valid_table])
             existing_ids = set(r[0] for r in tgt_cur.fetchall())
 
             to_insert = []
@@ -196,7 +238,13 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
                     to_insert.append(row_values)
 
             if to_insert:
-                insert_query = f'INSERT INTO "{table}" ({cols_joined}) VALUES ({placeholders}) ON CONFLICT ("Id") DO NOTHING'
+                cols_identifiers = sql.SQL(", ").join(sql.Identifier(c) for c in col_names)
+                placeholders = sql.SQL(", ").join(sql.Placeholder() for _ in col_names)
+                insert_query = sql.SQL('INSERT INTO {} ({}) VALUES ({}) ON CONFLICT ("Id") DO NOTHING').format(
+                    sql.Identifier(valid_table),
+                    cols_identifiers,
+                    placeholders
+                )
                 execute_batch(tgt_cur, insert_query, to_insert)
                 print(f"[{table}] Inserted {len(to_insert)} new record(s) (total source rows: {row_count}).")
             else:
@@ -208,11 +256,11 @@ def migrate_sqlite_to_neon(sqlite_path: str, neon_connection_string: str) -> boo
                     pg_get_serial_sequence(%s, 'Id'),
                     pg_get_serial_sequence(%s, 'Id')
                 )
-            """, (f'"{table}"', f'public."{table}"'))
+            """, (f'"{valid_table}"', f'public."{valid_table}"'))
             seq_row = tgt_cur.fetchone()
             seq_name = seq_row[0] if seq_row else None
             if seq_name:
-                tgt_cur.execute(f'SELECT MAX("Id") FROM "{table}"')
+                tgt_cur.execute(POSTGRES_MAX_ID_QUERIES[valid_table])
                 max_id = tgt_cur.fetchone()[0]
                 if max_id is not None:
                     tgt_cur.execute("SELECT setval(%s, %s, true)", (seq_name, max_id))

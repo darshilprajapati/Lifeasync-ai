@@ -11,6 +11,7 @@ using LifeSyncAI.Core.Models;
 using LifeSyncAI.Core.Responses;
 using LifeSyncAI.Core.Services;
 using LifeSyncAI.Core.Helpers;
+using LifeSyncAI.Core.Enums;
 using Xunit;
 
 using LifeSyncAI.Tests.Helpers;
@@ -299,6 +300,124 @@ namespace LifeSyncAI.Tests
             Assert.True(verified);
             Assert.True(regResult.IsSuccess);
             Assert.True(loginResult.IsSuccess);
+        }
+
+        [Fact]
+        public void ValidateAccessToken_WithValidToken_ReturnsPrincipal()
+        {
+            // Arrange
+            var user = new User { Id = 42, FullName = "Active User", Email = "active@test.com", Role = UserRole.User };
+            var secret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, secret, "LifeSyncAI_API", "LifeSyncAI_Client", 15);
+
+            // Act
+            var principal = JwtHelper.ValidateAccessToken(token, secret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert
+            Assert.NotNull(principal);
+            Assert.Equal("42", principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            Assert.Equal("active@test.com", principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value);
+        }
+
+        [Fact]
+        public void ValidateAccessToken_WithExpiredToken_RejectsToken()
+        {
+            // Arrange - create token already expired (-5 minutes)
+            var user = new User { Id = 43, FullName = "Expired User", Email = "expired@test.com", Role = UserRole.User };
+            var secret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, secret, "LifeSyncAI_API", "LifeSyncAI_Client", -5);
+
+            // Act
+            var principal = JwtHelper.ValidateAccessToken(token, secret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert - Normal validation must reject expired tokens
+            Assert.Null(principal);
+        }
+
+        [Fact]
+        public void ValidateAccessToken_WithTamperedSignature_RejectsToken()
+        {
+            // Arrange
+            var user = new User { Id = 44, FullName = "Tampered User", Email = "tamper@test.com", Role = UserRole.User };
+            var validSecret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var wrongSecret = "DifferentSecretKeyThatDoesNotMatchTheOriginal32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, wrongSecret, "LifeSyncAI_API", "LifeSyncAI_Client", 15);
+
+            // Act
+            var principal = JwtHelper.ValidateAccessToken(token, validSecret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert
+            Assert.Null(principal);
+        }
+
+        [Fact]
+        public void ValidateAccessToken_WithInvalidIssuerOrAudience_RejectsToken()
+        {
+            // Arrange
+            var user = new User { Id = 45, FullName = "Mismatch User", Email = "mismatch@test.com", Role = UserRole.User };
+            var secret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, secret, "WrongIssuer", "WrongAudience", 15);
+
+            // Act
+            var principal = JwtHelper.ValidateAccessToken(token, secret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert
+            Assert.Null(principal);
+        }
+
+        [Fact]
+        public void GetPrincipalFromExpiredToken_WithExpiredToken_AllowsClaimExtractionForRefresh()
+        {
+            // Arrange - token expired 10 minutes ago
+            var user = new User { Id = 46, FullName = "Refreshable User", Email = "refreshable@test.com", Role = UserRole.User };
+            var secret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, secret, "LifeSyncAI_API", "LifeSyncAI_Client", -10);
+
+            // Act
+            var principal = JwtHelper.GetPrincipalFromExpiredToken(token, secret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert - refresh validation allows claim extraction from signed expired token
+            Assert.NotNull(principal);
+            Assert.Equal("refreshable@test.com", principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value);
+        }
+
+        [Fact]
+        public void GetPrincipalFromExpiredToken_WithTamperedSignature_RejectsToken()
+        {
+            // Arrange
+            var user = new User { Id = 47, FullName = "Tampered Refresh User", Email = "tampered_refresh@test.com", Role = UserRole.User };
+            var validSecret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var wrongSecret = "DifferentSecretKeyThatDoesNotMatchTheOriginal32Bytes!";
+            var token = JwtHelper.GenerateAccessToken(user, wrongSecret, "LifeSyncAI_API", "LifeSyncAI_Client", -10);
+
+            // Act
+            var principal = JwtHelper.GetPrincipalFromExpiredToken(token, validSecret, "LifeSyncAI_API", "LifeSyncAI_Client");
+
+            // Assert - signature must still be cryptographically valid
+            Assert.Null(principal);
+        }
+
+        [Fact]
+        public async Task RefreshTokenAsync_WithExpiredAccessTokenAndValidRefreshToken_RotatesTokensSuccessfully()
+        {
+            // Arrange
+            var registerDto = TestUserFactory.CreateUniqueRegisterDto("refresh_test_user");
+            var regResult = await _authService.RegisterWithSessionAsync(registerDto);
+            Assert.True(regResult.IsSuccess);
+
+            var savedUser = await _context.Users.FirstAsync(u => u.Email == registerDto.Email);
+            var initialRefreshToken = savedUser.RefreshToken!;
+            var secret = "SuperSecretTestingKeyEnsureThisIsLongEnough32Bytes!";
+            var expiredToken = JwtHelper.GenerateAccessToken(savedUser, secret, "LifeSyncAI_API", "LifeSyncAI_Client", -5);
+
+            // Act
+            var refreshResult = await _authService.RefreshTokenAsync(expiredToken, initialRefreshToken);
+
+            // Assert
+            Assert.True(refreshResult.IsSuccess);
+            Assert.False(string.IsNullOrEmpty(refreshResult.Data.AccessToken));
+            Assert.False(string.IsNullOrEmpty(refreshResult.Data.RefreshToken));
+            Assert.NotEqual(initialRefreshToken, refreshResult.Data.RefreshToken); // Token rotated
         }
     }
 }

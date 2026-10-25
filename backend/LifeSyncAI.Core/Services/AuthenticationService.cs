@@ -252,13 +252,17 @@ namespace LifeSyncAI.Core.Services
         {
             var jwtSection = _configuration.GetSection("JwtSettings");
             var secret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
+            var issuer = jwtSection["Issuer"] ?? "LifeSyncAI_API";
+            var audience = jwtSection["Audience"] ?? "LifeSyncAI_Client";
+            var expiryMin = int.Parse(jwtSection["ExpiryMinutes"] ?? "15");
+            var refreshDays = int.Parse(jwtSection["RefreshTokenExpiryDays"] ?? "7");
             
             User? user = null;
 
             // 1. If expired access token is available, attempt to extract claims
             if (!string.IsNullOrEmpty(expiredToken))
             {
-                var principal = JwtHelper.GetPrincipalFromExpiredToken(expiredToken, secret);
+                var principal = JwtHelper.GetPrincipalFromExpiredToken(expiredToken, secret, issuer, audience);
                 var emailClaim = principal?.FindFirst(ClaimTypes.Email)?.Value;
                 if (!string.IsNullOrEmpty(emailClaim))
                 {
@@ -283,11 +287,6 @@ namespace LifeSyncAI.Core.Services
             }
 
             // Generate new rotated tokens
-            var issuer = jwtSection["Issuer"] ?? "LifeSyncAI_API";
-            var audience = jwtSection["Audience"] ?? "LifeSyncAI_Client";
-            var expiryMin = int.Parse(jwtSection["ExpiryMinutes"] ?? "15");
-            var refreshDays = int.Parse(jwtSection["RefreshTokenExpiryDays"] ?? "7");
-
             var newAccessToken = JwtHelper.GenerateAccessToken(user, secret, issuer, audience, expiryMin);
             var newRefreshToken = JwtHelper.GenerateRefreshToken();
 

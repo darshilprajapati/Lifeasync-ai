@@ -34,4 +34,10 @@ RUN mkdir -p /app/data
 # Install fonts on Linux (Debian) for PDFsharp font resolution
 RUN apt-get update && apt-get install -y fonts-dejavu fontconfig && rm -rf /var/lib/apt/lists/*
 
+# Grant ownership of application and data directories to built-in non-root 'app' user
+RUN chown -R app:app /app
+
+# Switch to non-root user for security hardening
+USER app
+
 ENTRYPOINT ["dotnet", "LifeSyncAI.API.dll"]

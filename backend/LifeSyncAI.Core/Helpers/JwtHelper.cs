@@ -20,7 +20,7 @@ namespace LifeSyncAI.Core.Helpers
         public static string GenerateAccessToken(User user, string secretKey, string issuer, string audience, int expiryMinutes)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(secretKey);
+            var key = Encoding.UTF8.GetBytes(secretKey);
 
             var claims = new List<Claim>
             {
@@ -30,10 +30,15 @@ namespace LifeSyncAI.Core.Helpers
                 new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
+            var now = DateTime.UtcNow;
+            var expires = now.AddMinutes(expiryMinutes);
+            var notBefore = expiryMinutes < 0 ? expires.AddMinutes(-5) : now;
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(expiryMinutes),
+                NotBefore = notBefore,
+                Expires = expires,
                 Issuer = issuer,
                 Audience = audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -55,17 +60,78 @@ namespace LifeSyncAI.Core.Helpers
         }
 
         /// <summary>
-        /// Retrieves the ClaimsPrincipal from an expired or active JWT access token.
+        /// Validates an active JWT access token, strictly enforcing signature, algorithm, issuer, audience, and expiration.
+        /// Rejects expired or tampered tokens.
         /// </summary>
-        public static ClaimsPrincipal? GetPrincipalFromExpiredToken(string token, string secretKey)
+        public static ClaimsPrincipal? ValidateAccessToken(string token, string secretKey, string? issuer = null, string? audience = null)
         {
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(secretKey))
+                return null;
+
             var tokenValidationParameters = new TokenValidationParameters
             {
-                ValidateAudience = false, // We check issuer/audience manually if needed, or enforce here
-                ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-                ValidateLifetime = false // Critical: we want to read claims from an EXPIRED token to refresh it
+                ValidateIssuer = !string.IsNullOrWhiteSpace(issuer),
+                ValidIssuer = issuer,
+                ValidateAudience = !string.IsNullOrWhiteSpace(audience),
+                ValidAudience = audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+                if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+                    !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return null;
+                }
+
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Validates the cryptographic signature, header algorithm, and structural integrity of an access token
+        /// specifically for token refresh workflows, while allowing the caller to safely extract claims from an expired token.
+        /// </summary>
+        public static ClaimsPrincipal? GetPrincipalFromExpiredToken(string token, string secretKey, string? issuer = null, string? audience = null)
+        {
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(secretKey))
+                return null;
+
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                ValidateIssuer = !string.IsNullOrWhiteSpace(issuer),
+                ValidIssuer = issuer,
+                ValidateAudience = !string.IsNullOrWhiteSpace(audience),
+                ValidAudience = audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero,
+                // Allow expired tokens specifically for refresh flows, but ensure reasonable validity bounds
+                LifetimeValidator = (notBefore, expires, securityToken, validationParameters) =>
+                {
+                    if (notBefore.HasValue && notBefore.Value > DateTime.UtcNow.AddMinutes(5))
+                    {
+                        return false;
+                    }
+
+                    if (expires.HasValue && expires.Value < DateTime.UtcNow.AddDays(-30))
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
