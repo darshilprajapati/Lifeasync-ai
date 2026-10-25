@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -208,7 +208,7 @@ const Career: React.FC = () => {
   const [logPage, setLogPage] = useState(0);
   const [logRowsPerPage, setLogRowsPerPage] = useState(10);
 
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/api/career');
@@ -222,11 +222,11 @@ const Career: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     fetchApplications();
-  }, []);
+  }, [fetchApplications]);
 
   const openCreateDialog = (initialStage: string = 'Applied') => {
     setEditingId(null);

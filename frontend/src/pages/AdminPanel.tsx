@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Stack, Alert, CircularProgress, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, ListItemText, ListItemIcon, Pagination, InputAdornment } from '@mui/material';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -69,7 +69,7 @@ const AdminPanel: React.FC = () => {
     };
   }, [search]);
 
-  const fetchPendingUsers = async () => {
+  const fetchPendingUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -82,9 +82,9 @@ const AdminPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAllUsers = async () => {
+  const fetchAllUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -105,7 +105,7 @@ const AdminPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page, pageSize]);
 
   useEffect(() => {
     if (activeTab === 1) {
@@ -113,7 +113,7 @@ const AdminPanel: React.FC = () => {
     } else {
       fetchAllUsers();
     }
-  }, [activeTab, debouncedSearch, page, pageSize]);
+  }, [activeTab, fetchPendingUsers, fetchAllUsers]);
 
   const handleApprove = async (id: number) => {
     setActioningId(id);

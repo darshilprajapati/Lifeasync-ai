@@ -44,7 +44,7 @@ import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import { ResizablePanel } from '../components/resizable/ResizablePanel';
 import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
 import { useAuth } from '../context/AuthContext';
-import { formatINR } from './Finance';
+import { formatINR } from '../utils/formatters';
 
 interface AiRecommendation {
   id: number;

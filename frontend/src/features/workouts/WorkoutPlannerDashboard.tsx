@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -69,7 +69,7 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
     }
   }, [openAiGeneratorExternal]);
 
-  const loadData = async (date: Date) => {
+  const loadData = useCallback(async (date: Date) => {
     try {
       setError(null);
       const dateStr = formatLocalDate(date);
@@ -87,12 +87,12 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     setLoading(true);
     loadData(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate, loadData]);
 
   useEffect(() => {
     const handleWorkoutEvent = async () => {
@@ -114,7 +114,7 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
     return () => {
       window.removeEventListener('lifesync:workout-updated', handleWorkoutEvent);
     };
-  }, [selectedDate, detailModalDay]);
+  }, [selectedDate, detailModalDay, loadData]);
 
   const handleDateChange = (newDate: Date) => {
     setSelectedDate(newDate);

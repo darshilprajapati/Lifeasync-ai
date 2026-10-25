@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -77,7 +77,7 @@ const Profile: React.FC = () => {
     setPrefMode(mode);
   }, [designSystem, mode]);
 
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
       const [statsRes, scoreRes] = await Promise.all([
@@ -96,7 +96,7 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     if (user) {
@@ -107,7 +107,7 @@ const Profile: React.FC = () => {
       setCity(user.city || '');
       fetchProfileData();
     }
-  }, [user]);
+  }, [user, fetchProfileData]);
 
   const handleSelectDesign = (ds: DesignSystem) => {
     setPrefDesign(ds);

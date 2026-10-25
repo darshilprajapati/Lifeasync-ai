@@ -39,7 +39,7 @@ import { IconSlideButton } from '../components/modern3d/IconSlideButton';
 import LifeScoreCompetitionCard from '../components/LifeScoreCompetitionCard';
 import { ResizablePanel } from '../components/resizable/ResizablePanel';
 import { ResetLayoutButton } from '../components/resizable/ResetLayoutButton';
-import { formatINR } from './Finance';
+import { formatINR } from '../utils/formatters';
 
 const parseDateSafe = (dateStr: string) => {
   if (!dateStr) return new Date();

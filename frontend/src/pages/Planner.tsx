@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -96,7 +96,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   Urgent: '#EF4444',
 };
 
-export const isDateInPeriod = (
+const isDateInPeriod = (
   dateStr: string,
   filter: DateFilterOption,
   customStart?: string,
@@ -186,7 +186,7 @@ const Planner: React.FC = () => {
   const [logPage, setLogPage] = useState(0);
   const [logRowsPerPage, setLogRowsPerPage] = useState(10);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/api/planner');
@@ -200,11 +200,11 @@ const Planner: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [fetchEvents]);
 
   // Classify a task into its canonical Kanban column
   const getTaskColumn = (e: PlannerEvent): 'todo' | 'in_progress' | 'completed' | 'overdue' => {

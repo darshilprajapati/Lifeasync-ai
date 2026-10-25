@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -82,7 +82,7 @@ const Vault: React.FC = () => {
   const [linkUrl, setLinkUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchVaultItems = async () => {
+  const fetchVaultItems = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/api/vault');
@@ -96,11 +96,11 @@ const Vault: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     fetchVaultItems();
-  }, []);
+  }, [fetchVaultItems]);
 
   // Robust content parser supporting login credentials, secure notes, and secure links
   const parseContent = (contentStr: string, explicitCategory?: string): ParsedVaultContent => {

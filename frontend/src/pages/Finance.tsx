@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -65,6 +65,7 @@ import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
 import { exportToExcel } from '../utils/excelExport';
+import { formatINR } from '../utils/formatters';
 import {
   clampYearToFourDigits,
   isValidFourDigitYear,
@@ -109,15 +110,6 @@ export interface FinanceSummary {
   projectedYearlyRecurring: number;
 }
 
-export const formatINR = (val: number, includeDecimals: boolean = true): string => {
-  if (val === undefined || val === null || isNaN(val)) return '₹0.00';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: includeDecimals ? 2 : 0,
-    maximumFractionDigits: includeDecimals ? 2 : 0,
-  }).format(val);
-};
 
 type DateFilterOption = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 
@@ -228,7 +220,7 @@ const Finance: React.FC = () => {
   const [logPage, setLogPage] = useState(0);
   const [logRowsPerPage, setLogRowsPerPage] = useState(10);
 
-  const fetchFinanceData = async () => {
+  const fetchFinanceData = useCallback(async () => {
     try {
       setLoading(true);
       const [transRes, sumRes, recRes, budgetRes] = await Promise.all([
@@ -249,11 +241,11 @@ const Finance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     fetchFinanceData();
-  }, []);
+  }, [fetchFinanceData]);
 
   // Filtered transactions for the dashboard view
   const filteredTransactions = useMemo(() => {

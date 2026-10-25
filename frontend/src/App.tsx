@@ -4,9 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, Box, Typography } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { ThemeProvider as LifeSyncThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationProvider';
+import { ThemeProvider as LifeSyncThemeProvider } from './context/ThemeProvider';
 import { trackNavigation } from './utils/analytics';
 import { setupNoonKeepAliveScheduler } from './utils/keepAlive';
 
