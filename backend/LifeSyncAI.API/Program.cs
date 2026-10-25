@@ -15,6 +15,7 @@ using Serilog;
 using LifeSyncAI.Core.Database;
 using LifeSyncAI.Core.Contracts.Interfaces.Services;
 using LifeSyncAI.Core.Services;
+using LifeSyncAI.Core.Options;
 
 namespace LifeSyncAI.API
 {
@@ -111,6 +112,20 @@ namespace LifeSyncAI.API
                 builder.Services.AddScoped<IExternalSearchService, ExternalSearchService>();
                 builder.Services.AddScoped<ICompanionService, CompanionService>();
                 builder.Services.AddScoped<ILifeScoreService, LifeScoreService>();
+
+                // Configure Supabase Storage
+                builder.Services.Configure<SupabaseOptions>(
+                    builder.Configuration.GetSection(SupabaseOptions.SectionName));
+                builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
+                builder.Services.AddHttpClient<ProfileImageMigrationService>();
+
+                // Validate Supabase settings on startup in production
+                var supabaseSection = builder.Configuration.GetSection(SupabaseOptions.SectionName);
+                var supabaseOptions = supabaseSection.Get<SupabaseOptions>() ?? new SupabaseOptions();
+                if (!builder.Environment.IsDevelopment() && !supabaseOptions.IsConfigured)
+                {
+                    throw new InvalidOperationException("Production Supabase Storage configuration is missing required settings ('Supabase:Url', 'Supabase:ServiceRoleKey', or 'Supabase:AvatarBucket').");
+                }
 
                 // Register Reports Asynchronous Background Processing Services
                 builder.Services.AddSingleton<LifeSyncAI.Core.Services.IReportQueue, LifeSyncAI.Core.Services.ReportQueue>();
@@ -333,6 +348,21 @@ namespace LifeSyncAI.API
                 
                 // Map hubs for SignalR (to be defined later)
                 // app.MapHub<NotificationHub>("/hubs/notifications");
+
+                // CLI Command: Safe, idempotent migration of legacy profile photos to Supabase Storage
+                if (args.Length > 0 && Array.Exists(args, a => a.Equals("--migrate-avatars", StringComparison.OrdinalIgnoreCase)))
+                {
+                    bool dryRun = Array.Exists(args, a => a.Equals("--dry-run", StringComparison.OrdinalIgnoreCase));
+                    Log.Information("Executing avatar migration CLI command. DryRun={DryRun}", dryRun);
+                    using var scope = app.Services.CreateScope();
+                    var migrationService = scope.ServiceProvider.GetRequiredService<ProfileImageMigrationService>();
+                    var report = await migrationService.MigrateAllAsync(dryRun);
+                    foreach (var log in report.Logs)
+                    {
+                        Console.WriteLine(log);
+                    }
+                    return;
+                }
 
                 app.Run();
             }

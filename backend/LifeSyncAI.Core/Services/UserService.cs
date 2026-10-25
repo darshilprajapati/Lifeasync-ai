@@ -267,8 +267,19 @@ namespace LifeSyncAI.Core.Services
                     return ApiResponse<UserDto>.Fail("User not found.");
                 }
 
+                if (!string.IsNullOrWhiteSpace(dto.ProfilePhoto) &&
+                    dto.ProfilePhoto.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ApiResponse<UserDto>.Fail(
+                        "Raw base64 image data cannot be stored directly in the profile. Please use the dedicated profile photo upload endpoint."
+                    );
+                }
+
                 user.FullName = dto.FullName;
-                user.ProfilePhoto = dto.ProfilePhoto;
+                if (dto.ProfilePhoto != null)
+                {
+                    user.ProfilePhoto = string.IsNullOrWhiteSpace(dto.ProfilePhoto) ? null : dto.ProfilePhoto.Trim();
+                }
                 if (dto.City != null) user.City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim().ToUpperInvariant();
                 if (dto.State != null) user.State = string.IsNullOrWhiteSpace(dto.State) ? null : dto.State.Trim();
                 if (dto.Country != null) user.Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim();

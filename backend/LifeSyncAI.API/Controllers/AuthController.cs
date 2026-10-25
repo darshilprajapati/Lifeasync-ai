@@ -19,12 +19,18 @@ namespace LifeSyncAI.API.Controllers
         private readonly IAuthenticationService _authService;
         private readonly IUserService _userService;
         private readonly LifeSyncAI.Core.Database.ApplicationDbContext _context;
+        private readonly ISupabaseStorageService _storageService;
 
-        public AuthController(IAuthenticationService authService, IUserService userService, LifeSyncAI.Core.Database.ApplicationDbContext context)
+        public AuthController(
+            IAuthenticationService authService,
+            IUserService userService,
+            LifeSyncAI.Core.Database.ApplicationDbContext context,
+            ISupabaseStorageService storageService)
         {
             _authService = authService;
             _userService = userService;
             _context = context;
+            _storageService = storageService;
         }
 
         [HttpPost("register")]
@@ -183,6 +189,133 @@ namespace LifeSyncAI.API.Controllers
 
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpPost("profile/photo")]
+        public async Task<ActionResult<ApiResponse<UserDto>>> UploadProfilePhoto(IFormFile? file)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(ApiResponse<UserDto>.Fail("Unauthorized access."));
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(ApiResponse<UserDto>.Fail("Please select an image file to upload."));
+            }
+
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(ApiResponse<UserDto>.Fail("Image size exceeds the 5 MB maximum upload limit."));
+            }
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                string publicUrl = await _storageService.UploadAvatarAsync(
+                    userId,
+                    stream,
+                    file.FileName,
+                    file.ContentType,
+                    HttpContext.RequestAborted
+                );
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(ApiResponse<UserDto>.Fail("User not found."));
+                }
+
+                user.ProfilePhoto = publicUrl;
+                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedBy = "Self";
+                await _context.SaveChangesAsync();
+
+                var userDto = new UserDto
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role.ToString(),
+                    Status = user.Status.ToString(),
+                    ProfilePhoto = user.ProfilePhoto,
+                    City = user.City,
+                    State = user.State,
+                    Country = user.Country
+                };
+
+                return Ok(ApiResponse<UserDto>.Success(userDto, "Profile photo updated successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Unexpected error during profile photo upload for user {UserId}", userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<UserDto>.Fail("Failed to upload profile photo. Please try again."));
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("profile/photo")]
+        public async Task<ActionResult<ApiResponse<UserDto>>> DeleteProfilePhoto()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(ApiResponse<UserDto>.Fail("Unauthorized access."));
+            }
+
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(ApiResponse<UserDto>.Fail("User not found."));
+                }
+
+                if (_storageService.IsConfigured)
+                {
+                    await _storageService.DeleteAvatarAsync(userId, HttpContext.RequestAborted);
+                }
+
+                user.ProfilePhoto = null;
+                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedBy = "Self";
+                await _context.SaveChangesAsync();
+
+                var userDto = new UserDto
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role.ToString(),
+                    Status = user.Status.ToString(),
+                    ProfilePhoto = null,
+                    City = user.City,
+                    State = user.State,
+                    Country = user.Country
+                };
+
+                return Ok(ApiResponse<UserDto>.Success(userDto, "Profile photo removed successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Unexpected error deleting profile photo for user {UserId}", userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<UserDto>.Fail("Failed to remove profile photo. Please try again."));
+            }
+        }
+
 
         [Authorize]
         [HttpGet("profile/stats")]
