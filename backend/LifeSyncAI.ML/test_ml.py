@@ -173,7 +173,9 @@ class TestLifeSyncAIML(unittest.TestCase):
     # 9. Invalid authentication token
     def test_09_invalid_auth_token(self):
         """Verify endpoint rejects invalid JWT signature with 401"""
-        fake_token = jwt.encode({"nameid": "1"}, "WrongSecretKey12345678901234567890", algorithm="HS256")
+        import secrets
+        invalid_secret = os.getenv("TEST_INVALID_JWT_SECRET", secrets.token_hex(32))
+        fake_token = jwt.encode({"nameid": "1"}, invalid_secret, algorithm="HS256")
         response = self.client.post(
             "/api/ml/forecast",
             json={},
