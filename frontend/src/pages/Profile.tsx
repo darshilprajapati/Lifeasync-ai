@@ -11,9 +11,13 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  CircularProgress,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
@@ -49,6 +53,7 @@ const Profile: React.FC = () => {
   const [email] = useState(user?.email || '');
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Location state
   const [country, setCountry] = useState(user?.country || '');
@@ -136,20 +141,80 @@ const Profile: React.FC = () => {
     setTimeout(() => setAppearanceSaved(false), 2500);
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      notify.warning('Image size should be less than 2MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      notify.warning('Image size must be less than 5 MB.');
+      e.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfilePhoto(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!validTypes.includes(file.type) && (!ext || !validExts.includes(ext))) {
+      notify.warning('Unsupported image format. Please select a JPEG, PNG, or WebP image.');
+      e.target.value = '';
+      return;
+    }
+
+    const previousPhoto = profilePhoto;
+    const previewUrl = URL.createObjectURL(file);
+    setProfilePhoto(previewUrl);
+    setUploadingPhoto(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await apiClient.post('/api/auth/profile/photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (res.data.isSuccess) {
+        trackAction('profile_photo_uploaded', { module: 'profile', provider: 'supabase' });
+        notify.success('Profile photo updated successfully!');
+        setProfilePhoto(res.data.data.profilePhoto || null);
+        updateUser(res.data.data);
+      } else {
+        setProfilePhoto(previousPhoto);
+        notify.error(res.data.message || 'Failed to upload profile photo.');
+      }
+    } catch (err: any) {
+      setProfilePhoto(previousPhoto);
+      notify.error(err.response?.data?.message || err.message || 'Failed to upload profile photo.');
+    } finally {
+      setUploadingPhoto(false);
+      URL.revokeObjectURL(previewUrl);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!profilePhoto) return;
+    const previousPhoto = profilePhoto;
+    setUploadingPhoto(true);
+
+    try {
+      const res = await apiClient.delete('/api/auth/profile/photo');
+      if (res.data.isSuccess) {
+        trackAction('profile_photo_removed', { module: 'profile' });
+        notify.success('Profile photo removed successfully.');
+        setProfilePhoto(null);
+        updateUser(res.data.data);
+      } else {
+        notify.error(res.data.message || 'Failed to remove profile photo.');
+      }
+    } catch (err: any) {
+      setProfilePhoto(previousPhoto);
+      notify.error(err.response?.data?.message || err.message || 'Failed to remove profile photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -342,9 +407,14 @@ const Profile: React.FC = () => {
                     <Box sx={{ position: 'relative', flexShrink: 0 }}>
                       <Avatar
                         src={profilePhoto || undefined}
+                        slotProps={{
+                          img: {
+                            onError: () => setProfilePhoto(null)
+                          }
+                        }}
                         sx={{
-                          width: 54,
-                          height: 54,
+                          width: 58,
+                          height: 58,
                           bgcolor: 'var(--accent-secondary)',
                           fontSize: '20px',
                           fontWeight: 700,
@@ -354,26 +424,87 @@ const Profile: React.FC = () => {
                       >
                         {!profilePhoto && (fullName.charAt(0).toUpperCase() || 'U')}
                       </Avatar>
-                      <Button
-                        component="label"
-                        size="small"
-                        sx={{
-                          position: 'absolute',
-                          bottom: -2,
-                          right: -2,
-                          minWidth: 22,
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          bgcolor: 'var(--accent-primary)',
-                          color: 'white',
-                          p: 0,
-                          '&:hover': { bgcolor: 'var(--accent-secondary)' }
-                        }}
-                      >
-                        <PhotoCameraIcon sx={{ fontSize: 11 }} />
-                        <input type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
-                      </Button>
+
+                      {uploadingPhoto && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: 58,
+                            height: 58,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(0,0,0,0.45)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2
+                          }}
+                        >
+                          <CircularProgress size={22} sx={{ color: 'white' }} />
+                        </Box>
+                      )}
+
+                      <Tooltip title="Upload / change photo (Max 5MB)">
+                        <span>
+                          <Button
+                            component="label"
+                            size="small"
+                            disabled={uploadingPhoto}
+                            sx={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              minWidth: 24,
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              bgcolor: 'var(--accent-primary)',
+                              color: 'white',
+                              p: 0,
+                              zIndex: 3,
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                              '&:hover': { bgcolor: 'var(--accent-secondary)' }
+                            }}
+                          >
+                            <PhotoCameraIcon sx={{ fontSize: 13 }} />
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              hidden
+                              onChange={handlePhotoUpload}
+                              disabled={uploadingPhoto}
+                            />
+                          </Button>
+                        </span>
+                      </Tooltip>
+
+                      {profilePhoto && (
+                        <Tooltip title="Remove profile photo">
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={handleRemovePhoto}
+                              disabled={uploadingPhoto}
+                              sx={{
+                                position: 'absolute',
+                                top: -2,
+                                right: -2,
+                                width: 20,
+                                height: 20,
+                                bgcolor: '#EF4444',
+                                color: 'white',
+                                p: 0,
+                                zIndex: 3,
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                                '&:hover': { bgcolor: '#DC2626' }
+                              }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 12 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      )}
                     </Box>
 
                     <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
