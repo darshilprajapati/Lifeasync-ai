@@ -35,6 +35,7 @@ import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { useThemeSystem } from '../../context/ThemeContext';
 import { clampYearToFourDigits, STANDARD_DATE_INPUT_PROPS } from '../../utils/dateValidation';
+import { exportToExcel } from '../../utils/excelExport';
 
 export interface HealthLogItem {
   id: number;
@@ -220,28 +221,26 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
     }
   };
 
-  const handleExportFilteredCSV = () => {
+  const handleExportFilteredExcel = () => {
     if (filteredLogs.length === 0) return;
 
-    const headers = ['Log ID', 'Category', 'Value', 'Unit', 'Details', 'Date & Time'];
-    const rows = filteredLogs.map((l) => [
-      l.id,
-      l.logType,
-      l.logValue,
-      getUnit(l.logType),
-      `"${(l.details || '').replace(/"/g, '""')}"`,
-      new Date(l.logDate).toLocaleString()
-    ]);
+    const exportRows = filteredLogs.map((l) => {
+      const d = parseDateSafe(l.logDate);
+      return {
+        Category: l.logType,
+        Value: l.logValue,
+        Unit: getUnit(l.logType),
+        Details: l.details || '',
+        Date: d.toLocaleDateString(),
+        Time: d.toLocaleTimeString()
+      };
+    });
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Health_Logs_${dateFilter}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel(
+      exportRows,
+      `LifeSync_Health_Logs_${dateFilter}_${new Date().toISOString().slice(0, 10)}`,
+      'Health Logs'
+    );
   };
 
   return (
@@ -368,7 +367,7 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
             size="small"
             variant="outlined"
             startIcon={<FileDownloadIcon />}
-            onClick={handleExportFilteredCSV}
+            onClick={handleExportFilteredExcel}
             disabled={filteredLogs.length === 0}
             sx={{
               borderRadius: isProf ? '0px' : '8px',
@@ -380,7 +379,7 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
               whiteSpace: 'nowrap'
             }}
           >
-            Export Filtered CSV ({filteredLogs.length})
+            Export Filtered Excel ({filteredLogs.length})
           </Button>
         </Stack>
 
