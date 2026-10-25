@@ -65,6 +65,11 @@ import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
 import { exportToExcel } from '../utils/excelExport';
+import {
+  clampYearToFourDigits,
+  isValidFourDigitYear,
+  STANDARD_DATE_INPUT_PROPS,
+} from '../utils/dateValidation';
 
 export interface Transaction {
   id: number;
@@ -843,16 +848,16 @@ const Finance: React.FC = () => {
                 label="From"
                 type="date"
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomStart(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
                 label="To"
                 type="date"
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomEnd(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
@@ -1622,8 +1627,8 @@ const Finance: React.FC = () => {
                 required
                 fullWidth
                 value={txDate}
-                onChange={(e) => setTxDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setTxDate(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           </form>
@@ -1636,7 +1641,7 @@ const Finance: React.FC = () => {
             type="submit"
             form="tx-form"
             variant="contained"
-            disabled={!description.trim() || !amount || parseFloat(amount) <= 0 || !txDate || submitting}
+            disabled={!description.trim() || !amount || parseFloat(amount) <= 0 || !txDate || !isValidFourDigitYear(txDate) || submitting}
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
@@ -1728,8 +1733,8 @@ const Finance: React.FC = () => {
                 required
                 fullWidth
                 value={recDueDate}
-                onChange={(e) => setRecDueDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setRecDueDate(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           </form>
@@ -1742,7 +1747,7 @@ const Finance: React.FC = () => {
             type="submit"
             form="rec-form"
             variant="contained"
-            disabled={!recDescription.trim() || !recAmount || parseFloat(recAmount) <= 0 || !recDueDate || recSubmitting}
+            disabled={!recDescription.trim() || !recAmount || parseFloat(recAmount) <= 0 || !recDueDate || !isValidFourDigitYear(recDueDate) || recSubmitting}
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
@@ -1892,10 +1897,10 @@ const Finance: React.FC = () => {
                 type="date"
                 value={logCustomStart}
                 onChange={(e) => {
-                  setLogCustomStart(e.target.value);
+                  setLogCustomStart(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
@@ -1903,16 +1908,16 @@ const Finance: React.FC = () => {
                 type="date"
                 value={logCustomEnd}
                 onChange={(e) => {
-                  setLogCustomEnd(e.target.value);
+                  setLogCustomEnd(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
 
           {logRecords.length === 0 ? (
-            <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <Box sx={{ py: 6, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Typography variant="body1">No transactions found matching active filters.</Typography>
             </Box>
           ) : (

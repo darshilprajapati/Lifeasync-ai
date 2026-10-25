@@ -34,6 +34,7 @@ import BedtimeIcon from '@mui/icons-material/Bedtime';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { useThemeSystem } from '../../context/ThemeContext';
+import { clampYearToFourDigits, STANDARD_DATE_INPUT_PROPS } from '../../utils/dateValidation';
 
 export interface HealthLogItem {
   id: number;
@@ -253,19 +254,13 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
         paper: {
           sx: {
             borderRadius: isProf ? '0px' : '20px',
-            bgcolor: isProf
-              ? 'var(--card-bg)'
-              : isDark
-              ? 'rgba(26, 29, 45, 0.95)'
-              : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: isProf ? 'none' : 'blur(16px)',
+            bgcolor: 'var(--card-bg)',
             border: isProf
               ? '1px solid var(--card-border)'
               : isDark
               ? '1px solid rgba(255, 255, 255, 0.1)'
               : '1px solid rgba(255, 111, 38, 0.2)',
             boxShadow: isProf ? 'none' : '0 16px 40px rgba(0, 0, 0, 0.25)',
-            maxHeight: '90vh'
           }
         }
       }}
@@ -398,10 +393,10 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
               label="From Date"
               value={customStart}
               onChange={(e) => {
-                setCustomStart(e.target.value);
+                setCustomStart(clampYearToFourDigits(e.target.value));
                 setPage(0);
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
+              slotProps={STANDARD_DATE_INPUT_PROPS}
               sx={{ bgcolor: 'var(--card-bg)' }}
             />
             <TextField
@@ -410,10 +405,10 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
               label="To Date"
               value={customEnd}
               onChange={(e) => {
-                setCustomEnd(e.target.value);
+                setCustomEnd(clampYearToFourDigits(e.target.value));
                 setPage(0);
               }}
-              slotProps={{ inputLabel: { shrink: true } }}
+              slotProps={STANDARD_DATE_INPUT_PROPS}
               sx={{ bgcolor: 'var(--card-bg)' }}
             />
           </Stack>
@@ -421,11 +416,11 @@ export const HealthActivityHistoryModal: React.FC<HealthActivityHistoryModalProp
 
         {/* Table Content */}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8, minHeight: 280 }}>
             <CircularProgress sx={{ color: 'var(--accent-primary)' }} />
           </Box>
         ) : filteredLogs.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <Box sx={{ py: 6, minHeight: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
             <FitnessCenterIcon sx={{ fontSize: 44, opacity: 0.4, mb: 1.5 }} />
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
               No health activity logs match the selected filters.

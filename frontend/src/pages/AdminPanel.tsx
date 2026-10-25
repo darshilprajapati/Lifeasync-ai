@@ -584,12 +584,12 @@ const AdminPanel: React.FC = () => {
             ) : userStats ? (
               <List>
                 {Object.entries(userStats).map(([moduleName, count]) => (
-                  <ListItem key={moduleName} sx={{ borderBottom: '1px solid #EEEEEE', py: 1.5 }}>
+                  <ListItem key={moduleName} sx={{ borderBottom: '1px solid var(--card-border)', py: 1.5 }}>
                     <ListItemIcon sx={{ minWidth: '40px' }}>
                       <PeopleIcon sx={{ color: 'var(--accent-secondary)' }} />
                     </ListItemIcon>
                     <ListItemText
-                      primary={<Typography sx={{ fontWeight: 600, color: '#37474F' }}>{moduleName}</Typography>}
+                      primary={<Typography sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>{moduleName}</Typography>}
                     />
                     <Typography variant="body1" sx={{ fontWeight: 700, color: 'var(--accent-primary)' }}>
                       {count}

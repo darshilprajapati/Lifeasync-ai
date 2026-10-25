@@ -51,6 +51,12 @@ import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
 import { exportToExcel } from '../utils/excelExport';
+import {
+  clampYearToFourDigits,
+  isValidFourDigitYear,
+  STANDARD_DATE_INPUT_PROPS,
+  STANDARD_DATETIME_INPUT_PROPS,
+} from '../utils/dateValidation';
 
 export interface PlannerEvent {
   id: number;
@@ -219,24 +225,6 @@ const Planner: React.FC = () => {
     return null;
   };
 
-  const sanitizeDateTimeInput = (val: string): string => {
-    if (!val) return '';
-    const parts = val.split('-');
-    if (parts.length > 0 && parts[0].length > 4) {
-      return [parts[0].slice(0, 4), ...parts.slice(1)].join('-');
-    }
-    return val;
-  };
-
-  const isValidFourDigitYear = (val: string): boolean => {
-    if (!val) return true;
-    const parts = val.split('-');
-    if (parts.length === 0) return true;
-    const yStr = parts[0];
-    if (yStr.length !== 4 || !/^\d{4}$/.test(yStr)) return false;
-    const y = parseInt(yStr, 10);
-    return !isNaN(y) && y >= 1900 && y <= 2099;
-  };
 
   const toLocalInput = (isoStr: string) => {
     if (!isoStr) return '';
@@ -768,16 +756,16 @@ const Planner: React.FC = () => {
                 label="From Date"
                 type="date"
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomStart(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
                 label="To Date"
                 type="date"
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomEnd(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
@@ -1079,13 +1067,13 @@ const Planner: React.FC = () => {
                   size="small"
                   value={startTime}
                   onChange={(e) => {
-                    const val = sanitizeDateTimeInput(e.target.value);
+                    const val = clampYearToFourDigits(e.target.value);
                     setStartTime(val);
                     if (endTime) setTimeRangeError(validateRange(val, endTime));
                   }}
                   slotProps={{
                     inputLabel: { shrink: true },
-                    htmlInput: { min: '1900-01-01T00:00', max: '2099-12-31T23:59' },
+                    htmlInput: { min: '1900-01-01T00:00', max: '2099-12-31T23:59', maxLength: 16 },
                   }}
                 />
 
@@ -1097,14 +1085,14 @@ const Planner: React.FC = () => {
                   size="small"
                   value={endTime}
                   onChange={(e) => {
-                    const val = sanitizeDateTimeInput(e.target.value);
+                    const val = clampYearToFourDigits(e.target.value);
                     setEndTime(val);
                     if (startTime) setTimeRangeError(validateRange(startTime, val));
                   }}
                   error={!!timeRangeError}
                   slotProps={{
                     inputLabel: { shrink: true },
-                    htmlInput: { min: startTime || '1900-01-01T00:00', max: '2099-12-31T23:59' },
+                    htmlInput: { min: startTime || '1900-01-01T00:00', max: '2099-12-31T23:59', maxLength: 16 },
                   }}
                 />
               </Stack>
@@ -1132,8 +1120,8 @@ const Planner: React.FC = () => {
                   fullWidth
                   size="small"
                   value={customReminderDate}
-                  onChange={(e) => setCustomReminderDate(sanitizeDateTimeInput(e.target.value))}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(e) => setCustomReminderDate(clampYearToFourDigits(e.target.value))}
+                  slotProps={STANDARD_DATETIME_INPUT_PROPS}
                 />
               )}
             </Stack>
@@ -1289,10 +1277,10 @@ const Planner: React.FC = () => {
                 type="date"
                 value={logCustomStart}
                 onChange={(e) => {
-                  setLogCustomStart(e.target.value);
+                  setLogCustomStart(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
@@ -1300,17 +1288,17 @@ const Planner: React.FC = () => {
                 type="date"
                 value={logCustomEnd}
                 onChange={(e) => {
-                  setLogCustomEnd(e.target.value);
+                  setLogCustomEnd(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
 
           {/* Table */}
           {logRecords.length === 0 ? (
-            <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <Box sx={{ py: 6, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Typography variant="body1">No tasks found matching the active log filters.</Typography>
             </Box>
           ) : (

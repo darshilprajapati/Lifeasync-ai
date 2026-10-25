@@ -125,7 +125,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({
         <DialogContent sx={{ minWidth: '340px' }}>
           {status === 'idle' && (
             <>
-              <Typography variant="body2" sx={{ color: '#6D6D6D', mb: 3 }}>
+              <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
                 Select the time-frame for your generated report. The background worker service will aggregate your metrics and build a downloadable summary file.
               </Typography>
 
@@ -143,7 +143,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({
           {(status === 'requesting' || status === 'processing') && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
               <CircularProgress size={44} sx={{ color: 'var(--accent-primary)' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#37474F', textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
                 {status === 'requesting' ? 'Queuing request...' : 'Background worker is compiling report details...'}
               </Typography>
             </Box>

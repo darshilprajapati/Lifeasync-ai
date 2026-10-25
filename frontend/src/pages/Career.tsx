@@ -51,6 +51,11 @@ import apiClient from '../api/apiClient';
 import { trackAction } from '../utils/analytics';
 import { useNotification } from '../context/NotificationContext';
 import { exportToExcel } from '../utils/excelExport';
+import {
+  clampYearToFourDigits,
+  isValidFourDigitYear,
+  STANDARD_DATE_INPUT_PROPS,
+} from '../utils/dateValidation';
 
 export interface StageHistory {
   id: number;
@@ -1011,16 +1016,16 @@ const Career: React.FC = () => {
                 label="Applied From"
                 type="date"
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomStart(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
                 label="Applied To"
                 type="date"
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => setCustomEnd(clampYearToFourDigits(e.target.value))}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
@@ -1556,8 +1561,8 @@ const Career: React.FC = () => {
                   fullWidth
                   size="small"
                   value={appliedDate}
-                  onChange={(e) => setAppliedDate(e.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(e) => setAppliedDate(clampYearToFourDigits(e.target.value))}
+                  slotProps={STANDARD_DATE_INPUT_PROPS}
                 />
               </Stack>
 
@@ -1638,7 +1643,7 @@ const Career: React.FC = () => {
             type="submit"
             form="career-form"
             variant="contained"
-            disabled={!company.trim() || !position.trim() || !appliedDate || submitting}
+            disabled={!company.trim() || !position.trim() || !appliedDate || !isValidFourDigitYear(appliedDate) || submitting}
             sx={{
               bgcolor: 'var(--accent-primary)',
               fontWeight: 700,
@@ -1772,10 +1777,10 @@ const Career: React.FC = () => {
                 type="date"
                 value={logCustomStart}
                 onChange={(e) => {
-                  setLogCustomStart(e.target.value);
+                  setLogCustomStart(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
               <TextField
                 size="small"
@@ -1783,16 +1788,16 @@ const Career: React.FC = () => {
                 type="date"
                 value={logCustomEnd}
                 onChange={(e) => {
-                  setLogCustomEnd(e.target.value);
+                  setLogCustomEnd(clampYearToFourDigits(e.target.value));
                   setLogPage(0);
                 }}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={STANDARD_DATE_INPUT_PROPS}
               />
             </Stack>
           )}
 
           {logRecords.length === 0 ? (
-            <Box sx={{ py: 6, textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <Box sx={{ py: 6, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Typography variant="body1">No job applications match the active log filters.</Typography>
             </Box>
           ) : (

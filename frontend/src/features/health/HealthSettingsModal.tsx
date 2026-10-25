@@ -139,12 +139,7 @@ export const HealthSettingsModal: React.FC<HealthSettingsModalProps> = ({
         paper: {
           sx: {
             borderRadius: isProf ? '0px' : '20px',
-            bgcolor: isProf
-              ? 'var(--card-bg)'
-              : isDark
-              ? 'rgba(26, 29, 45, 0.95)'
-              : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: isProf ? 'none' : 'blur(16px)',
+            bgcolor: 'var(--card-bg)',
             border: isProf
               ? '1px solid var(--card-border)'
               : isDark

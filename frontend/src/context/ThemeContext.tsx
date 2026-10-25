@@ -305,6 +305,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             },
           },
         },
+        MuiBackdrop: {
+          styleOverrides: {
+            root: {
+              backgroundColor: 'rgba(10, 15, 26, 0.65)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+            },
+          },
+        },
         MuiDialog: {
           styleOverrides: {
             root: {
@@ -317,9 +326,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               border: cardBorder,
               backgroundImage: 'none',
               maxWidth: 'calc(100vw - 32px)',
-              maxHeight: 'calc(100% - 32px)',
+              maxHeight: 'calc(100dvh - 48px)',
               margin: '16px',
               boxSizing: 'border-box',
+              boxShadow: isProf
+                ? (isDark ? '0 8px 28px rgba(0, 0, 0, 0.5)' : '0 8px 24px rgba(0, 0, 0, 0.12)')
+                : (isDark ? '0 24px 64px rgba(0, 0, 0, 0.85), 0 8px 24px rgba(0, 0, 0, 0.5)' : '0 24px 64px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(142, 141, 138, 0.2)'),
             },
           },
         },
@@ -342,17 +354,55 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         MuiMenu: {
           styleOverrides: {
             root: {
-              zIndex: 1450,
+              zIndex: 1500,
             },
             paper: {
               borderRadius: isProf ? '0px' : '14px',
+              backgroundColor: bgPaper,
+              color: textPrimary,
+              border: cardBorder,
+              backgroundImage: 'none',
+              maxWidth: 'calc(100vw - 32px)',
+              boxShadow: isProf
+                ? (isDark ? '0 4px 20px rgba(0, 0, 0, 0.45)' : '0 4px 16px rgba(0, 0, 0, 0.12)')
+                : (isDark ? '0 16px 40px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4)' : '0 16px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(142, 141, 138, 0.15)'),
             },
           },
         },
         MuiPopover: {
           styleOverrides: {
             root: {
-              zIndex: 1450,
+              zIndex: 1500,
+            },
+            paper: {
+              borderRadius: isProf ? '0px' : '14px',
+              backgroundColor: bgPaper,
+              color: textPrimary,
+              border: cardBorder,
+              backgroundImage: 'none',
+              maxWidth: 'calc(100vw - 32px)',
+            },
+          },
+        },
+        MuiMenuItem: {
+          styleOverrides: {
+            root: {
+              borderRadius: isProf ? 0 : 8,
+              margin: isProf ? 0 : '2px 6px',
+              color: textPrimary,
+              transition: 'background-color 0.15s ease, color 0.15s ease',
+              '&:hover': {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(232, 90, 79, 0.08)',
+                color: isDark ? '#FFFFFF' : 'var(--accent-primary)',
+              },
+              '&.Mui-selected': {
+                backgroundColor: isDark ? 'rgba(56, 189, 248, 0.18)' : 'rgba(232, 90, 79, 0.14)',
+                color: isDark ? '#38BDF8' : 'var(--accent-primary)',
+                fontWeight: 700,
+                '&:hover': {
+                  backgroundColor: isDark ? 'rgba(56, 189, 248, 0.26)' : 'rgba(232, 90, 79, 0.22)',
+                },
+              },
             },
           },
         },

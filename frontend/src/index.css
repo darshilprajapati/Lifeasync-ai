@@ -265,44 +265,272 @@ input, button, select, textarea {
   box-shadow: 0 0 10px rgba(232, 90, 79, 0.2) !important;
 }
 
-/* Modern 3D Glassmorphism - Popover, Select Menus & Dropdowns */
+/* ------------------------------------------------------------------ */
+/* Global Modals, Dialogs, Dropdowns & Backdrop Fixes                 */
+/* ------------------------------------------------------------------ */
+
+/* Backdrop styling - distinct dark overlay with subtle blur to dim page */
+.MuiBackdrop-root {
+  background-color: rgba(10, 15, 26, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Stacking Context & Z-Indexes */
+.MuiDialog-root {
+  z-index: 1300 !important;
+}
+
+.MuiMenu-root,
+.MuiPopover-root {
+  z-index: 1500 !important;
+}
+
+.MuiTooltip-popper {
+  z-index: 1600 !important;
+}
+
+/* Stable Dialog Dimensions & Stacking */
+.MuiDialog-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 600px) {
+  .MuiDialog-container {
+    padding: 8px !important;
+  }
+}
+
+.MuiDialog-paper {
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  max-width: min(100%, calc(100vw - 32px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  max-height: calc(100dvh - 48px) !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 600px) {
+  .MuiDialog-paper {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+}
+
+/* Stable Dialog Widths & Responsive Minimum Heights across states */
+.MuiDialog-paper.MuiDialog-paperWidthXs {
+  width: min(420px, calc(100vw - 32px)) !important;
+  min-height: min(260px, calc(100dvh - 48px)) !important;
+}
+
+.MuiDialog-paper.MuiDialog-paperWidthSm {
+  width: min(560px, calc(100vw - 32px)) !important;
+  min-height: min(340px, calc(100dvh - 48px)) !important;
+}
+
+.MuiDialog-paper.MuiDialog-paperWidthMd {
+  width: min(800px, calc(100vw - 32px)) !important;
+  min-height: min(440px, calc(100dvh - 48px)) !important;
+}
+
+.MuiDialog-paper.MuiDialog-paperWidthLg {
+  width: min(1140px, calc(100vw - 32px)) !important;
+  min-height: min(520px, calc(100dvh - 48px)) !important;
+}
+
+.MuiDialog-paper.MuiDialog-paperWidthXl {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  min-height: min(560px, calc(100dvh - 48px)) !important;
+}
+
+.MuiDialog-paper.MuiDialog-paperFullWidth {
+  width: 100% !important;
+}
+
+/* Dedicated internal layout: pinned header & footer, scrollable content */
+.MuiDialogTitle-root {
+  flex-shrink: 0 !important;
+  padding: 18px 24px 14px 24px !important;
+}
+
+@media (max-width: 600px) {
+  .MuiDialogTitle-root {
+    padding: 14px 16px 10px 16px !important;
+  }
+}
+
+.MuiDialogContent-root {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
+  padding: 16px 24px !important;
+}
+
+@media (max-width: 600px) {
+  .MuiDialogContent-root {
+    padding: 12px 16px !important;
+  }
+}
+
+.MuiDialogActions-root {
+  flex-shrink: 0 !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  background-color: inherit !important;
+  z-index: 2 !important;
+  padding: 12px 24px !important;
+}
+
+@media (max-width: 600px) {
+  .MuiDialogActions-root {
+    padding: 10px 16px !important;
+  }
+}
+
+/* Modern 3D - Modals & Dialogs (Solid, Opaque Surfaces) */
+[data-design-system="modern3d"][data-theme="dark"] .MuiDialog-paper {
+  background: #1A1D2D !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-design-system="modern3d"][data-theme="light"] .MuiDialog-paper {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(232, 90, 79, 0.18) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(142, 141, 138, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Professional - Modals & Dialogs (Solid, Sharp Surfaces) */
+[data-design-system="professional"][data-theme="dark"] .MuiDialog-paper {
+  background: #1F2732 !important;
+  border: 1px solid #2E3846 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-design-system="professional"][data-theme="light"] .MuiDialog-paper {
+  background: #FFFFFF !important;
+  border: 1px solid #DFE1E6 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Modern 3D - Popovers, Select Menus & Dropdowns (Solid, Opaque Surfaces) */
 [data-design-system="modern3d"][data-theme="dark"] .MuiMenu-paper,
 [data-design-system="modern3d"][data-theme="dark"] .MuiPopover-paper {
-  background: rgba(16, 22, 36, 0.92) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #1A1D2D !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 14px !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  max-width: calc(100vw - 32px) !important;
 }
 
 [data-design-system="modern3d"][data-theme="light"] .MuiMenu-paper,
 [data-design-system="modern3d"][data-theme="light"] .MuiPopover-paper {
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(232, 90, 79, 0.18) !important;
   border-radius: 14px !important;
-  box-shadow: 0 14px 36px rgba(142, 141, 138, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(142, 141, 138, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  max-width: calc(100vw - 32px) !important;
 }
 
-/* Modern 3D Glassmorphism - Modals & Dialogs */
-[data-design-system="modern3d"][data-theme="dark"] .MuiDialog-paper {
-  background: rgba(15, 22, 38, 0.88) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(56, 189, 248, 0.2) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+/* Professional - Popovers, Select Menus & Dropdowns */
+[data-design-system="professional"][data-theme="dark"] .MuiMenu-paper,
+[data-design-system="professional"][data-theme="dark"] .MuiPopover-paper {
+  background: #1F2732 !important;
+  border: 1px solid #2E3846 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+  max-width: calc(100vw - 32px) !important;
 }
 
-[data-design-system="modern3d"][data-theme="light"] .MuiDialog-paper {
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 24px 60px rgba(142, 141, 138, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+[data-design-system="professional"][data-theme="light"] .MuiMenu-paper,
+[data-design-system="professional"][data-theme="light"] .MuiPopover-paper {
+  background: #FFFFFF !important;
+  border: 1px solid #DFE1E6 !important;
+  border-radius: 0px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  max-width: calc(100vw - 32px) !important;
+}
+
+/* Menu Items Hover & Selected States */
+.MuiMenuItem-root {
+  font-family: var(--font-family) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+  font-size: 0.875rem !important;
+  padding: 8px 16px !important;
+  min-height: 38px !important;
+}
+
+[data-design-system="modern3d"] .MuiMenuItem-root {
+  border-radius: 8px !important;
+  margin: 2px 6px !important;
+}
+
+[data-design-system="professional"] .MuiMenuItem-root {
+  border-radius: 0px !important;
+  margin: 0 !important;
+}
+
+[data-theme="light"] .MuiMenuItem-root:hover {
+  background-color: rgba(232, 90, 79, 0.08) !important;
+  color: var(--accent-primary) !important;
+}
+
+[data-theme="light"] .MuiMenuItem-root.Mui-selected {
+  background-color: rgba(232, 90, 79, 0.14) !important;
+  color: var(--accent-primary) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .MuiMenuItem-root.Mui-selected:hover {
+  background-color: rgba(232, 90, 79, 0.2) !important;
+}
+
+[data-theme="dark"] .MuiMenuItem-root:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .MuiMenuItem-root.Mui-selected {
+  background-color: rgba(56, 189, 248, 0.18) !important;
+  color: #38BDF8 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .MuiMenuItem-root.Mui-selected:hover {
+  background-color: rgba(56, 189, 248, 0.26) !important;
+}
+
+.MuiMenuItem-root.Mui-focusVisible {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px !important;
+}
+
+/* Responsive Date & DateTime Inputs */
+input[type="date"],
+input[type="datetime-local"] {
+  min-width: 140px;
+  font-family: inherit;
+}
+
+@media (max-width: 600px) {
+  input[type="date"],
+  input[type="datetime-local"] {
+    font-size: 13px !important;
+  }
 }
 
 /* Modern 3D Glassmorphism - Tooltips */
