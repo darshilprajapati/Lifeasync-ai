@@ -35,6 +35,7 @@ AGENT.md
 [Rr]eports/
 **/[Rr]eports/
 **/*.pdf
+semgrep*.json
 
 # ------------------------------------------
 # .NET / C# Build Outputs
@@ -95,6 +96,7 @@ ActiveDevelopments/
 .gsd/
 scratch/
 scripts/
+!/.github/scripts/
 adapters/
 GSD-STYLE.md
 PROJECT_RULES.md

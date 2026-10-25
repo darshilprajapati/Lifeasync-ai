@@ -16,8 +16,10 @@ import os
 import sys
 import json
 import time
+import ipaddress
 import urllib.request
 import urllib.error
+import urllib.parse
 from datetime import datetime, timezone, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -26,6 +28,104 @@ from email.mime.text import MIMEText
 MAX_RETRIES = 2
 REQUEST_TIMEOUT_SECONDS = 60
 RETRY_DELAY_SECONDS = 5
+ALLOWED_URL_SCHEMES = {"http", "https"}
+BREVO_API_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
+CLOUD_METADATA_IPS = {
+    "169.254.169.254",
+    "fd00:ec2::254",
+}
+
+
+def is_blocked_destination(hostname: str, allow_local: bool = False) -> tuple[bool, str]:
+    """
+    Checks whether a hostname represents a prohibited destination, such as
+    cloud metadata endpoints, link-local IPs, private networks, or unauthorized localhost.
+    """
+    clean_host = hostname.strip("[]").lower()
+
+    # 1. Cloud metadata service check (always blocked unconditionally)
+    if clean_host in CLOUD_METADATA_IPS:
+        return True, "Cloud metadata service access (169.254.169.254) is strictly prohibited."
+
+    # 2. Localhost check
+    if clean_host == "localhost" or clean_host.endswith(".localhost"):
+        if not allow_local:
+            return True, "Localhost access is prohibited in production keepalive mode."
+        return False, ""
+
+    # 3. Direct IP address check
+    try:
+        ip = ipaddress.ip_address(clean_host)
+        if ip.is_loopback:
+            if not allow_local:
+                return True, "Loopback addresses are prohibited in production keepalive mode."
+            return False, ""
+        if ip.is_link_local:
+            return True, f"Link-local network address '{ip}' is strictly prohibited."
+        if ip.is_private:
+            if not allow_local:
+                return True, f"Private/internal network address '{ip}' is prohibited."
+            return False, ""
+        if ip.is_multicast or ip.is_reserved:
+            return True, f"Reserved or multicast address '{ip}' is prohibited."
+    except ValueError:
+        pass
+
+    return False, ""
+
+
+def validate_target_url(raw_url: str, allow_local: bool = False) -> str:
+    """
+    Validates that a URL:
+    1. Uses safe protocols strictly in {'http', 'https'} (explicitly rejecting file://, ftp://, etc.)
+    2. Has a valid netloc and hostname
+    3. Does not target cloud metadata or unauthorized private/internal addresses.
+    """
+    if not raw_url or not isinstance(raw_url, str):
+        raise ValueError("Invalid URL: URL must be a non-empty string.")
+
+    raw_url = raw_url.strip()
+    parsed = urllib.parse.urlparse(raw_url)
+
+    scheme = parsed.scheme.lower()
+    if scheme not in ALLOWED_URL_SCHEMES:
+        raise ValueError(
+            f"Blocked unsafe URL scheme '{parsed.scheme}'. Only http and https schemes are permitted."
+        )
+
+    if not parsed.netloc or not parsed.hostname:
+        raise ValueError(f"Invalid destination URL: missing valid network location/hostname in '{raw_url}'.")
+
+    blocked, reason = is_blocked_destination(parsed.hostname, allow_local=allow_local)
+    if blocked:
+        raise ValueError(f"Destination '{parsed.hostname}' is prohibited: {reason}")
+
+    return raw_url
+
+
+class SafeSchemeHandler(urllib.request.BaseHandler):
+    """
+    Explicitly intercepts any attempt to open non-HTTP/HTTPS URLs, guaranteeing
+    that file://, ftp://, or other custom protocol handlers cannot be invoked.
+    """
+    def default_open(self, req):
+        if req.type and req.type.lower() not in ALLOWED_URL_SCHEMES:
+            raise urllib.error.URLError(f"Prohibited protocol scheme: {req.type}")
+        return None
+
+
+def get_safe_opener() -> urllib.request.OpenerDirector:
+    """
+    Builds a dedicated urllib opener that registers HTTP/HTTPS handlers
+    and enforces safe scheme restrictions without exposing default FileHandler behavior.
+    """
+    return urllib.request.build_opener(
+        SafeSchemeHandler(),
+        urllib.request.HTTPHandler(),
+        urllib.request.HTTPSHandler(),
+        urllib.request.HTTPRedirectHandler(),
+        urllib.request.HTTPErrorProcessor()
+    )
 
 
 def get_current_ist_time():
@@ -35,8 +135,10 @@ def get_current_ist_time():
     return ist_time.strftime("%Y-%m-%d %I:%M:%S %p IST")
 
 
-def probe_keep_alive(api_base_url, keepalive_secret):
-    url = f"{api_base_url.rstrip('/')}/api/system/keep-alive"
+def probe_keep_alive(api_base_url, keepalive_secret, allow_local=False):
+    allow_local = allow_local or os.environ.get("ALLOW_LOCAL_PROBE", "").lower() in ("true", "1", "yes")
+    clean_base_url = validate_target_url(api_base_url, allow_local=allow_local)
+    url = validate_target_url(f"{clean_base_url.rstrip('/')}/api/system/keep-alive", allow_local=allow_local)
     headers = {
         "User-Agent": "LifeSyncAI-Scheduled-KeepAlive/1.0",
         "Accept": "application/json",
@@ -45,12 +147,13 @@ def probe_keep_alive(api_base_url, keepalive_secret):
 
     last_error = None
     last_status = None
+    opener = get_safe_opener()
 
     for attempt in range(1, MAX_RETRIES + 2):
         print(f"[{get_current_ist_time()}] Keep-alive probe attempt {attempt}/{MAX_RETRIES + 1} -> {url}")
         try:
             req = urllib.request.Request(url, headers=headers, method="GET")
-            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+            with opener.open(req, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 status_code = response.getcode()
                 response_body = response.read().decode("utf-8")
                 
@@ -102,7 +205,11 @@ def probe_keep_alive(api_base_url, keepalive_secret):
 
 
 def send_via_brevo(api_key, sender_email, sender_name, to_email, subject, html_content, text_content):
-    brevo_url = "https://api.brevo.com/v3/smtp/email"
+    brevo_url = validate_target_url(BREVO_API_ENDPOINT, allow_local=False)
+    parsed = urllib.parse.urlparse(brevo_url)
+    if parsed.hostname != "api.brevo.com" or parsed.scheme != "https":
+        raise ValueError("Invalid Brevo endpoint destination.")
+
     headers = {
         "api-key": api_key,
         "Content-Type": "application/json",
@@ -116,7 +223,8 @@ def send_via_brevo(api_key, sender_email, sender_name, to_email, subject, html_c
         "textContent": text_content
     }
     req = urllib.request.Request(brevo_url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    opener = get_safe_opener()
+    with opener.open(req, timeout=20) as resp:
         return resp.getcode() in (200, 201)
 
 
