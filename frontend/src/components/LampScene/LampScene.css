@@ -83,14 +83,14 @@
 .lamp-brand-badge {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: clamp(12px, 1.2vw, 16px);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding: 8px 18px 8px 10px;
-  border-radius: 40px;
+  padding: 8px 20px 8px 10px;
+  border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
@@ -99,13 +99,27 @@
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-.lamp-brand-avatar {
-  width: 40px;
-  height: 40px;
+.lamp-brand-avatar-frame {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 16px rgba(255, 94, 77, 0.35);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #B52B24;
+}
+
+.lamp-brand-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  transform: scale(1.48);
+  display: block;
 }
 
 .lamp-brand-titles {
@@ -115,7 +129,7 @@
 
 .lamp-brand-title {
   color: #FFFFFF;
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -124,7 +138,7 @@
 
 .lamp-brand-tagline {
   color: rgba(230, 225, 245, 0.85);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 400;
   letter-spacing: 0.03em;
 }
@@ -621,63 +635,164 @@
     min-height: 100vh;
   }
 
-  .lamp-left-panel {
-    flex: 0 0 auto;
+  .lamp-brand-header {
+    display: flex;
+    justify-content: center;
     width: 100%;
-    min-height: 250px;
-    height: 250px;
-    padding: 24px 28px;
+    margin: 0 auto;
+    z-index: 10;
   }
 
-  .lamp-right-panel {
-    flex: 1 0 auto;
-    width: 100%;
-    min-height: calc(100vh - 250px);
-    padding: 32px 20px;
-    align-items: flex-start;
+  .lamp-brand-badge {
+    gap: 10px;
+    padding: 6px 16px 6px 8px;
+    border-radius: 9999px;
   }
 
-  .lamp-card-wrapper {
-    max-width: 480px;
-  }
-
-  .lamp-auth-card {
-    padding: 36px 28px;
-    border-radius: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .lamp-left-panel {
-    min-height: 190px;
-    height: 190px;
-    padding: 18px;
+  .lamp-brand-avatar-frame {
+    width: 42px;
+    height: 42px;
   }
 
   .lamp-brand-title {
-    font-size: 14px;
+    font-size: 18px;
   }
 
   .lamp-brand-tagline {
     font-size: 11px;
   }
 
+  .lamp-left-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 250px;
+    height: 250px;
+    padding: 16px 20px 0 20px;
+  }
+
+  .lamp-visual-container {
+    top: 54px;
+    height: calc(100% - 54px);
+  }
+
   .lamp-right-panel {
-    padding: 20px 14px;
+    flex: 1 0 auto;
+    width: 100%;
+    min-height: calc(100vh - 250px);
+    padding: 18px 18px 36px 18px;
+    align-items: flex-start;
+  }
+
+  .lamp-card-wrapper {
+    max-width: 460px;
+    width: 100%;
   }
 
   .lamp-auth-card {
-    padding: 26px 18px;
+    padding: 24px;
+    border-radius: 20px;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .lamp-brand-badge {
+    gap: 9px;
+    padding: 5px 14px 5px 6px;
+  }
+
+  .lamp-brand-avatar-frame {
+    width: 38px;
+    height: 38px;
+  }
+
+  .lamp-brand-title {
+    font-size: 16px;
+    letter-spacing: 0.1em;
+  }
+
+  .lamp-brand-tagline {
+    font-size: 10.5px;
+  }
+
+  .lamp-left-panel {
+    min-height: 225px;
+    height: 225px;
+    padding: 12px 14px 0 14px;
+  }
+
+  .lamp-visual-container {
+    top: 48px;
+    height: calc(100% - 48px);
+  }
+
+  .lamp-right-panel {
+    padding: 12px 14px 28px 14px;
+  }
+
+  .lamp-auth-card {
+    padding: 22px 20px;
     border-radius: 18px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
   }
 
   .lamp-card-title {
-    font-size: 24px;
+    font-size: 22px;
+    margin-bottom: 4px;
   }
 
   .lamp-card-subtitle {
-    font-size: 13.5px;
-    margin-bottom: 20px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  .lamp-field-group {
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 350px) {
+  .lamp-brand-badge {
+    gap: 8px;
+    padding: 4px 12px 4px 5px;
+  }
+
+  .lamp-brand-avatar-frame {
+    width: 36px;
+    height: 36px;
+  }
+
+  .lamp-brand-title {
+    font-size: 15px;
+  }
+
+  .lamp-brand-tagline {
+    font-size: 10px;
+  }
+
+  .lamp-left-panel {
+    min-height: 220px;
+    height: 220px;
+    padding: 10px 10px 0 10px;
+  }
+
+  .lamp-visual-container {
+    top: 46px;
+    height: calc(100% - 46px);
+  }
+
+  .lamp-right-panel {
+    padding: 8px 10px 24px 10px;
+  }
+
+  .lamp-auth-card {
+    padding: 20px 14px;
+    border-radius: 16px;
+    max-width: 100%;
+  }
+
+  .lamp-card-title {
+    font-size: 20px;
   }
 }

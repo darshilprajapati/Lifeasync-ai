@@ -4,7 +4,9 @@ import { AuthContext, type UserDto } from './AuthContext';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserDto | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    return typeof window !== 'undefined' && localStorage.getItem('lifesync_token') === 'true';
+  });
 
   // Silent check: check if the user is already authenticated on app launch
   useEffect(() => {

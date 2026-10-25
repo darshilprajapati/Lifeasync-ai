@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/logo.jpg" type="image/jpeg">
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -15,6 +16,24 @@
     })(window,document,'script','dataLayer','GTM-WC9DPPQM');</script>
     <!-- End Google Tag Manager -->
     <title>LifeSync AI</title>
+    <!-- Critical Startup Dark Theme Fallback: Prevents Initial White Flash before React Mounts -->
+    <style>
+      html, body {
+        background-color: #07050D;
+        color: #FFFFFF;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        background-color: #07050D;
+      }
+    </style>
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->

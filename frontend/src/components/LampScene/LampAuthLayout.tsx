@@ -59,13 +59,15 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
         {/* Brand Header */}
         <header className="lamp-brand-header">
           <div className="lamp-brand-badge">
-            <img
-              src="/logo.jpg"
-              alt="LifeSync AI logo"
-              className="lamp-brand-avatar"
-              width={40}
-              height={40}
-            />
+            <div className="lamp-brand-avatar-frame">
+              <img
+                src="/logo.jpg"
+                alt="LifeSync AI logo"
+                className="lamp-brand-avatar"
+                width={48}
+                height={48}
+              />
+            </div>
             <div className="lamp-brand-titles">
               <span className="lamp-brand-title">LIFESYNC AI</span>
               <span className="lamp-brand-tagline">Harmonize Health, Work & Life</span>

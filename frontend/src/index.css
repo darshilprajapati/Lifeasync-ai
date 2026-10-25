@@ -1,18 +1,18 @@
-/* LifeSync AI Design System - Light, Warm, Elegant */
+/* LifeSync AI Design System - Aurora Dark Fallback for Startup */
 :root {
-  /* Color Palette */
-  --bg-primary: #EAE7DC;
-  --bg-secondary: #F5F3EE;
-  --card-bg: #FFFFFF;
+  /* Color Palette - Default to dark theme matching splash & lamp scene */
+  --bg-primary: #07050D;
+  --bg-secondary: #0F111A;
+  --card-bg: #1A1D2D;
   
   --accent-primary: #E85A4F;
   --accent-secondary: #E98074;
   
-  --neutral-primary: #D8C3A5;
-  --neutral-secondary: #8E8D8A;
+  --neutral-primary: #282E42;
+  --neutral-secondary: #717D96;
   
-  --text-primary: #2D2D2D;
-  --text-secondary: #6D6D6D;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A5B0C2;
   
   /* Semantic Status Colors */
   --success: #3FA76D;
