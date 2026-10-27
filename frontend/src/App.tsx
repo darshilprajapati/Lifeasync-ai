@@ -5,7 +5,6 @@ import { CssBaseline } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppRoutes from './routes';
 import { AuthProvider } from './context/AuthProvider';
-import { useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { ThemeProvider as LifeSyncThemeProvider } from './context/ThemeProvider';
 import { trackNavigation } from './utils/analytics';
@@ -16,33 +15,32 @@ import { SplashScreen } from './components/SplashScreen';
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { loading } = useAuth();
   const location = useLocation();
   const lastTrackedRouteRef = useRef<string | null>(null);
 
   // Startup splash state machine:
-  // 1. Splash starts visible on fresh application load (0%).
-  // 2. Minimum display window (1,200ms) guarantees the visual progress is smoothly seen.
-  // 3. Progress advances from 0% toward 100% while auth initializes (!loading).
-  // 4. Once auth is ready and minDuration elapsed (or failsafe fires), reaches 100% and displays "Ready!".
-  // 5. Holds briefly then smoothly fades out and never reappears during client-side navigation.
-  // 6. 3,500ms failsafe ensures it can never get stuck on slow networks.
-  // 7. Optional ?splash_freeze=true query parameter holds the splash for visual inspection.
-  const [minDurationElapsed, setMinDurationElapsed] = useState(false);
+  // 1. Splash starts visible on fresh application load in Stage A (centered, ~1.8s).
+  // 2. Stage B (~850ms) smoothly travels the logo emblem & branding into the top-left navbar position.
+  // 3. Background and login content transition synchronized without a white flash.
+  // 4. On completion, the splash unmounts and body.lifesync-splash-active is cleared.
+  // 5. Failsafe (4,500ms) guarantees dismissal even under extreme conditions.
+  // 6. Optional ?splash_freeze=true query parameter holds the splash for visual inspection.
   const [isSplashDismissed, setIsSplashDismissed] = useState(false);
-  const [failsafeTriggered, setFailsafeTriggered] = useState(false);
 
   const isFrozenForTesting = typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('splash_freeze') === 'true';
 
-  const explicitTestProgress = (() => {
-    if (typeof window === 'undefined') return undefined;
-    const p = new URLSearchParams(window.location.search).get('splash_progress');
-    if (p !== null && p !== undefined && p !== '' && !isNaN(Number(p))) {
-      return Number(p);
+  // Mark body class on mount and remove on dismiss
+  useEffect(() => {
+    if (!isSplashDismissed) {
+      document.body.classList.add('lifesync-splash-active');
+    } else {
+      document.body.classList.remove('lifesync-splash-active');
     }
-    return undefined;
-  })();
+    return () => {
+      document.body.classList.remove('lifesync-splash-active');
+    };
+  }, [isSplashDismissed]);
 
   // Mark mount time for lifecycle diagnostics
   useEffect(() => {
@@ -52,49 +50,31 @@ function AppContent() {
     }
   }, []);
 
-  // Minimum duration timer (1,200ms) started on app mount
-  useEffect(() => {
-    if (isFrozenForTesting) return;
-    const timer = setTimeout(() => {
-      setMinDurationElapsed(true);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [isFrozenForTesting]);
-
-  // Failsafe timer (3,500ms) to guarantee progress completes and dismisses even if auth stalls
+  // Failsafe timer (4,500ms) to guarantee splash completes and dismisses even if stalls occur
   useEffect(() => {
     if (isFrozenForTesting || isSplashDismissed) return;
     const failsafe = setTimeout(() => {
-      setFailsafeTriggered(true);
-    }, 3500);
-
-    // Hard fallback failsafe: force dismiss if still visible at 4,200ms
-    const hardFallback = setTimeout(() => {
       setIsSplashDismissed(true);
+      document.body.classList.remove('lifesync-splash-active');
       if (typeof window !== 'undefined') {
         (window as unknown as { __lifesync_splash_dismissed?: boolean }).__lifesync_splash_dismissed = true;
         (window as unknown as { __lifesync_splash_end?: number }).__lifesync_splash_end = performance.now();
       }
-    }, 4200);
+    }, 4500);
 
-    return () => {
-      clearTimeout(failsafe);
-      clearTimeout(hardFallback);
-    };
+    return () => clearTimeout(failsafe);
   }, [isFrozenForTesting, isSplashDismissed]);
 
-  // Callback when progress bar reaches 100% and ready status has been presented
+  // Callback when logo transition has finished and docked into navbar
   const handleSplashComplete = () => {
     if (isFrozenForTesting) return;
     setIsSplashDismissed(true);
+    document.body.classList.remove('lifesync-splash-active');
     if (typeof window !== 'undefined') {
       (window as unknown as { __lifesync_splash_dismissed?: boolean }).__lifesync_splash_dismissed = true;
       (window as unknown as { __lifesync_splash_end?: number }).__lifesync_splash_end = performance.now();
     }
   };
-
-  // Signal indicating underlying app initialization is satisfied
-  const isInitReady = (minDurationElapsed && !loading) || failsafeTriggered;
 
   // Active only during initial application launch
   const showSplashOverlay = !isSplashDismissed;
@@ -145,18 +125,16 @@ function AppContent() {
             initial={{ opacity: 1 }}
             exit={{
               opacity: 0,
-              transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
+              transition: { duration: 0.1, ease: 'linear' },
             }}
             style={{
               position: 'fixed',
               inset: 0,
               zIndex: 999999,
-              pointerEvents: 'auto',
+              pointerEvents: 'none',
             }}
           >
             <SplashScreen
-              progress={explicitTestProgress}
-              isReady={isInitReady}
               onComplete={handleSplashComplete}
               isFrozen={isFrozenForTesting}
             />

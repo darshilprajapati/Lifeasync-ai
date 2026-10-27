@@ -1,143 +1,159 @@
 /* ==========================================================================
-   LifeSync AI — Responsive Production Splash Screen
-   Design System: Deep Dark Purple / Aurora with Coral & Magenta Illumination
+   LifeSync AI — Splash Screen & Logo-to-Navbar Animated Transition
    ========================================================================== */
 
+/* Fixed full-viewport overlay */
 .lifesync-splash-root {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  min-height: 100dvh;
   z-index: 999999;
-  background-color: #07050D;
-  overflow: hidden;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-family, 'Josefin Sans', sans-serif);
-  color: #FFFFFF;
+  background: transparent;
+  overflow: hidden;
   user-select: none;
-  -webkit-user-select: none;
-  touch-action: none;
-  box-sizing: border-box;
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------
-   Background Layers & Ambient Lighting
+   Backdrop Atmosphere Container:
+   Contains the ambient dark room background, light beams, floating motes,
+   and glowing floor waves. Smoothly fades to opacity 0 during Stage B
+   to reveal the underlying Login page / 3D Lamp without any white flash.
    -------------------------------------------------------------------------- */
-.splash-background-layer {
+.splash-backdrop-container {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #07050D;
-  background-image: url('/aurora-bg.png');
-  background-size: cover;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Soft Vertical Ambient Beams & Vignette */
-.splash-light-beams {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: 
-    radial-gradient(circle at 50% 28%, rgba(255, 94, 77, 0.18) 0%, rgba(138, 43, 226, 0.09) 45%, transparent 75%),
-    linear-gradient(180deg, rgba(8, 5, 15, 0.45) 0%, rgba(7, 5, 13, 0.1) 45%, rgba(7, 5, 13, 0.85) 100%);
-  pointer-events: none;
+  background-color: #0d0614;
+  opacity: 1;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+  pointer-events: auto;
   z-index: 1;
 }
 
-/* Ambient Floating Particles */
+.splash-stage-animating .splash-backdrop-container {
+  opacity: 0;
+}
+
+/* Deep Atmosphere Backdrop matching Lamp Room */
+.splash-background-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(120, 25, 70, 0.45) 0%, rgba(20, 10, 35, 0.95) 70%, #0d0614 100%),
+              url('/assets/images/backgrounds/room-sunset.jpg') center/cover no-repeat;
+  filter: blur(1px);
+  transform: scale(1.02);
+}
+
+/* Soft Vertical Atmospheric Light Beams */
+.splash-light-beams {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 94, 77, 0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 60% at 85% 15%, rgba(138, 43, 226, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 15% 20%, rgba(255, 160, 67, 0.12) 0%, transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* Floating Ambient Light Motes */
 .splash-ambient-motes {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
-  z-index: 2;
   overflow: hidden;
 }
 
 .splash-mote {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, #FFA07A 0%, rgba(255, 94, 77, 0.2) 60%, transparent 100%);
-  opacity: 0.5;
+  pointer-events: none;
   filter: blur(1px);
 }
 
 .mote-1 {
-  width: 6px;
-  height: 6px;
-  top: 32%;
+  width: 4px;
+  height: 4px;
+  top: 28%;
   left: 22%;
-  animation: floatMote 8s ease-in-out infinite;
+  background: rgba(255, 160, 67, 0.65);
+  box-shadow: 0 0 10px rgba(255, 160, 67, 0.8);
+  animation: moteFloat1 8s ease-in-out infinite alternate;
 }
 
 .mote-2 {
-  width: 8px;
-  height: 8px;
-  top: 45%;
-  right: 24%;
-  background: radial-gradient(circle, #E040FB 0%, rgba(224, 64, 251, 0.2) 60%, transparent 100%);
-  animation: floatMote 10s ease-in-out infinite 2s;
+  width: 6px;
+  height: 6px;
+  top: 40%;
+  left: 78%;
+  background: rgba(224, 64, 251, 0.6);
+  box-shadow: 0 0 14px rgba(224, 64, 251, 0.8);
+  animation: moteFloat2 10s ease-in-out infinite alternate;
 }
 
 .mote-3 {
-  width: 4px;
-  height: 4px;
-  top: 25%;
-  right: 35%;
-  animation: floatMote 7s ease-in-out infinite 1s;
+  width: 3px;
+  height: 3px;
+  top: 65%;
+  left: 32%;
+  background: rgba(255, 94, 77, 0.7);
+  box-shadow: 0 0 8px rgba(255, 94, 77, 0.9);
+  animation: moteFloat3 7s ease-in-out infinite alternate;
 }
 
 .mote-4 {
   width: 5px;
   height: 5px;
-  top: 55%;
-  left: 30%;
-  background: radial-gradient(circle, #00E5FF 0%, rgba(0, 229, 255, 0.2) 60%, transparent 100%);
-  animation: floatMote 9s ease-in-out infinite 3s;
+  top: 20%;
+  left: 68%;
+  background: rgba(0, 229, 255, 0.55);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.7);
+  animation: moteFloat1 11s ease-in-out infinite alternate-reverse;
 }
 
 .mote-5 {
-  width: 7px;
-  height: 7px;
-  top: 60%;
-  right: 18%;
-  animation: floatMote 11s ease-in-out infinite 1.5s;
+  width: 4px;
+  height: 4px;
+  top: 55%;
+  left: 85%;
+  background: rgba(255, 215, 64, 0.6);
+  box-shadow: 0 0 10px rgba(255, 215, 64, 0.8);
+  animation: moteFloat2 9s ease-in-out infinite alternate-reverse;
 }
 
-@keyframes floatMote {
-  0%, 100% {
-    transform: translateY(0) translateX(0);
-    opacity: 0.25;
-  }
-  50% {
-    transform: translateY(-24px) translateX(12px);
-    opacity: 0.75;
-  }
+@keyframes moteFloat1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(14px, -18px) scale(1.2); opacity: 0.85; }
+  100% { transform: translate(-10px, -32px) scale(0.9); opacity: 0.3; }
 }
 
-/* --------------------------------------------------------------------------
-   Flowing Waves near Bottom Floor
-   -------------------------------------------------------------------------- */
+@keyframes moteFloat2 {
+  0% { transform: translate(0, 0) scale(0.9); opacity: 0.35; }
+  50% { transform: translate(-18px, -24px) scale(1.15); opacity: 0.8; }
+  100% { transform: translate(12px, -40px) scale(1); opacity: 0.4; }
+}
+
+@keyframes moteFloat3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  50% { transform: translate(8px, -14px) scale(1.25); opacity: 0.9; }
+  100% { transform: translate(-14px, -26px) scale(0.85); opacity: 0.35; }
+}
+
+/* Radiant Flowing Floor Glow Waves (SVGs) */
 .splash-waves-container {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 100%;
-  height: clamp(140px, 24vh, 260px);
+  right: 0;
+  height: clamp(140px, 26vh, 260px);
   pointer-events: none;
-  z-index: 3;
   overflow: hidden;
+  z-index: 2;
 }
 
 .splash-waves-svg {
@@ -179,11 +195,37 @@
 }
 
 /* --------------------------------------------------------------------------
-   Central Brand & Loading Content
+   Docking Glass Badge:
+   Pre-positioned at the exact coordinates of the navbar brand badge.
+   Fades in smoothly during Stage B as the logo & titles arrive.
+   -------------------------------------------------------------------------- */
+.splash-docking-badge {
+  position: fixed;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+
+.splash-stage-animating .splash-docking-badge {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Central Brand Container:
+   Contains the centered LifeSync AI logo emblem, title, and tagline.
+   Animates smoothly across the viewport into the top-left navbar in Stage B.
    -------------------------------------------------------------------------- */
 .splash-content-container {
   position: relative;
-  z-index: 10;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -193,6 +235,7 @@
   max-width: 580px;
   padding: 0 24px;
   box-sizing: border-box;
+  pointer-events: none;
 }
 
 /* Glowing Logo Container */
@@ -215,6 +258,11 @@
   filter: blur(12px);
   pointer-events: none;
   animation: haloPulse 3.5s ease-in-out infinite;
+  transition: opacity 0.85s ease;
+}
+
+.splash-stage-animating .splash-logo-halo {
+  opacity: 0;
 }
 
 @keyframes haloPulse {
@@ -228,7 +276,7 @@
   }
 }
 
-/* Crisp Circular Logo Border */
+/* Crisp Circular Logo Border (Emblem) */
 .splash-logo-circle {
   position: relative;
   width: 100%;
@@ -244,7 +292,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.85s ease,
+              box-shadow 0.85s ease;
+}
+
+.splash-stage-animating .splash-logo-circle {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 16px rgba(255, 94, 77, 0.35);
 }
 
 /* LifeSync AI Official Emblem Image */
@@ -258,8 +315,18 @@
 }
 
 /* --------------------------------------------------------------------------
-   Typography: Application Name & Tagline
+   Brand Typography Group: Title + Tagline
    -------------------------------------------------------------------------- */
+.splash-brand-titles-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .splash-brand-title {
   margin: 0 0 clamp(6px, 1vh, 10px) 0;
   font-size: clamp(22px, 3.2vw, 36px);
@@ -284,10 +351,18 @@
   -webkit-text-fill-color: transparent;
   font-weight: 800;
   text-shadow: 0 0 24px rgba(255, 94, 77, 0.5);
+  transition: all 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.splash-stage-animating .splash-title-ai {
+  background: none;
+  -webkit-text-fill-color: #FFFFFF;
+  color: #FFFFFF;
+  text-shadow: none;
 }
 
 .splash-tagline {
-  margin: 0 0 clamp(24px, 3.5vh, 40px) 0;
+  margin: 0;
   color: rgba(230, 225, 245, 0.88);
   font-size: clamp(11.5px, 1.2vw, 15px);
   font-weight: 400;
@@ -296,208 +371,16 @@
 }
 
 /* --------------------------------------------------------------------------
-   Clear Animated 0-100% Progress Bar with Numerical Percentage
-   -------------------------------------------------------------------------- */
-.splash-progress-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  margin-top: clamp(2px, 0.6vh, 6px);
-}
-
-.splash-status-label {
-  margin: 0 0 clamp(10px, 1.4vh, 14px) 0;
-  font-size: clamp(12px, 1.1vw, 14px);
-  color: rgba(230, 225, 245, 0.85);
-  letter-spacing: 0.04em;
-  font-weight: 500;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
-  min-height: 1.3em;
-  transition: color 0.25s ease, text-shadow 0.25s ease;
-}
-
-.splash-status-label.is-ready {
-  color: #FFA043;
-  font-weight: 600;
-  text-shadow: 0 0 12px rgba(255, 160, 67, 0.55);
-}
-
-.splash-progress-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(10px, 1.2vw, 14px);
-  width: 100%;
-}
-
-.splash-progress-track {
-  width: clamp(200px, 38vw, 320px);
-  height: clamp(7px, 0.8vw, 9px);
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  position: relative;
-  display: block;
-  box-sizing: border-box;
-}
-
-.splash-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #FFA043 0%, #FF5E4D 55%, #FF2E63 100%);
-  box-shadow: 
-    0 0 14px rgba(255, 94, 77, 0.85),
-    0 0 26px rgba(255, 160, 67, 0.45);
-  transition: width 0.05s linear;
-  will-change: width;
-  box-sizing: border-box;
-}
-
-.splash-progress-percent {
-  font-family: var(--font-family, 'Josefin Sans', sans-serif);
-  font-size: clamp(12.5px, 1.15vw, 15px);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: #FFA043;
-  text-shadow: 0 0 12px rgba(255, 94, 77, 0.6);
-  font-variant-numeric: tabular-nums;
-  min-width: 44px;
-  text-align: left;
-  user-select: none;
-}
-
-/* --------------------------------------------------------------------------
-   Mobile Viewport Adjustments (320px - 480px, Portrait & Landscape)
-   -------------------------------------------------------------------------- */
-@media (max-width: 480px) {
-  .splash-content-container {
-    padding: 0 18px;
-  }
-
-  .splash-logo-wrapper {
-    width: 82px;
-    height: 82px;
-    margin-bottom: 18px;
-  }
-
-  .splash-logo-circle {
-    border-width: 2px;
-  }
-
-  .splash-brand-title {
-    font-size: 21px;
-    letter-spacing: 0.14em;
-    margin-bottom: 6px;
-  }
-
-  .splash-tagline {
-    font-size: 11px;
-    margin-bottom: 24px;
-  }
-
-  .splash-progress-track {
-    width: clamp(170px, 54vw, 220px);
-    height: 7px;
-  }
-
-  .splash-progress-percent {
-    font-size: 12.5px;
-    min-width: 38px;
-  }
-
-  .splash-status-label {
-    font-size: 11.5px;
-    margin-bottom: 8px;
-  }
-
-  .splash-waves-container {
-    height: 140px;
-  }
-}
-
-/* Narrow Small Mobile (320px - 360px e.g. iPhone SE) */
-@media (max-width: 350px) {
-  .splash-logo-wrapper {
-    width: 74px;
-    height: 74px;
-    margin-bottom: 14px;
-  }
-
-  .splash-brand-title {
-    font-size: 19px;
-  }
-
-  .splash-tagline {
-    font-size: 10.5px;
-    margin-bottom: 20px;
-  }
-
-  .splash-progress-track {
-    width: 155px;
-    height: 6px;
-  }
-
-  .splash-progress-percent {
-    font-size: 12px;
-    min-width: 36px;
-  }
-}
-
-/* Mobile Landscape Handling */
-@media (max-height: 500px) and (orientation: landscape) {
-  .splash-content-container {
-    padding: 10px;
-  }
-
-  .splash-logo-wrapper {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 8px;
-  }
-
-  .splash-brand-title {
-    font-size: 18px;
-    margin-bottom: 4px;
-  }
-
-  .splash-tagline {
-    font-size: 10.5px;
-    margin-bottom: 12px;
-  }
-
-  .splash-progress-track {
-    width: 220px;
-    height: 6px;
-  }
-
-  .splash-status-label {
-    margin-bottom: 4px;
-  }
-
-  .splash-waves-container {
-    height: 80px;
-  }
-}
-
-/* --------------------------------------------------------------------------
-   Accessibility: Reduced Motion
+   Accessibility: Reduced Motion Preference
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  .splash-logo-halo,
-  .splash-mote,
-  .splash-wave-fore,
-  .splash-wave-mid,
-  .splash-wave-bg {
+  .splash-logo-circle,
+  .splash-brand-titles-group,
+  .splash-docking-badge,
+  .splash-backdrop-container,
+  .splash-logo-halo {
+    transition: opacity 0.25s ease !important;
+    transform: none !important;
     animation: none !important;
-  }
-
-  .splash-progress-fill {
-    transition: none !important;
   }
 }

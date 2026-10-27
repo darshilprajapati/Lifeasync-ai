@@ -21,6 +21,15 @@
   pointer-events: auto;
 }
 
+/* --------------------------------------------------------------------------
+   Splash Synchronization: Hide navbar brand badge while splash transition runs
+   to guarantee zero duplicate logos during the animated travel
+   -------------------------------------------------------------------------- */
+body.lifesync-splash-active .lamp-brand-badge {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Brand Link Container */
 .lamp-brand-badge-link {
   text-decoration: none;

@@ -1,209 +1,264 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import './SplashScreen.css';
 
 export interface SplashScreenProps {
-  /** Optional explicit progress percentage (0-100). When omitted, a smooth time-based visual progress indicator is calculated internally. */
-  progress?: number;
-  /** Optional custom status caption displayed during loading. Defaults to 'Initializing LifeSync AI...' */
-  statusText?: string;
-  /** Optional readiness signal from app initialization (e.g. auth check resolved). Defaults to true when autonomous. */
-  isReady?: boolean;
-  /** Optional callback fired when progress reaches 100% and 'Ready!' has been displayed. */
+  /** Optional callback fired when the logo transition finishes and the splash overlay unmounts. */
   onComplete?: () => void;
-  /** Optional freeze flag for visual inspection */
+  /** Optional freeze flag for visual inspection of Stage A. */
   isFrozen?: boolean;
 }
 
+interface TransitionCoords {
+  avatarDx: number;
+  avatarDy: number;
+  avatarScale: number;
+  titlesDx: number;
+  titlesDy: number;
+  titlesScale: number;
+  badgeRect: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null;
+}
+
 export const SplashScreen: React.FC<SplashScreenProps> = ({
-  progress: externalProgress,
-  statusText,
-  isReady = true,
   onComplete,
   isFrozen = false,
 }) => {
-  // If external progress is provided, use it directly (controlled mode).
-  // Otherwise, run a smooth time-based visual progress tied to the application initialization lifecycle.
-  const isControlled = externalProgress !== undefined;
-  const [internalProgress, setInternalProgress] = useState(0);
+  const [stage, setStage] = useState<'stageA' | 'stageB' | 'stageC'>('stageA');
+  const [coords, setCoords] = useState<TransitionCoords | null>(null);
 
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  const isReadyRef = useRef(isReady);
-  useEffect(() => {
-    isReadyRef.current = isReady;
-  }, [isReady]);
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const titlesRef = useRef<HTMLDivElement>(null);
 
-  // Respect prefers-reduced-motion
+  // Check prefers-reduced-motion
   const prefersReducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
-    if (isControlled) return;
+    if (isFrozen) return;
 
-    // In reduced motion mode, advance immediately to 100%
-    if (prefersReducedMotion) {
-      setInternalProgress(100);
-      if (!isFrozen) {
-        const timer = setTimeout(() => {
-          onCompleteRef.current?.();
-        }, 220);
-        return () => clearTimeout(timer);
-      }
-      return;
-    }
+    const STAGE_A_MS = prefersReducedMotion ? 400 : 1800;
+    const STAGE_B_MS = prefersReducedMotion ? 250 : 850;
 
-    let animationFrameId: number;
-    let completeTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    const startTime = performance.now();
-    const DURATION = 1300; // ms for full visual progress 0% -> 100%
-    let hasCompleted = false;
+    let stageBTimer: ReturnType<typeof setTimeout>;
+    let completeTimer: ReturnType<typeof setTimeout>;
 
-    const animate = (currentTime: number) => {
-      if (hasCompleted) return;
+    stageBTimer = setTimeout(() => {
+      // Stage A ended, calculate target navbar geometry
+      if (!prefersReducedMotion) {
+        const targetBadge = document.querySelector('.lamp-brand-badge') as HTMLElement | null;
+        const targetAvatar = document.querySelector('.lamp-brand-avatar-frame') as HTMLElement | null;
+        const targetTitles = document.querySelector('.lamp-brand-titles') as HTMLElement | null;
 
-      const elapsed = currentTime - startTime;
-      // Progress smoothly and monotonically from 0 to 100%
-      const rawPercent = Math.min(100, (elapsed / DURATION) * 100);
-      const nextProgress = Math.round(rawPercent);
+        const splashAvatar = avatarRef.current;
+        const splashTitles = titlesRef.current;
 
-      setInternalProgress((prev) => Math.max(prev, nextProgress));
+        if (targetBadge && targetAvatar && targetTitles && splashAvatar && splashTitles) {
+          const navAvatarRect = targetAvatar.getBoundingClientRect();
+          const navTitlesRect = targetTitles.getBoundingClientRect();
+          const navBadgeRect = targetBadge.getBoundingClientRect();
 
-      if (rawPercent >= 100) {
-        hasCompleted = true;
-        setInternalProgress(100);
-        if (!isFrozen) {
-          completeTimeoutId = setTimeout(() => {
-            onCompleteRef.current?.();
-          }, 240); // Brief hold displaying 100% and 'Ready!' clearly before dismissing
+          const splashAvatarRect = splashAvatar.getBoundingClientRect();
+          const splashTitlesRect = splashTitles.getBoundingClientRect();
+
+          // Centers of avatar circles
+          const startAvatarCX = splashAvatarRect.left + splashAvatarRect.width / 2;
+          const startAvatarCY = splashAvatarRect.top + splashAvatarRect.height / 2;
+          const targetAvatarCX = navAvatarRect.left + navAvatarRect.width / 2;
+          const targetAvatarCY = navAvatarRect.top + navAvatarRect.height / 2;
+
+          const avatarDx = targetAvatarCX - startAvatarCX;
+          const avatarDy = targetAvatarCY - startAvatarCY;
+          const avatarScale = navAvatarRect.width / splashAvatarRect.width;
+
+          // Centers of titles group
+          const startTitlesCX = splashTitlesRect.left + splashTitlesRect.width / 2;
+          const startTitlesCY = splashTitlesRect.top + splashTitlesRect.height / 2;
+          const targetTitlesCX = navTitlesRect.left + navTitlesRect.width / 2;
+          const targetTitlesCY = navTitlesRect.top + navTitlesRect.height / 2;
+
+          const titlesDx = targetTitlesCX - startTitlesCX;
+          const titlesDy = targetTitlesCY - startTitlesCY;
+          const titlesScale = navTitlesRect.height / splashTitlesRect.height;
+
+          setCoords({
+            avatarDx,
+            avatarDy,
+            avatarScale,
+            titlesDx,
+            titlesDy,
+            titlesScale,
+            badgeRect: {
+              top: navBadgeRect.top,
+              left: navBadgeRect.left,
+              width: navBadgeRect.width,
+              height: navBadgeRect.height,
+            },
+          });
         }
-        return;
       }
 
-      animationFrameId = requestAnimationFrame(animate);
-    };
+      setStage('stageB');
 
-    animationFrameId = requestAnimationFrame(animate);
+      completeTimer = setTimeout(() => {
+        setStage('stageC');
+        onCompleteRef.current?.();
+      }, STAGE_B_MS);
+    }, STAGE_A_MS);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      if (completeTimeoutId) clearTimeout(completeTimeoutId);
+      clearTimeout(stageBTimer);
+      clearTimeout(completeTimer);
     };
-  }, [isControlled, prefersReducedMotion, isFrozen]);
+  }, [isFrozen, prefersReducedMotion]);
 
-  // Single shared progress calculation (guaranteed clamped 0-100)
-  const rawProgress = isControlled ? externalProgress! : internalProgress;
-  const progress = Math.min(100, Math.max(0, Math.round(rawProgress)));
-  const isDone = progress >= 100;
+  const isAnimating = stage === 'stageB';
+  const isDone = stage === 'stageC';
 
-  const currentStatus = isDone
-    ? 'Ready!'
-    : (statusText || 'Initializing LifeSync AI...');
+  // Dynamic transform styles when animating
+  const avatarStyle: React.CSSProperties =
+    isAnimating && coords
+      ? {
+          transform: `translate3d(${coords.avatarDx}px, ${coords.avatarDy}px, 0) scale(${coords.avatarScale})`,
+        }
+      : {};
+
+  const titlesStyle: React.CSSProperties =
+    isAnimating && coords
+      ? {
+          transform: `translate3d(${coords.titlesDx}px, ${coords.titlesDy}px, 0) scale(${coords.titlesScale})`,
+        }
+      : {};
+
+  // If there are no navbar targets (e.g. authenticated dashboard view), fade out the whole container
+  const containerFallbackStyle: React.CSSProperties =
+    isAnimating && !coords
+      ? {
+          opacity: 0,
+          transform: 'scale(1.02)',
+          transition: 'opacity 0.6s ease, transform 0.6s ease',
+        }
+      : {};
+
+  if (isDone) {
+    return null;
+  }
 
   return (
     <div
-      className="lifesync-splash-root"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={progress}
-      aria-label="LifeSync AI is loading"
+      className={`lifesync-splash-root ${isAnimating ? 'splash-stage-animating' : 'splash-stage-initial'}`}
+      role="region"
+      aria-label="LifeSync AI Splash Screen"
     >
-      {/* Background Room Atmosphere with Soft Vertical Light Beams */}
-      <div className="splash-background-layer" aria-hidden="true" />
-      <div className="splash-light-beams" aria-hidden="true" />
+      {/* Background Atmosphere Layer (Fades to 0 in Stage B to reveal Login Page / 3D Lamp without flash) */}
+      <div className="splash-backdrop-container" aria-hidden="true">
+        <div className="splash-background-layer" />
+        <div className="splash-light-beams" />
 
-      {/* Floating Ambient Light Motes */}
-      <div className="splash-ambient-motes" aria-hidden="true">
-        <span className="splash-mote mote-1" />
-        <span className="splash-mote mote-2" />
-        <span className="splash-mote mote-3" />
-        <span className="splash-mote mote-4" />
-        <span className="splash-mote mote-5" />
+        {/* Floating Ambient Light Motes */}
+        <div className="splash-ambient-motes">
+          <span className="splash-mote mote-1" />
+          <span className="splash-mote mote-2" />
+          <span className="splash-mote mote-3" />
+          <span className="splash-mote mote-4" />
+          <span className="splash-mote mote-5" />
+        </div>
+
+        {/* Radiant Flowing Floor Glow Waves */}
+        <div className="splash-waves-container">
+          <svg
+            className="splash-waves-svg"
+            viewBox="0 0 1440 320"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <defs>
+              <linearGradient id="splashCoralGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#FFA043" stopOpacity="0.1" />
+                <stop offset="35%" stopColor="#FF5E4D" stopOpacity="0.85" />
+                <stop offset="70%" stopColor="#FF2E63" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#FFA043" stopOpacity="0.1" />
+              </linearGradient>
+
+              <linearGradient id="splashMagentaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#8A2BE2" stopOpacity="0.05" />
+                <stop offset="45%" stopColor="#E040FB" stopOpacity="0.5" />
+                <stop offset="75%" stopColor="#FF5E4D" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#8A2BE2" stopOpacity="0.05" />
+              </linearGradient>
+
+              <linearGradient id="splashCyanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.05" />
+                <stop offset="50%" stopColor="#7C4DFF" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.05" />
+              </linearGradient>
+
+              <filter id="splashGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <path
+              d="M 0,270 C 380,240 720,290 1080,250 C 1260,230 1380,260 1440,265"
+              stroke="url(#splashCyanGrad)"
+              strokeWidth="2.5"
+              className="splash-wave splash-wave-bg"
+            />
+            <path
+              d="M 0,250 C 320,280 640,220 960,270 C 1200,310 1350,240 1440,250"
+              stroke="url(#splashMagentaGrad)"
+              strokeWidth="3"
+              filter="url(#splashGlow)"
+              className="splash-wave splash-wave-mid"
+            />
+            <path
+              d="M 0,260 C 360,220 720,280 1080,230 C 1240,210 1360,250 1440,245"
+              stroke="url(#splashCoralGrad)"
+              strokeWidth="3.5"
+              filter="url(#splashGlow)"
+              className="splash-wave splash-wave-fore"
+            />
+          </svg>
+        </div>
       </div>
 
-      {/* Flowing Floor Glow Waves (SVGs with radiant glowing coral/magenta/cyan paths) */}
-      <div className="splash-waves-container" aria-hidden="true">
-        <svg
-          className="splash-waves-svg"
-          viewBox="0 0 1440 320"
-          preserveAspectRatio="none"
-          fill="none"
-        >
-          <defs>
-            {/* Primary Coral-Orange Neon Glow Gradient */}
-            <linearGradient id="splashCoralGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FFA043" stopOpacity="0.1" />
-              <stop offset="35%" stopColor="#FF5E4D" stopOpacity="0.85" />
-              <stop offset="70%" stopColor="#FF2E63" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#FFA043" stopOpacity="0.1" />
-            </linearGradient>
+      {/* Docking Glass Badge: Fades in at navbar brand location during Stage B */}
+      {coords?.badgeRect && (
+        <div
+          className="splash-docking-badge"
+          aria-hidden="true"
+          style={{
+            top: `${coords.badgeRect.top}px`,
+            left: `${coords.badgeRect.left}px`,
+            width: `${coords.badgeRect.width}px`,
+            height: `${coords.badgeRect.height}px`,
+          }}
+        />
+      )}
 
-            {/* Accent Magenta Glow Gradient */}
-            <linearGradient id="splashMagentaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#8A2BE2" stopOpacity="0.05" />
-              <stop offset="45%" stopColor="#E040FB" stopOpacity="0.5" />
-              <stop offset="75%" stopColor="#FF5E4D" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#8A2BE2" stopOpacity="0.05" />
-            </linearGradient>
-
-            {/* Subtle Cyan / Blue Ambient Gradient */}
-            <linearGradient id="splashCyanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.05" />
-              <stop offset="50%" stopColor="#7C4DFF" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.05" />
-            </linearGradient>
-
-            {/* Neon Glow Filter */}
-            <filter id="splashGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="6" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Background Soft Wave 3 (Cyan/Blue) */}
-          <path
-            d="M 0,270 C 380,240 720,290 1080,250 C 1260,230 1380,260 1440,265"
-            stroke="url(#splashCyanGrad)"
-            strokeWidth="2.5"
-            className="splash-wave splash-wave-bg"
-          />
-
-          {/* Middle Wave 2 (Magenta/Pink) */}
-          <path
-            d="M 0,250 C 320,280 640,220 960,270 C 1200,310 1350,240 1440,250"
-            stroke="url(#splashMagentaGrad)"
-            strokeWidth="3"
-            filter="url(#splashGlow)"
-            className="splash-wave splash-wave-mid"
-          />
-
-          {/* Foreground Primary Wave 1 (Coral-Orange) */}
-          <path
-            d="M 0,260 C 360,220 720,280 1080,230 C 1240,210 1360,250 1440,245"
-            stroke="url(#splashCoralGrad)"
-            strokeWidth="3.5"
-            filter="url(#splashGlow)"
-            className="splash-wave splash-wave-fore"
-          />
-        </svg>
-      </div>
-
-      {/* Central Brand & Loading Container */}
-      <motion.div
+      {/* Central Brand Container (Animates and travels to navbar in Stage B) */}
+      <div
         className="splash-content-container"
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        style={containerFallbackStyle}
       >
         {/* Glowing Logo Emblem */}
         <div className="splash-logo-wrapper">
           <div className="splash-logo-halo" aria-hidden="true" />
-          <div className="splash-logo-circle">
+          <div
+            ref={avatarRef}
+            className="splash-logo-circle"
+            style={avatarStyle}
+          >
             <img
               src="/logo.jpg"
               alt="LifeSync AI emblem"
@@ -214,46 +269,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </div>
         </div>
 
-        {/* Brand Application Title */}
-        <h1 className="splash-brand-title">
-          <span className="splash-title-life">LIFESYNC</span>
-          <span className="splash-title-ai">AI</span>
-        </h1>
+        {/* Brand Application Title & Tagline Group */}
+        <div
+          ref={titlesRef}
+          className="splash-brand-titles-group"
+          style={titlesStyle}
+        >
+          <h1 className="splash-brand-title">
+            <span className="splash-title-life">LIFESYNC</span>
+            <span className="splash-title-ai">AI</span>
+          </h1>
 
-        {/* Official Tagline */}
-        <p className="splash-tagline">Harmonize Health, Work &amp; Life</p>
-
-        {/* Clear Animated 0-100% Progress Bar with Accurately Aligned Fill */}
-        <div className="splash-progress-container">
-          {/* Status Label (e.g. Initializing LifeSync AI... -> Ready!) */}
-          <p
-            className={`splash-status-label ${isDone ? 'is-ready' : ''}`}
-            aria-live="polite"
-          >
-            {currentStatus}
-          </p>
-
-          <div className="splash-progress-row">
-            <div
-              className="splash-progress-track"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progress}
-              aria-label="Initialization progress"
-            >
-              <div
-                className="splash-progress-fill"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            <span className="splash-progress-percent" aria-hidden="true">
-              {progress}%
-            </span>
-          </div>
+          <p className="splash-tagline">Harmonize Health, Work &amp; Life</p>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };
