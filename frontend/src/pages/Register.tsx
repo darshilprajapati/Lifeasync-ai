@@ -662,11 +662,11 @@ const Register: React.FC = () => {
             </div>
           </div>
 
-          {/* Step 1 Next Button */}
+          {/* Step 1 Submit / Next Button */}
           <button
             id="register-next-btn"
             type="submit"
-            className="lamp-primary-button"
+            className="lamp-primary-button lamp-signup-submit-button"
             disabled={!isFormActive}
             style={{ height: '44px', marginTop: '6px' }}
             tabIndex={isFormActive ? 0 : -1}
@@ -809,7 +809,7 @@ const Register: React.FC = () => {
             id="register-submit-btn"
             type="button"
             onClick={() => executeRegistration(true)}
-            className="lamp-primary-button"
+            className="lamp-primary-button lamp-signup-submit-button"
             style={{
               width: '100%',
               height: '46px',

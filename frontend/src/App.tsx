@@ -21,14 +21,16 @@ function AppContent() {
   const lastTrackedRouteRef = useRef<string | null>(null);
 
   // Startup splash state machine:
-  // 1. Splash starts visible on fresh application load.
-  // 2. Minimum display window (1,300ms) guarantees the visual effect is noticeable.
-  // 3. Waits for both minDurationElapsed AND auth initialization (!loading).
-  // 4. Smoothly fades out and never reappears during client-side navigation.
-  // 5. 3,500ms failsafe ensures it can never get stuck on slow networks.
-  // 6. Optional ?splash_freeze=true query parameter holds the splash for visual inspection.
+  // 1. Splash starts visible on fresh application load (0%).
+  // 2. Minimum display window (1,200ms) guarantees the visual progress is smoothly seen.
+  // 3. Progress advances from 0% toward 100% while auth initializes (!loading).
+  // 4. Once auth is ready and minDuration elapsed (or failsafe fires), reaches 100% and displays "Ready!".
+  // 5. Holds briefly then smoothly fades out and never reappears during client-side navigation.
+  // 6. 3,500ms failsafe ensures it can never get stuck on slow networks.
+  // 7. Optional ?splash_freeze=true query parameter holds the splash for visual inspection.
   const [minDurationElapsed, setMinDurationElapsed] = useState(false);
   const [isSplashDismissed, setIsSplashDismissed] = useState(false);
+  const [failsafeTriggered, setFailsafeTriggered] = useState(false);
 
   const isFrozenForTesting = typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('splash_freeze') === 'true';
@@ -41,39 +43,49 @@ function AppContent() {
     }
   }, []);
 
-  // Minimum duration timer (1,300ms) started on app mount
+  // Minimum duration timer (1,200ms) started on app mount
   useEffect(() => {
     if (isFrozenForTesting) return;
     const timer = setTimeout(() => {
       setMinDurationElapsed(true);
-    }, 1300);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [isFrozenForTesting]);
 
-  // Dismiss splash when both the minimum duration has elapsed and auth is ready
-  useEffect(() => {
-    if (isFrozenForTesting) return;
-    if (minDurationElapsed && !loading) {
-      setIsSplashDismissed(true);
-      if (typeof window !== 'undefined') {
-        (window as unknown as { __lifesync_splash_dismissed?: boolean }).__lifesync_splash_dismissed = true;
-        (window as unknown as { __lifesync_splash_end?: number }).__lifesync_splash_end = performance.now();
-      }
-    }
-  }, [minDurationElapsed, loading, isFrozenForTesting]);
-
-  // Failsafe timer (3,500ms) to guarantee dismissal even if auth or network stalls
+  // Failsafe timer (3,500ms) to guarantee progress completes and dismisses even if auth stalls
   useEffect(() => {
     if (isFrozenForTesting || isSplashDismissed) return;
     const failsafe = setTimeout(() => {
+      setFailsafeTriggered(true);
+    }, 3500);
+
+    // Hard fallback failsafe: force dismiss if still visible at 4,200ms
+    const hardFallback = setTimeout(() => {
       setIsSplashDismissed(true);
       if (typeof window !== 'undefined') {
         (window as unknown as { __lifesync_splash_dismissed?: boolean }).__lifesync_splash_dismissed = true;
         (window as unknown as { __lifesync_splash_end?: number }).__lifesync_splash_end = performance.now();
       }
-    }, 3500);
-    return () => clearTimeout(failsafe);
+    }, 4200);
+
+    return () => {
+      clearTimeout(failsafe);
+      clearTimeout(hardFallback);
+    };
   }, [isFrozenForTesting, isSplashDismissed]);
+
+  // Callback when progress bar reaches 100% and ready status has been presented
+  const handleSplashComplete = () => {
+    if (isFrozenForTesting) return;
+    setIsSplashDismissed(true);
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __lifesync_splash_dismissed?: boolean }).__lifesync_splash_dismissed = true;
+      (window as unknown as { __lifesync_splash_end?: number }).__lifesync_splash_end = performance.now();
+    }
+  };
+
+  // Signal indicating underlying app initialization is satisfied
+  const isInitReady = (minDurationElapsed && !loading) || failsafeTriggered;
 
   // Active only during initial application launch
   const showSplashOverlay = !isSplashDismissed;
@@ -133,7 +145,10 @@ function AppContent() {
               pointerEvents: 'auto',
             }}
           >
-            <SplashScreen />
+            <SplashScreen
+              isReady={isInitReady}
+              onComplete={handleSplashComplete}
+            />
           </motion.div>
         )}
       </AnimatePresence>

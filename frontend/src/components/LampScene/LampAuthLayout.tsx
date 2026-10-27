@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { getSharedLampState, subscribeLampState, toggleGlobalLamp } from './lampState';
 import LampSceneCanvas from './LampSceneCanvas';
+import { PublicNavbar } from '../PublicNavbar';
 import './LampScene.css';
 
 /* ------------------------------------------------------------------ */
@@ -51,29 +52,14 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
       className={`lamp-auth-page-root ${isDarkRoom ? 'state-dark-room' : 'state-light-room'}`}
       aria-label="LifeSync AI Authentication Experience"
     >
+      {/* Public Navigation Bar with Portfolio Button */}
+      <PublicNavbar />
+
       {/* ========================================================= */}
       {/* LEFT SECTION (52% Desktop): 3D Lamp Environment           */}
       {/* Contains strictly LifeSync AI branding & interactive lamp */}
       {/* ========================================================= */}
       <section className="lamp-left-panel" aria-label="Interactive Lamp Experience">
-        {/* Brand Header */}
-        <header className="lamp-brand-header">
-          <div className="lamp-brand-badge">
-            <div className="lamp-brand-avatar-frame">
-              <img
-                src="/logo.jpg"
-                alt="LifeSync AI logo"
-                className="lamp-brand-avatar"
-                width={48}
-                height={48}
-              />
-            </div>
-            <div className="lamp-brand-titles">
-              <span className="lamp-brand-title">LIFESYNC AI</span>
-              <span className="lamp-brand-tagline">Harmonize Health, Work & Life</span>
-            </div>
-          </div>
-        </header>
 
         {/* 3D Lamp Scene Container: Mounts once and persists across route navigation */}
         <div className="lamp-visual-container">

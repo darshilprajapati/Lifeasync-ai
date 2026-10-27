@@ -1,19 +1,131 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import './SplashScreen.css';
 
-interface SplashScreenProps {
-  /** Optional explicit progress percentage (0-100). If omitted, an indeterminate progress bar is displayed. */
+export interface SplashScreenProps {
+  /** Optional explicit progress percentage (0-100). When omitted, a smooth time-based visual progress indicator is calculated internally. */
   progress?: number;
-  /** Optional custom status caption displayed underneath the progress bar. */
+  /** Optional custom status caption displayed during loading. Defaults to 'Initializing LifeSync AI...' */
   statusText?: string;
+  /** Optional readiness signal from app initialization (e.g. auth check resolved). Defaults to true when autonomous. */
+  isReady?: boolean;
+  /** Optional callback fired when progress reaches 100% and 'Ready!' has been displayed. */
+  onComplete?: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
-  progress,
+  progress: externalProgress,
   statusText,
+  isReady = true,
+  onComplete,
 }) => {
-  const isIndeterminate = progress === undefined;
+  // If external progress is provided, use it directly (controlled mode).
+  // Otherwise, run a smooth time-based visual progress tied to the application initialization lifecycle.
+  const isControlled = externalProgress !== undefined;
+  const [internalProgress, setInternalProgress] = useState(0);
+  const [isReadyText, setIsReadyText] = useState(false);
+
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const isReadyRef = useRef(isReady);
+  useEffect(() => {
+    isReadyRef.current = isReady;
+  }, [isReady]);
+
+  // Respect prefers-reduced-motion
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  useEffect(() => {
+    if (isControlled) return;
+
+    // In reduced motion mode, advance immediately or in a single clean step
+    if (prefersReducedMotion) {
+      if (isReady) {
+        setInternalProgress(100);
+        setIsReadyText(true);
+        const timer = setTimeout(() => {
+          onCompleteRef.current?.();
+        }, 200);
+        return () => clearTimeout(timer);
+      } else {
+        setInternalProgress(50);
+        return;
+      }
+    }
+
+    let animationFrameId: number;
+    let completeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const startTime = performance.now();
+    const BASE_DURATION = 1200; // ms for the visual progress timeline
+    let hasCompleted = false;
+
+    const animate = (currentTime: number) => {
+      if (hasCompleted) return;
+
+      const elapsed = currentTime - startTime;
+      const readyNow = isReadyRef.current;
+
+      let currentVal: number;
+
+      if (!readyNow) {
+        // While initialization is pending (e.g., auth check in-flight),
+        // smoothly advance up to ~90% and gently creep towards ~94%.
+        // Never stall artificially at 99%.
+        if (elapsed < BASE_DURATION) {
+          const ratio = elapsed / BASE_DURATION;
+          currentVal = (1 - Math.pow(1 - ratio, 2)) * 90;
+        } else {
+          const extraRatio = Math.min(1, (elapsed - BASE_DURATION) / 2000);
+          currentVal = 90 + extraRatio * 4;
+        }
+      } else {
+        // Initialization ready:
+        // Progress smoothly to 100% over the base window, or quickly sweep to 100% if base window has passed
+        if (elapsed < BASE_DURATION) {
+          const ratio = elapsed / BASE_DURATION;
+          currentVal = (1 - Math.pow(1 - ratio, 2)) * 100;
+        } else {
+          currentVal = 100;
+        }
+      }
+
+      const clampedVal = Math.min(100, Math.max(0, currentVal));
+      setInternalProgress(clampedVal);
+
+      if (clampedVal >= 99.8 && readyNow) {
+        hasCompleted = true;
+        setInternalProgress(100);
+        setIsReadyText(true);
+        completeTimeoutId = setTimeout(() => {
+          onCompleteRef.current?.();
+        }, 220); // Present 100% and "Ready!" clearly before dismissing
+        return;
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (completeTimeoutId) clearTimeout(completeTimeoutId);
+    };
+  }, [isControlled, isReady, prefersReducedMotion]);
+
+  // Derive display values
+  const currentProgress = isControlled ? externalProgress! : internalProgress;
+  const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
+  const isDone = roundedProgress >= 100 || isReadyText;
+
+  const currentStatus = isDone
+    ? 'Ready!'
+    : (statusText || 'Initializing LifeSync AI...');
 
   return (
     <div
@@ -21,7 +133,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={progress !== undefined ? Math.round(progress) : undefined}
+      aria-valuenow={roundedProgress}
       aria-label="LifeSync AI is loading"
     >
       {/* Background Room Atmosphere with Soft Vertical Light Beams */}
@@ -134,28 +246,35 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Official Tagline */}
         <p className="splash-tagline">Harmonize Health, Work &amp; Life</p>
 
-        {/* Slim Animated Progress Indicator */}
+        {/* Clear Animated 0-100% Progress Bar with Numerical Percentage */}
         <div className="splash-progress-container">
-          <div
-            className={`splash-progress-track ${isIndeterminate ? 'is-indeterminate' : ''}`}
-            aria-hidden="true"
+          {/* Status Label (e.g. Initializing LifeSync AI... -> Ready!) */}
+          <p
+            className={`splash-status-label ${isDone ? 'is-ready' : ''}`}
+            aria-live="polite"
           >
-            <div
-              className={`splash-progress-fill ${isIndeterminate ? 'fill-indeterminate' : ''}`}
-              style={
-                !isIndeterminate && progress !== undefined
-                  ? { width: `${Math.min(100, Math.max(0, progress))}%` }
-                  : undefined
-              }
-            />
-          </div>
-
-          {/* Status / Percentage Label */}
-          <p className="splash-status-label">
-            {progress !== undefined
-              ? `Loading... ${Math.round(progress)}%`
-              : statusText || 'Initializing...'}
+            {currentStatus}
           </p>
+
+          <div className="splash-progress-row">
+            <div
+              className="splash-progress-track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={roundedProgress}
+              aria-label="Initialization progress"
+            >
+              <div
+                className="splash-progress-fill"
+                style={{ width: `${currentProgress}%` }}
+              />
+            </div>
+
+            <span className="splash-progress-percent" aria-hidden="true">
+              {roundedProgress}%
+            </span>
+          </div>
         </div>
       </motion.div>
     </div>
