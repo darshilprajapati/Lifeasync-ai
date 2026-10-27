@@ -11,6 +11,8 @@ export interface SplashScreenProps {
   isReady?: boolean;
   /** Optional callback fired when progress reaches 100% and 'Ready!' has been displayed. */
   onComplete?: () => void;
+  /** Optional freeze flag for visual inspection */
+  isFrozen?: boolean;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
@@ -18,12 +20,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   statusText,
   isReady = true,
   onComplete,
+  isFrozen = false,
 }) => {
   // If external progress is provided, use it directly (controlled mode).
   // Otherwise, run a smooth time-based visual progress tied to the application initialization lifecycle.
   const isControlled = externalProgress !== undefined;
   const [internalProgress, setInternalProgress] = useState(0);
-  const [isReadyText, setIsReadyText] = useState(false);
 
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
@@ -43,67 +45,42 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   useEffect(() => {
     if (isControlled) return;
 
-    // In reduced motion mode, advance immediately or in a single clean step
+    // In reduced motion mode, advance immediately to 100%
     if (prefersReducedMotion) {
-      if (isReady) {
-        setInternalProgress(100);
-        setIsReadyText(true);
+      setInternalProgress(100);
+      if (!isFrozen) {
         const timer = setTimeout(() => {
           onCompleteRef.current?.();
-        }, 200);
+        }, 220);
         return () => clearTimeout(timer);
-      } else {
-        setInternalProgress(50);
-        return;
       }
+      return;
     }
 
     let animationFrameId: number;
     let completeTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const startTime = performance.now();
-    const BASE_DURATION = 1200; // ms for the visual progress timeline
+    const DURATION = 1300; // ms for full visual progress 0% -> 100%
     let hasCompleted = false;
 
     const animate = (currentTime: number) => {
       if (hasCompleted) return;
 
       const elapsed = currentTime - startTime;
-      const readyNow = isReadyRef.current;
+      // Progress smoothly and monotonically from 0 to 100%
+      const rawPercent = Math.min(100, (elapsed / DURATION) * 100);
+      const nextProgress = Math.round(rawPercent);
 
-      let currentVal: number;
+      setInternalProgress((prev) => Math.max(prev, nextProgress));
 
-      if (!readyNow) {
-        // While initialization is pending (e.g., auth check in-flight),
-        // smoothly advance up to ~90% and gently creep towards ~94%.
-        // Never stall artificially at 99%.
-        if (elapsed < BASE_DURATION) {
-          const ratio = elapsed / BASE_DURATION;
-          currentVal = (1 - Math.pow(1 - ratio, 2)) * 90;
-        } else {
-          const extraRatio = Math.min(1, (elapsed - BASE_DURATION) / 2000);
-          currentVal = 90 + extraRatio * 4;
-        }
-      } else {
-        // Initialization ready:
-        // Progress smoothly to 100% over the base window, or quickly sweep to 100% if base window has passed
-        if (elapsed < BASE_DURATION) {
-          const ratio = elapsed / BASE_DURATION;
-          currentVal = (1 - Math.pow(1 - ratio, 2)) * 100;
-        } else {
-          currentVal = 100;
-        }
-      }
-
-      const clampedVal = Math.min(100, Math.max(0, currentVal));
-      setInternalProgress(clampedVal);
-
-      if (clampedVal >= 99.8 && readyNow) {
+      if (rawPercent >= 100) {
         hasCompleted = true;
         setInternalProgress(100);
-        setIsReadyText(true);
-        completeTimeoutId = setTimeout(() => {
-          onCompleteRef.current?.();
-        }, 220); // Present 100% and "Ready!" clearly before dismissing
+        if (!isFrozen) {
+          completeTimeoutId = setTimeout(() => {
+            onCompleteRef.current?.();
+          }, 240); // Brief hold displaying 100% and 'Ready!' clearly before dismissing
+        }
         return;
       }
 
@@ -116,12 +93,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       cancelAnimationFrame(animationFrameId);
       if (completeTimeoutId) clearTimeout(completeTimeoutId);
     };
-  }, [isControlled, isReady, prefersReducedMotion]);
+  }, [isControlled, prefersReducedMotion, isFrozen]);
 
-  // Derive display values
-  const currentProgress = isControlled ? externalProgress! : internalProgress;
-  const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
-  const isDone = roundedProgress >= 100 || isReadyText;
+  // Single shared progress calculation (guaranteed clamped 0-100)
+  const rawProgress = isControlled ? externalProgress! : internalProgress;
+  const progress = Math.min(100, Math.max(0, Math.round(rawProgress)));
+  const isDone = progress >= 100;
 
   const currentStatus = isDone
     ? 'Ready!'
@@ -133,7 +110,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={roundedProgress}
+      aria-valuenow={progress}
       aria-label="LifeSync AI is loading"
     >
       {/* Background Room Atmosphere with Soft Vertical Light Beams */}
@@ -246,7 +223,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Official Tagline */}
         <p className="splash-tagline">Harmonize Health, Work &amp; Life</p>
 
-        {/* Clear Animated 0-100% Progress Bar with Numerical Percentage */}
+        {/* Clear Animated 0-100% Progress Bar with Accurately Aligned Fill */}
         <div className="splash-progress-container">
           {/* Status Label (e.g. Initializing LifeSync AI... -> Ready!) */}
           <p
@@ -262,17 +239,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={roundedProgress}
+              aria-valuenow={progress}
               aria-label="Initialization progress"
             >
               <div
                 className="splash-progress-fill"
-                style={{ width: `${currentProgress}%` }}
+                style={{ width: `${progress}%` }}
               />
             </div>
 
             <span className="splash-progress-percent" aria-hidden="true">
-              {roundedProgress}%
+              {progress}%
             </span>
           </div>
         </div>

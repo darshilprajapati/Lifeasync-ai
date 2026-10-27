@@ -35,6 +35,15 @@ function AppContent() {
   const isFrozenForTesting = typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('splash_freeze') === 'true';
 
+  const explicitTestProgress = (() => {
+    if (typeof window === 'undefined') return undefined;
+    const p = new URLSearchParams(window.location.search).get('splash_progress');
+    if (p !== null && p !== undefined && p !== '' && !isNaN(Number(p))) {
+      return Number(p);
+    }
+    return undefined;
+  })();
+
   // Mark mount time for lifecycle diagnostics
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -146,8 +155,10 @@ function AppContent() {
             }}
           >
             <SplashScreen
+              progress={explicitTestProgress}
               isReady={isInitReady}
               onComplete={handleSplashComplete}
+              isFrozen={isFrozenForTesting}
             />
           </motion.div>
         )}

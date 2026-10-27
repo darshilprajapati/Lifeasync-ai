@@ -135,63 +135,72 @@
    - Smooth hover transition and accessible focus state
    - Consistent height, spacing, and typography
    -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   View My Portfolio Button:
+   - Translucent glassmorphism matching LifeSync AI brand container & login card
+   - Allows purple-pink background lighting to show through
+   - Subtle light border with restrained orange-red glow
+   - Smooth hover translation and accessible keyboard focus state
+   - Consistent rounded pill shape, typography, spacing, and height
+   -------------------------------------------------------------------------- */
 .lamp-nav-btn-portfolio {
-  background-color: rgba(20, 12, 34, 0.82);
-  background-image: 
-    radial-gradient(circle at 85% 25%, rgba(255, 102, 51, 0.28) 0%, transparent 65%),
-    linear-gradient(135deg, rgba(30, 16, 50, 0.88) 0%, rgba(15, 8, 26, 0.85) 100%);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1.5px solid rgba(255, 112, 67, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #FFFFFF;
-  box-shadow: 
-    0 0 14px rgba(255, 112, 67, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.35),
-    inset 0 0 10px rgba(255, 112, 67, 0.16);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 16px rgba(255, 94, 77, 0.2), inset 0 0 12px rgba(255, 255, 255, 0.06);
+  font-family: var(--font-family, 'Josefin Sans', sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  height: 42px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  box-sizing: border-box;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .lamp-nav-btn-portfolio:hover {
-  background-color: rgba(26, 14, 44, 0.92);
-  background-image: 
-    radial-gradient(circle at 85% 25%, rgba(255, 122, 69, 0.45) 0%, transparent 65%),
-    linear-gradient(135deg, rgba(42, 20, 68, 0.95) 0%, rgba(22, 10, 38, 0.92) 100%);
-  border-color: #FF7043;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 112, 67, 0.65);
   color: #FFFFFF;
-  box-shadow: 
-    0 0 24px rgba(255, 112, 67, 0.7),
-    0 6px 22px rgba(0, 0, 0, 0.45),
-    inset 0 0 14px rgba(255, 112, 67, 0.28);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.32), 0 0 22px rgba(255, 94, 77, 0.45), inset 0 0 16px rgba(255, 255, 255, 0.1);
   transform: translateY(-1.5px);
 }
 
 .lamp-nav-btn-portfolio:active {
   transform: translateY(0);
-  box-shadow: 
-    0 0 16px rgba(255, 112, 67, 0.5),
-    0 2px 10px rgba(0, 0, 0, 0.4),
-    inset 0 0 12px rgba(255, 112, 67, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), 0 0 14px rgba(255, 94, 77, 0.3);
 }
 
 .lamp-nav-btn-portfolio:focus-visible {
   outline: 2px solid #FF7043;
   outline-offset: 3px;
-  box-shadow: 
-    0 0 20px rgba(255, 112, 67, 0.85),
-    0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 20px rgba(255, 112, 67, 0.75), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 /* Arrow indicator: Subtle animation on hover */
 .lamp-portfolio-arrow {
   display: inline-block;
-  font-size: 15px;
+  font-size: 14.5px;
   line-height: 1;
-  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #FF8A65;
+  color: #FF7043;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s ease;
 }
 
 .lamp-nav-btn-portfolio:hover .lamp-portfolio-arrow {
   transform: translate(2px, -2px);
-  color: #FFA726;
+  color: #FFA043;
 }
 
 /* Dark room state adjustments */
@@ -201,10 +210,9 @@
 }
 
 .state-dark-room .lamp-nav-btn-portfolio {
-  box-shadow: 
-    0 0 18px rgba(255, 112, 67, 0.45),
-    0 4px 16px rgba(0, 0, 0, 0.5),
-    inset 0 0 10px rgba(255, 112, 67, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 14px rgba(255, 94, 77, 0.22);
 }
 
 /* --------------------------------------------------------------------------
