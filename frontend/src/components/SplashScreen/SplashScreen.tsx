@@ -15,12 +15,6 @@ interface TransitionCoords {
   titlesDx: number;
   titlesDy: number;
   titlesScale: number;
-  badgeRect: {
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
@@ -55,17 +49,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     stageBTimer = setTimeout(() => {
       // Stage A ended, calculate target navbar geometry
       if (!prefersReducedMotion) {
-        const targetBadge = document.querySelector('.lamp-brand-badge') as HTMLElement | null;
         const targetAvatar = document.querySelector('.lamp-brand-avatar-frame') as HTMLElement | null;
         const targetTitles = document.querySelector('.lamp-brand-titles') as HTMLElement | null;
 
         const splashAvatar = avatarRef.current;
         const splashTitles = titlesRef.current;
 
-        if (targetBadge && targetAvatar && targetTitles && splashAvatar && splashTitles) {
+        if (targetAvatar && targetTitles && splashAvatar && splashTitles) {
           const navAvatarRect = targetAvatar.getBoundingClientRect();
           const navTitlesRect = targetTitles.getBoundingClientRect();
-          const navBadgeRect = targetBadge.getBoundingClientRect();
 
           const splashAvatarRect = splashAvatar.getBoundingClientRect();
           const splashTitlesRect = splashTitles.getBoundingClientRect();
@@ -97,12 +89,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             titlesDx,
             titlesDy,
             titlesScale,
-            badgeRect: {
-              top: navBadgeRect.top,
-              left: navBadgeRect.left,
-              width: navBadgeRect.width,
-              height: navBadgeRect.height,
-            },
           });
         }
       }
@@ -231,20 +217,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </svg>
         </div>
       </div>
-
-      {/* Docking Glass Badge: Fades in at navbar brand location during Stage B */}
-      {coords?.badgeRect && (
-        <div
-          className="splash-docking-badge"
-          aria-hidden="true"
-          style={{
-            top: `${coords.badgeRect.top}px`,
-            left: `${coords.badgeRect.left}px`,
-            width: `${coords.badgeRect.width}px`,
-            height: `${coords.badgeRect.height}px`,
-          }}
-        />
-      )}
 
       {/* Central Brand Container (Animates and travels to navbar in Stage B) */}
       <div

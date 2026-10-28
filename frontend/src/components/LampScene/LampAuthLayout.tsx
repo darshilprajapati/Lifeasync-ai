@@ -52,7 +52,7 @@ const LampAuthLayout: React.FC<LampAuthLayoutProps> = ({ children }) => {
       className={`lamp-auth-page-root ${isDarkRoom ? 'state-dark-room' : 'state-light-room'}`}
       aria-label="LifeSync AI Authentication Experience"
     >
-      {/* Public Navigation Bar with Portfolio Button */}
+      {/* Public Navigation Bar */}
       <PublicNavbar />
 
       {/* ========================================================= */}
