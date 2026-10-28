@@ -197,5 +197,138 @@ namespace LifeSyncAI.Tests
             Assert.Equal(1, updated.Data.CurrentUserRank);
             Assert.Equal("Challenger", updated.Data.TopRankings[0].DisplayName);
         }
+
+        [Fact]
+        public async Task GetLeaderboard_PreservesConsistentScoreAcrossCityStateCountryScopes()
+        {
+            // 1. Setup User in India, Gujarat, AHMEDABAD
+            var primaryUser = new User
+            {
+                Email = "darshil@test.com",
+                PasswordHash = "hash",
+                FullName = "Darshil",
+                Country = "India",
+                State = "Gujarat",
+                City = "AHMEDABAD",
+                Status = UserStatus.Active
+            };
+
+            // 2. Setup second user in same State (Gujarat), but different City (SURAT)
+            var statePeer = new User
+            {
+                Email = "statepeer@test.com",
+                PasswordHash = "hash",
+                FullName = "State Peer",
+                Country = "India",
+                State = "Gujarat",
+                City = "SURAT",
+                Status = UserStatus.Active
+            };
+
+            // 3. Setup third user in same Country (India), but different State (Maharashtra), City (MUMBAI)
+            var countryPeer = new User
+            {
+                Email = "countrypeer@test.com",
+                PasswordHash = "hash",
+                FullName = "Country Peer",
+                Country = "India",
+                State = "Maharashtra",
+                City = "MUMBAI",
+                Status = UserStatus.Active
+            };
+
+            _context.Users.AddRange(primaryUser, statePeer, countryPeer);
+            await _context.SaveChangesAsync();
+
+            // Give primary user health logs (water 2000, workout 30 -> 5 + 30 + 15 = 50.0 points)
+            _context.HealthLogs.Add(new HealthLog { UserId = primaryUser.Id, LogType = "Water", LogValue = 2000, LogDate = DateTime.UtcNow });
+            _context.HealthLogs.Add(new HealthLog { UserId = primaryUser.Id, LogType = "Workout", LogValue = 30, LogDate = DateTime.UtcNow });
+
+            // Give state peer health logs (water 1000 -> 5 + 15 = 20.0 points)
+            _context.HealthLogs.Add(new HealthLog { UserId = statePeer.Id, LogType = "Water", LogValue = 1000, LogDate = DateTime.UtcNow });
+
+            // Give country peer health logs (water 2000, workout 30, sleep 8 -> 5 + 30 + 15 + 10 = 60.0 points)
+            _context.HealthLogs.Add(new HealthLog { UserId = countryPeer.Id, LogType = "Water", LogValue = 2000, LogDate = DateTime.UtcNow });
+            _context.HealthLogs.Add(new HealthLog { UserId = countryPeer.Id, LogType = "Workout", LogValue = 30, LogDate = DateTime.UtcNow });
+            _context.HealthLogs.Add(new HealthLog { UserId = countryPeer.Id, LogType = "Sleep", LogValue = 8, LogDate = DateTime.UtcNow });
+
+            await _context.SaveChangesAsync();
+
+            // Authoritative score directly from GetCumulativeTotalLifeScoreAsync
+            double authoritativeScore = await _lifeScoreService.GetCumulativeTotalLifeScoreAsync(primaryUser.Id);
+            Assert.True(authoritativeScore > 0, "Primary user must have non-zero score");
+
+            // --- CITY SCOPE ---
+            var cityResult = await _lifeScoreService.GetLeaderboardAsync(primaryUser.Id, "city", 1, 20);
+            Assert.True(cityResult.IsSuccess);
+            Assert.True(cityResult.Data.HasLocation);
+            Assert.Equal(authoritativeScore, cityResult.Data.CurrentUserTotalScore);
+            var citySelfEntry = cityResult.Data.TopRankings.FirstOrDefault(e => e.IsCurrentUser);
+            Assert.NotNull(citySelfEntry);
+            Assert.Equal(authoritativeScore, citySelfEntry.TotalLifeScore);
+            Assert.Single(cityResult.Data.TopRankings); // Only primaryUser in Ahmedabad
+
+            // --- STATE SCOPE ---
+            var stateResult = await _lifeScoreService.GetLeaderboardAsync(primaryUser.Id, "state", 1, 20);
+            Assert.True(stateResult.IsSuccess);
+            Assert.True(stateResult.Data.HasLocation);
+            Assert.Equal(authoritativeScore, stateResult.Data.CurrentUserTotalScore);
+            var stateSelfEntry = stateResult.Data.TopRankings.FirstOrDefault(e => e.IsCurrentUser);
+            Assert.NotNull(stateSelfEntry);
+            Assert.Equal(authoritativeScore, stateSelfEntry.TotalLifeScore);
+            Assert.Equal(2, stateResult.Data.TotalParticipants); // primaryUser + statePeer
+            // Verify other user's score is independent and non-zero
+            var statePeerEntry = stateResult.Data.TopRankings.FirstOrDefault(e => e.DisplayName == "State Peer");
+            Assert.NotNull(statePeerEntry);
+            Assert.True(statePeerEntry.TotalLifeScore > 0);
+            Assert.NotEqual(authoritativeScore, statePeerEntry.TotalLifeScore);
+
+            // --- COUNTRY SCOPE ---
+            var countryResult = await _lifeScoreService.GetLeaderboardAsync(primaryUser.Id, "country", 1, 20);
+            Assert.True(countryResult.IsSuccess);
+            Assert.True(countryResult.Data.HasLocation);
+            Assert.Equal(authoritativeScore, countryResult.Data.CurrentUserTotalScore);
+            var countrySelfEntry = countryResult.Data.TopRankings.FirstOrDefault(e => e.IsCurrentUser);
+            Assert.NotNull(countrySelfEntry);
+            Assert.Equal(authoritativeScore, countrySelfEntry.TotalLifeScore);
+            Assert.Equal(3, countryResult.Data.TotalParticipants); // primaryUser + statePeer + countryPeer
+
+            // Consistency across scopes
+            Assert.Equal(cityResult.Data.CurrentUserTotalScore, stateResult.Data.CurrentUserTotalScore);
+            Assert.Equal(stateResult.Data.CurrentUserTotalScore, countryResult.Data.CurrentUserTotalScore);
+        }
+
+        [Fact]
+        public async Task GetLeaderboard_MissingLocation_DoesNotDefaultScoreToZero()
+        {
+            var user = new User
+            {
+                Email = "nocity@test.com",
+                PasswordHash = "hash",
+                FullName = "Missing City User",
+                Country = "India",
+                State = "Gujarat",
+                City = null, // Missing city
+                Status = UserStatus.Active
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Give user activity so cumulative score is positive
+            _context.HealthLogs.Add(new HealthLog { UserId = user.Id, LogType = "Water", LogValue = 2000, LogDate = DateTime.UtcNow });
+            await _context.SaveChangesAsync();
+
+            double expectedScore = await _lifeScoreService.GetCumulativeTotalLifeScoreAsync(user.Id);
+            Assert.True(expectedScore > 0);
+
+            // When user requests "city" scope without having a city configured:
+            var result = await _lifeScoreService.GetLeaderboardAsync(user.Id, "city", 1, 20);
+
+            Assert.True(result.IsSuccess);
+            Assert.False(result.Data.HasLocation);
+            // Must return the user's actual cumulative score, NOT 0.0
+            Assert.Equal(expectedScore, result.Data.CurrentUserTotalScore);
+            Assert.Empty(result.Data.TopRankings);
+        }
     }
 }

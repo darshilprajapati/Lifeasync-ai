@@ -399,14 +399,20 @@ namespace LifeSyncAI.Core.Services
                     eligibleUsers.Add(currentUser);
                 }
 
-                // Calculate cumulative score for each eligible user
-                var scoreTasks = eligibleUsers.Select(async u => new
-                {
-                    User = u,
-                    TotalScore = await GetCumulativeTotalLifeScoreAsync(u.Id)
-                });
+                // 1. Authoritative personal score for the requesting user
+                double currentUserScore = await GetCumulativeTotalLifeScoreAsync(currentUserId);
 
-                var userScores = await Task.WhenAll(scoreTasks);
+                // 2. Calculate cumulative score sequentially for all eligible users to avoid
+                // concurrent operations on the scoped DbContext instance.
+                var userScores = new List<(Models.User User, double TotalScore)>();
+                foreach (var u in eligibleUsers)
+                {
+                    double score = (u.Id == currentUserId)
+                        ? currentUserScore
+                        : await GetCumulativeTotalLifeScoreAsync(u.Id);
+
+                    userScores.Add((u, score));
+                }
 
                 // Sort: TotalScore descending, then by user Id ascending (deterministic tie-breaking)
                 var sorted = userScores
@@ -437,7 +443,6 @@ namespace LifeSyncAI.Core.Services
 
                 var currentUserEntry = rankedEntries.FirstOrDefault(r => r.IsCurrentUser);
                 int userRank = currentUserEntry?.Rank ?? 1;
-                double userScore = currentUserEntry?.TotalLifeScore ?? 0.0;
 
                 int totalCount = rankedEntries.Count;
                 int totalPages = Math.Max(1, (int)Math.Ceiling((double)totalCount / pageSize));
@@ -452,7 +457,7 @@ namespace LifeSyncAI.Core.Services
                     ScopeValue = scopeValue,
                     HasLocation = true,
                     CurrentUserRank = userRank,
-                    CurrentUserTotalScore = userScore,
+                    CurrentUserTotalScore = currentUserScore,
                     TopRankings = pagedRankings,
                     TotalParticipants = totalCount,
                     Page = page,

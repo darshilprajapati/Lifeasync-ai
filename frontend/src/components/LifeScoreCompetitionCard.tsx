@@ -494,7 +494,7 @@ const LifeScoreCompetitionCard: React.FC = () => {
       </Box>
 
       {/* Bottom Summary Bar (Permanent user rank regardless of page) */}
-      {data && data.hasLocation && (
+      {data && (
         <Box
           sx={{
             pt: 1.5,
@@ -508,16 +508,22 @@ const LifeScoreCompetitionCard: React.FC = () => {
         >
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
             <Typography variant="body2" sx={{ fontWeight: 800, color: 'var(--accent-primary)', fontSize: '13px' }}>
-              Your Rank: #{data.currentUserRank > 0 ? data.currentUserRank : '-'}
+              Your Rank: #{data.hasLocation && data.currentUserRank > 0 ? data.currentUserRank : '-'}
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
               Your Total Life Score: {data.currentUserTotalScore.toFixed(1)} points
             </Typography>
           </Stack>
 
-          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'capitalize' }}>
-            {scope} Scope: <strong>{data.scopeValue || 'Active Region'}</strong> ({data.totalParticipants} {data.totalParticipants === 1 ? 'user' : 'users'})
-          </Typography>
+          {data.hasLocation ? (
+            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'capitalize' }}>
+              {scope} Scope: <strong>{data.scopeValue || 'Active Region'}</strong> ({data.totalParticipants} {data.totalParticipants === 1 ? 'user' : 'users'})
+            </Typography>
+          ) : (
+            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+              Scope: <em>Location Not Configured</em>
+            </Typography>
+          )}
         </Box>
       )}
     </TiltCard>
