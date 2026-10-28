@@ -67,10 +67,9 @@ const Profile: React.FC = () => {
   const isDark = mode === 'dark';
   const isProf = designSystem === 'professional';
 
-  // Appearance draft state (Draft-and-Apply flow: changes preview locally and apply globally on clicking Save)
+  // Appearance preference state
   const [prefDesign, setPrefDesign] = useState<DesignSystem>(designSystem);
   const [prefMode, setPrefMode] = useState<ThemeMode>(mode);
-  const [appearanceSaved, setAppearanceSaved] = useState(false);
 
   // General & Stats state
   const [stats, setStats] = useState<Dictionary<number>>({});
@@ -118,27 +117,16 @@ const Profile: React.FC = () => {
     setPrefDesign(ds);
     setDesignSystem(ds);
     localStorage.setItem('lifesync_design_system', ds);
-    setAppearanceSaved(true);
-    setTimeout(() => setAppearanceSaved(false), 2000);
+    trackAction('design_system_changed', { designSystem: ds });
+    notify.success(`Switched to ${ds === 'professional' ? 'Professional' : 'Modern 3D'} design system.`);
   };
 
   const handleSelectMode = (m: ThemeMode) => {
     setPrefMode(m);
     setMode(m);
     localStorage.setItem('lifesync_theme', m);
-    setAppearanceSaved(true);
-    setTimeout(() => setAppearanceSaved(false), 2000);
-  };
-
-  const handleSaveAppearance = () => {
-    setDesignSystem(prefDesign);
-    setMode(prefMode);
-    localStorage.setItem('lifesync_design_system', prefDesign);
-    localStorage.setItem('lifesync_theme', prefMode);
-    setAppearanceSaved(true);
-    notify.success('Appearance preferences saved and applied across the entire application!');
-    trackAction('appearance_preferences_saved', { designSystem: prefDesign, mode: prefMode });
-    setTimeout(() => setAppearanceSaved(false), 2500);
+    trackAction('theme_mode_changed', { mode: m });
+    notify.success(`Switched to ${m === 'dark' ? 'Dark' : 'Light'} mode.`);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -967,28 +955,6 @@ const Profile: React.FC = () => {
                     Dark Mode
                   </Button>
                 </Stack>
-
-                {/* Save Preferences Button */}
-                <Button
-                  id="btn-save-appearance"
-                  variant="contained"
-                  fullWidth
-                  size="small"
-                  startIcon={appearanceSaved ? <CheckCircleIcon sx={{ fontSize: '15px !important' }} /> : <SaveIcon sx={{ fontSize: '15px !important' }} />}
-                  onClick={handleSaveAppearance}
-                  sx={{
-                    bgcolor: 'var(--accent-primary)',
-                    borderRadius: isProf ? '0px !important' : '8px',
-                    fontWeight: 800,
-                    fontSize: '11.5px',
-                    py: 0.6,
-                    textTransform: 'none',
-                    boxShadow: isProf ? 'none' : '0 4px 14px rgba(255, 111, 38, 0.35)',
-                    '&:hover': { bgcolor: 'var(--accent-secondary)' }
-                  }}
-                >
-                  {appearanceSaved ? 'Preferences Applied!' : 'Save Appearance Preferences'}
-                </Button>
               </TiltCard>
             </Grid>
           </Grid>

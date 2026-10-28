@@ -269,11 +269,39 @@ input, button, select, textarea {
 /* Global Modals, Dialogs, Dropdowns & Backdrop Fixes                 */
 /* ------------------------------------------------------------------ */
 
-/* Backdrop styling - distinct dark overlay with subtle blur to dim page */
-.MuiBackdrop-root {
+/* Backdrop styling - distinct dark overlay with subtle blur ONLY for modals and dialogs */
+.MuiDialog-root > .MuiBackdrop-root,
+.MuiModal-root:not(.MuiMenu-root):not(.MuiPopover-root) > .MuiBackdrop-root:not(.MuiBackdrop-invisible) {
   background-color: rgba(10, 15, 26, 0.65) !important;
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Dropdowns, Selects, Menus & Popovers: Never blur, dim, or obscure the background page */
+.MuiBackdrop-invisible,
+.MuiPopover-root > .MuiBackdrop-root,
+.MuiMenu-root > .MuiBackdrop-root,
+.MuiPopover-root .MuiBackdrop-invisible,
+.MuiMenu-root .MuiBackdrop-invisible,
+.MuiSelect-root ~ .MuiBackdrop-root,
+div[aria-hidden="true"].MuiBackdrop-invisible {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Global Select Menu & Dropdown Panel Constraints */
+.MuiMenu-paper {
+  max-height: min(360px, calc(100dvh - 96px)) !important;
+  max-width: min(480px, calc(100vw - 32px)) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.MuiMenu-list {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
 }
 
 /* Stacking Context & Z-Indexes */
@@ -433,7 +461,7 @@ input, button, select, textarea {
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 14px !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  max-width: calc(100vw - 32px) !important;
+  max-width: min(480px, calc(100vw - 32px)) !important;
 }
 
 [data-design-system="modern3d"][data-theme="light"] .MuiMenu-paper,
@@ -442,7 +470,7 @@ input, button, select, textarea {
   border: 1px solid rgba(232, 90, 79, 0.18) !important;
   border-radius: 14px !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(142, 141, 138, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  max-width: calc(100vw - 32px) !important;
+  max-width: min(480px, calc(100vw - 32px)) !important;
 }
 
 /* Professional - Popovers, Select Menus & Dropdowns */
@@ -452,7 +480,7 @@ input, button, select, textarea {
   border: 1px solid #2E3846 !important;
   border-radius: 0px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
-  max-width: calc(100vw - 32px) !important;
+  max-width: min(480px, calc(100vw - 32px)) !important;
 }
 
 [data-design-system="professional"][data-theme="light"] .MuiMenu-paper,
@@ -461,7 +489,7 @@ input, button, select, textarea {
   border: 1px solid #DFE1E6 !important;
   border-radius: 0px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
-  max-width: calc(100vw - 32px) !important;
+  max-width: min(480px, calc(100vw - 32px)) !important;
 }
 
 /* Menu Items Hover & Selected States */

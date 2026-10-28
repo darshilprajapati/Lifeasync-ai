@@ -299,9 +299,28 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         MuiBackdrop: {
           styleOverrides: {
             root: {
-              backgroundColor: 'rgba(10, 15, 26, 0.65)',
-              backdropFilter: 'blur(4px)',
-              WebkitBackdropFilter: 'blur(4px)',
+              '&:not(.MuiBackdrop-invisible)': {
+                backgroundColor: 'rgba(10, 15, 26, 0.65)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+              },
+              '&.MuiBackdrop-invisible': {
+                backgroundColor: 'transparent',
+                backdropFilter: 'none',
+                WebkitBackdropFilter: 'none',
+              },
+            },
+            invisible: {
+              backgroundColor: 'transparent',
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
+            },
+          },
+        },
+        MuiSelect: {
+          defaultProps: {
+            MenuProps: {
+              disableScrollLock: true,
             },
           },
         },
@@ -343,9 +362,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           },
         },
         MuiMenu: {
+          defaultProps: {
+            disableScrollLock: true,
+          },
           styleOverrides: {
             root: {
               zIndex: 1500,
+              '& .MuiBackdrop-root': {
+                backgroundColor: 'transparent',
+                backdropFilter: 'none',
+                WebkitBackdropFilter: 'none',
+              },
             },
             paper: {
               borderRadius: isProf ? '0px' : '14px',
@@ -354,9 +381,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               border: cardBorder,
               backgroundImage: 'none',
               maxWidth: 'calc(100vw - 32px)',
+              maxHeight: 'min(360px, calc(100dvh - 96px))',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
               boxShadow: isProf
                 ? (isDark ? '0 4px 20px rgba(0, 0, 0, 0.45)' : '0 4px 16px rgba(0, 0, 0, 0.12)')
                 : (isDark ? '0 16px 40px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4)' : '0 16px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(142, 141, 138, 0.15)'),
+            },
+            list: {
+              paddingTop: '6px',
+              paddingBottom: '6px',
             },
           },
         },
@@ -364,6 +398,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           styleOverrides: {
             root: {
               zIndex: 1500,
+              '& .MuiBackdrop-root': {
+                backgroundColor: 'transparent',
+                backdropFilter: 'none',
+                WebkitBackdropFilter: 'none',
+              },
             },
             paper: {
               borderRadius: isProf ? '0px' : '14px',
