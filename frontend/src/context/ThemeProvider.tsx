@@ -384,6 +384,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               maxHeight: 'min(360px, calc(100dvh - 96px))',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
+              opacity: 1,
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
               boxShadow: isProf
                 ? (isDark ? '0 4px 20px rgba(0, 0, 0, 0.45)' : '0 4px 16px rgba(0, 0, 0, 0.12)')
                 : (isDark ? '0 16px 40px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4)' : '0 16px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(142, 141, 138, 0.15)'),
@@ -411,6 +414,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               border: cardBorder,
               backgroundImage: 'none',
               maxWidth: 'calc(100vw - 32px)',
+              opacity: 1,
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
             },
           },
         },

@@ -165,13 +165,13 @@ input, button, select, textarea {
 
 /* Modern 3D Glassmorphism - Cards & Surface Papers */
 [data-design-system="modern3d"] .MuiCard-root,
-[data-design-system="modern3d"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+[data-design-system="modern3d"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.MuiMenu-paper):not(.MuiPopover-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
   border-radius: var(--glass-border-radius) !important;
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease !important;
 }
 
 [data-design-system="modern3d"][data-theme="dark"] .MuiCard-root,
-[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.MuiMenu-paper):not(.MuiPopover-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
   background: rgba(16, 22, 36, 0.72) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
@@ -180,7 +180,7 @@ input, button, select, textarea {
 }
 
 [data-design-system="modern3d"][data-theme="light"] .MuiCard-root,
-[data-design-system="modern3d"][data-theme="light"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
+[data-design-system="modern3d"][data-theme="light"] .MuiPaper-elevation:not(.MuiDialog-paper):not(.MuiMenu-paper):not(.MuiPopover-paper):not(.lifesync-chat-bubble):not(.MuiDrawer-paper):not(.MuiTooltip-tooltip) {
   background: rgba(255, 255, 255, 0.78) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
@@ -291,12 +291,18 @@ div[aria-hidden="true"].MuiBackdrop-invisible {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Global Select Menu & Dropdown Panel Constraints */
-.MuiMenu-paper {
+/* Global Select Menu & Dropdown Panel Constraints & 100% Solid Opacity */
+.MuiMenu-paper,
+.MuiPopover-paper,
+.MuiPaper-root.MuiMenu-paper,
+.MuiPaper-root.MuiPopover-paper {
   max-height: min(360px, calc(100dvh - 96px)) !important;
   max-width: min(480px, calc(100vw - 32px)) !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .MuiMenu-list {
@@ -454,42 +460,66 @@ div[aria-hidden="true"].MuiBackdrop-invisible {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* Modern 3D - Popovers, Select Menus & Dropdowns (Solid, Opaque Surfaces) */
+/* Modern 3D - Popovers, Select Menus & Dropdowns (Solid, 100% Opaque Surfaces) */
 [data-design-system="modern3d"][data-theme="dark"] .MuiMenu-paper,
-[data-design-system="modern3d"][data-theme="dark"] .MuiPopover-paper {
+[data-design-system="modern3d"][data-theme="dark"] .MuiPopover-paper,
+[data-theme="dark"] .MuiMenu-paper,
+[data-theme="dark"] .MuiPopover-paper {
   background: #1A1D2D !important;
+  background-color: #1A1D2D !important;
+  color: #FFFFFF !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 14px !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   max-width: min(480px, calc(100vw - 32px)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 [data-design-system="modern3d"][data-theme="light"] .MuiMenu-paper,
-[data-design-system="modern3d"][data-theme="light"] .MuiPopover-paper {
+[data-design-system="modern3d"][data-theme="light"] .MuiPopover-paper,
+[data-theme="light"] .MuiMenu-paper,
+[data-theme="light"] .MuiPopover-paper {
   background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  color: #2D2D2D !important;
   border: 1px solid rgba(232, 90, 79, 0.18) !important;
   border-radius: 14px !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(142, 141, 138, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   max-width: min(480px, calc(100vw - 32px)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-/* Professional - Popovers, Select Menus & Dropdowns */
+/* Professional - Popovers, Select Menus & Dropdowns (Solid, 100% Opaque Surfaces) */
 [data-design-system="professional"][data-theme="dark"] .MuiMenu-paper,
 [data-design-system="professional"][data-theme="dark"] .MuiPopover-paper {
   background: #1F2732 !important;
+  background-color: #1F2732 !important;
+  color: #F7FAFC !important;
   border: 1px solid #2E3846 !important;
   border-radius: 0px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
   max-width: min(480px, calc(100vw - 32px)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 [data-design-system="professional"][data-theme="light"] .MuiMenu-paper,
 [data-design-system="professional"][data-theme="light"] .MuiPopover-paper {
   background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  color: #172B4D !important;
   border: 1px solid #DFE1E6 !important;
   border-radius: 0px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
   max-width: min(480px, calc(100vw - 32px)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Menu Items Hover & Selected States */
@@ -803,12 +833,12 @@ input::-ms-clear {
 /* Modern 3D: Proximity Ripple & Interactive Glow (Section 11)        */
 /* ------------------------------------------------------------------ */
 [data-design-system="modern3d"] .MuiCard-root:hover,
-[data-design-system="modern3d"] .MuiPaper-elevation:hover {
+[data-design-system="modern3d"] .MuiPaper-elevation:not(.MuiMenu-paper):not(.MuiPopover-paper):hover {
   box-shadow: 0 14px 34px -4px rgba(255, 111, 38, 0.22), 0 0 0 1px rgba(255, 111, 38, 0.25) !important;
 }
 
 [data-design-system="modern3d"][data-theme="dark"] .MuiCard-root:hover,
-[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:hover {
+[data-design-system="modern3d"][data-theme="dark"] .MuiPaper-elevation:not(.MuiMenu-paper):not(.MuiPopover-paper):hover {
   box-shadow: 0 18px 40px -6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 111, 38, 0.25), 0 0 0 1px rgba(255, 111, 38, 0.3) !important;
 }
 
