@@ -215,13 +215,25 @@ const Profile: React.FC = () => {
     setSavingProfile(true);
 
     try {
-      const res = await apiClient.put('/api/auth/profile', {
+      const payload: {
+        fullName: string;
+        country: string | null;
+        state: string | null;
+        city: string | null;
+        profilePhoto?: string | null;
+      } = {
         fullName: fullName.trim(),
-        profilePhoto: profilePhoto,
         country: country.trim() || null,
         state: state.trim() || null,
         city: city.trim() || null
-      });
+      };
+
+      // Only pass profilePhoto if it's a valid remote URL; raw base64 data URIs should never be sent
+      if (profilePhoto && !profilePhoto.startsWith('data:')) {
+        payload.profilePhoto = profilePhoto;
+      }
+
+      const res = await apiClient.put('/api/auth/profile', payload);
 
       if (res.data.isSuccess) {
         trackAction('profile_updated', { module: 'profile', action: 'update' });
@@ -250,8 +262,7 @@ const Profile: React.FC = () => {
 
     try {
       const res = await apiClient.put('/api/auth/profile', {
-        fullName: fullName.trim(),
-        profilePhoto: profilePhoto,
+        fullName: fullName.trim() || user?.fullName,
         country: country.trim(),
         state: state.trim() || null,
         city: normalizeCity(city)
@@ -274,8 +285,7 @@ const Profile: React.FC = () => {
 
     try {
       const res = await apiClient.put('/api/auth/profile', {
-        fullName: fullName.trim(),
-        profilePhoto: profilePhoto,
+        fullName: fullName.trim() || user?.fullName,
         country: null,
         state: null,
         city: null
@@ -521,7 +531,7 @@ const Profile: React.FC = () => {
                       type="submit"
                       variant="contained"
                       size="small"
-                      disabled={savingProfile || (fullName.trim() === user?.fullName && profilePhoto === (user?.profilePhoto || null))}
+                      disabled={savingProfile || fullName.trim() === (user?.fullName || '')}
                       startIcon={<SaveIcon sx={{ fontSize: '14px !important' }} />}
                       sx={{
                         bgcolor: 'var(--accent-primary)',

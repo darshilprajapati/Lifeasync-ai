@@ -270,13 +270,16 @@ namespace LifeSyncAI.Core.Services
                 if (!string.IsNullOrWhiteSpace(dto.ProfilePhoto) &&
                     dto.ProfilePhoto.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
                 {
-                    return ApiResponse<UserDto>.Fail(
-                        "Raw base64 image data cannot be stored directly in the profile. Please use the dedicated profile photo upload endpoint."
-                    );
+                    if (!string.Equals(user.ProfilePhoto, dto.ProfilePhoto, StringComparison.Ordinal))
+                    {
+                        return ApiResponse<UserDto>.Fail(
+                            "Raw base64 image data cannot be stored directly in the profile. Please use the dedicated profile photo upload endpoint."
+                        );
+                    }
                 }
 
                 user.FullName = dto.FullName;
-                if (dto.ProfilePhoto != null)
+                if (dto.ProfilePhoto != null && !dto.ProfilePhoto.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
                 {
                     user.ProfilePhoto = string.IsNullOrWhiteSpace(dto.ProfilePhoto) ? null : dto.ProfilePhoto.Trim();
                 }
