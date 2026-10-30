@@ -15,13 +15,16 @@ import {
   IconButton,
   Alert,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import type { WorkoutDay, Exercise, WorkoutDayExercise } from '../types/workout';
 import { workoutService } from '../services/workoutService';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
@@ -41,6 +44,8 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
   onClose,
   onSaveSuccess
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { notify } = useNotification();
   const { designSystem, mode } = useThemeSystem();
   const isProf = designSystem === 'professional';
@@ -196,23 +201,107 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
         onClose={onClose}
         maxWidth="md"
         fullWidth
+        scroll="paper"
         slotProps={{
           paper: {
-            sx: {
-              borderRadius: isProf ? '0px !important' : '16px',
-              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
-              color: 'var(--text-primary)',
-              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
-              p: 1
-            }
+            sx: isMobile
+              ? {
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  m: 0,
+                  width: '100%',
+                  maxWidth: '100% !important',
+                  maxHeight: '92vh',
+                  borderRadius: isProf ? '0px !important' : '24px 24px 0 0 !important',
+                  bgcolor: isProf
+                    ? (isDark ? '#1F2732 !important' : '#ffffff')
+                    : (isDark ? '#1A1D2D !important' : '#ffffff'),
+                  color: 'var(--text-primary)',
+                  border: isProf
+                    ? '1px solid var(--card-border)'
+                    : (isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.08)'),
+                  borderBottom: 'none',
+                  boxShadow: '0 -10px 40px rgba(0,0,0,0.35)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }
+              : {
+                  borderRadius: isProf ? '0px !important' : '16px',
+                  bgcolor: isProf
+                    ? (isDark ? '#1F2732 !important' : '#ffffff')
+                    : (isDark ? '#1A1D2D !important' : '#ffffff'),
+                  color: 'var(--text-primary)',
+                  border: isProf
+                    ? '1px solid var(--card-border)'
+                    : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
+                  p: 1
+                }
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: 'var(--text-primary)' }}>
-          Customize {day.dayName} Routine
+        {isMobile && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1.2, pb: 0.2 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 4,
+                borderRadius: '2px',
+                bgcolor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.18)'
+              }}
+            />
+          </Box>
+        )}
+
+        <DialogTitle
+          sx={{
+            fontWeight: 800,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            py: { xs: 1.2, sm: 1.8 },
+            px: { xs: 2, sm: 3 },
+            color: 'var(--text-primary)',
+            borderBottom: isMobile ? '1px solid var(--card-border)' : 'none'
+          }}
+        >
+          <Box sx={{ minWidth: 0, pr: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: { xs: '17px', sm: '20px' }, lineHeight: 1.2 }}>
+              Customize {day.dayName} Routine
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 600 }}>
+              Adjust focus, workout duration, and exercise parameters
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={onClose}
+            aria-label="Close editor"
+            size="small"
+            sx={{
+              width: 38,
+              height: 38,
+              minWidth: 38,
+              minHeight: 38,
+              color: 'var(--text-secondary)',
+              borderRadius: isProf ? '0px' : '10px',
+              '&:hover': { color: 'var(--text-primary)', bgcolor: 'rgba(0,0,0,0.06)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent
+          dividers
+          sx={{
+            p: { xs: 2, sm: 3 },
+            flex: 1,
+            overflowY: 'auto',
+            bgcolor: 'inherit'
+          }}
+        >
           {error && (
             <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px' }}>
               {error}
@@ -230,7 +319,7 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                 />
               }
               label={
-                <Typography sx={{ fontWeight: 600, fontSize: '14px' }}>
+                <Typography sx={{ fontWeight: 650, fontSize: '14px' }}>
                   Schedule as Rest & Recovery Day
                 </Typography>
               }
@@ -274,8 +363,17 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                 </Box>
 
                 {/* Exercises Section Header */}
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mt: 1,
+                    flexWrap: 'wrap',
+                    gap: 1
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '14px' }}>
                     Exercises ({exercises.length})
                   </Typography>
                   <Button
@@ -286,11 +384,14 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                     sx={{
                       borderRadius: isProf ? '0px' : '10px',
                       textTransform: 'none',
-                      fontWeight: 600,
-                      borderColor: '#FF6F26',
-                      color: '#FF6F26',
+                      fontWeight: 700,
+                      fontSize: '12.5px',
+                      borderColor: 'var(--accent-primary)',
+                      color: 'var(--accent-primary)',
+                      minHeight: 36,
+                      px: 1.5,
                       '&:hover': {
-                        borderColor: '#FF6F26',
+                        borderColor: 'var(--accent-primary)',
                         bgcolor: 'rgba(255, 111, 38, 0.08)'
                       }
                     }}
@@ -319,8 +420,8 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                       <Box
                         key={ex.id || `${ex.exerciseId}-${index}`}
                         sx={{
-                          p: 1.5,
-                          borderRadius: isProf ? '0px !important' : '12px',
+                          p: 1.6,
+                          borderRadius: isProf ? '0px !important' : '14px',
                           border: '1px solid var(--card-border)',
                           bgcolor: isProf 
                             ? (isDark ? '#26303F' : '#ffffff') 
@@ -328,31 +429,127 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                           color: 'var(--text-primary)',
                           boxShadow: isProf ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
                           display: 'flex',
-                          flexDirection: { xs: 'column', sm: 'row' },
-                          alignItems: { xs: 'flex-start', sm: 'center' },
-                          justifyContent: 'space-between',
-                          gap: 1.5
+                          flexDirection: 'column',
+                          gap: 1.2
                         }}
                       >
-                        {/* Name & Target */}
-                        <Box sx={{ minWidth: 160 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '13px' }}>
-                            {index + 1}. {ex.exerciseName}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
-                            {ex.category} · {ex.targetMuscles}
-                          </Typography>
+                        {/* Top row: Name & Target + Actions */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '13.5px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {index + 1}. {ex.exerciseName}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '11px',
+                                display: 'block',
+                                mt: 0.2
+                              }}
+                            >
+                              {ex.category} · {ex.targetMuscles}
+                            </Typography>
+                          </Box>
+
+                          {/* Actions: Replace, Move, Delete */}
+                          <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                            <Tooltip title="Replace with another exercise">
+                              <IconButton
+                                size="small"
+                                aria-label="Replace exercise"
+                                onClick={() => handleOpenReplacePicker(index)}
+                                sx={{
+                                  width: 32,
+                                  height: 32,
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                  color: 'var(--accent-primary)',
+                                  bgcolor: 'rgba(255, 115, 56, 0.08)',
+                                  borderRadius: '8px'
+                                }}
+                              >
+                                <SwapHorizIcon sx={{ fontSize: 17 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Move Up">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  disabled={index === 0}
+                                  aria-label="Move exercise up"
+                                  onClick={() => handleMoveUp(index)}
+                                  sx={{ width: 32, height: 32, minWidth: 32, minHeight: 32, borderRadius: '8px' }}
+                                >
+                                  <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Move Down">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  disabled={index === exercises.length - 1}
+                                  aria-label="Move exercise down"
+                                  onClick={() => handleMoveDown(index)}
+                                  sx={{ width: 32, height: 32, minWidth: 32, minHeight: 32, borderRadius: '8px' }}
+                                >
+                                  <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Remove Exercise">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label="Remove exercise"
+                                onClick={() => handleRemove(index)}
+                                sx={{
+                                  width: 32,
+                                  height: 32,
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                  borderRadius: '8px',
+                                  bgcolor: 'rgba(239, 68, 68, 0.08)'
+                                }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 17 }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
                         </Box>
 
-                        {/* Sets, Reps, Rest inputs */}
-                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                        {/* Bottom row: Sets, Reps, Rest inputs */}
+                        <Stack
+                          direction="row"
+                          spacing={1.2}
+                          sx={{
+                            width: '100%',
+                            pt: 0.4
+                          }}
+                        >
                           <TextField
                             size="small"
                             label="Sets"
                             type="number"
                             value={ex.sets}
                             onChange={(e) => handleParamChange(index, 'sets', parseInt(e.target.value) || 1)}
-                            sx={{ width: 70 }}
+                            sx={{ flex: 1, minWidth: 0 }}
+                            slotProps={{
+                              htmlInput: {
+                                min: 1,
+                                max: 20
+                              }
+                            }}
                           />
                           <TextField
                             size="small"
@@ -360,7 +557,13 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                             type="number"
                             value={ex.reps}
                             onChange={(e) => handleParamChange(index, 'reps', parseInt(e.target.value) || 1)}
-                            sx={{ width: 75 }}
+                            sx={{ flex: 1, minWidth: 0 }}
+                            slotProps={{
+                              htmlInput: {
+                                min: 1,
+                                max: 100
+                              }
+                            }}
                           />
                           <TextField
                             size="small"
@@ -368,45 +571,15 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
                             type="number"
                             value={ex.restSeconds}
                             onChange={(e) => handleParamChange(index, 'restSeconds', parseInt(e.target.value) || 15)}
-                            sx={{ width: 85 }}
+                            sx={{ flex: 1.2, minWidth: 0 }}
+                            slotProps={{
+                              htmlInput: {
+                                min: 5,
+                                max: 300,
+                                step: 5
+                              }
+                            }}
                           />
-                        </Stack>
-
-                        {/* Actions: Replace, Move, Delete */}
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <Tooltip title="Replace with another exercise">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenReplacePicker(index)}
-                              sx={{ p: 0.5, color: 'var(--accent-primary)' }}
-                            >
-                              <SwapHorizIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
-                          <IconButton
-                            size="small"
-                            disabled={index === 0}
-                            onClick={() => handleMoveUp(index)}
-                            sx={{ p: 0.5 }}
-                          >
-                            <ArrowUpwardIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            disabled={index === exercises.length - 1}
-                            onClick={() => handleMoveDown(index)}
-                            sx={{ p: 0.5 }}
-                          >
-                            <ArrowDownwardIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleRemove(index)}
-                            sx={{ p: 0.5 }}
-                          >
-                            <DeleteIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
                         </Stack>
                       </Box>
                     ))}
@@ -417,8 +590,32 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
           </Stack>
         </DialogContent>
 
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={onClose} sx={{ textTransform: 'none', color: 'var(--text-secondary)' }}>
+        <DialogActions
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            px: { xs: 2, sm: 3 },
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10,
+            bgcolor: isProf
+              ? (isDark ? '#1F2732' : '#ffffff')
+              : (isDark ? '#1A1D2D' : '#ffffff'),
+            borderTop: '1px solid var(--card-border)',
+            pb: isMobile ? 'calc(16px + env(safe-area-inset-bottom, 0px))' : undefined,
+            gap: 1
+          }}
+        >
+          <Button
+            onClick={onClose}
+            sx={{
+              textTransform: 'none',
+              color: 'var(--text-secondary)',
+              fontWeight: 700,
+              minHeight: 44,
+              flex: isMobile ? 1 : 'none',
+              borderRadius: isProf ? '0px !important' : '10px'
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -428,13 +625,17 @@ export const EditWorkoutDayModal: React.FC<EditWorkoutDayModalProps> = ({
             startIcon={saving && <CircularProgress size={16} color="inherit" />}
             sx={{
               textTransform: 'none',
-              fontWeight: 700,
-              borderRadius: isProf ? '0px !important' : '8px',
+              fontWeight: 800,
+              fontSize: '14px',
+              minHeight: 44,
+              flex: isMobile ? 2 : 'none',
+              borderRadius: isProf ? '0px !important' : '10px',
               bgcolor: 'var(--accent-primary)',
+              boxShadow: '0 4px 14px rgba(255, 111, 38, 0.35)',
               '&:hover': { bgcolor: 'var(--accent-hover, #FF5722)' }
             }}
           >
-            {saving ? 'Saving...' : 'Save Routine'}
+            {saving ? 'Saving Routine...' : 'Save Routine'}
           </Button>
         </DialogActions>
       </Dialog>

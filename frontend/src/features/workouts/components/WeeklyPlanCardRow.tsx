@@ -12,7 +12,8 @@ import {
   DialogContentText,
   DialogActions,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Tooltip
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -25,6 +26,8 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import HotelIcon from '@mui/icons-material/Hotel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useThemeSystem } from '../../../context/ThemeContext';
 import type { WorkoutDay, UserWorkoutPlan } from '../types/workout';
 import { WorkoutDayCard } from './WorkoutDayCard';
@@ -307,14 +310,15 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Header: Icon + Card Title + Date Badge */}
+                  {/* Header: Icon + Card Title + Date Badge + Edit / Lock Action */}
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
                       <Box
                         sx={{
                           color: activeDay?.isRestDay ? '#8B5CF6' : 'var(--accent-primary)',
                           display: 'flex',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          flexShrink: 0
                         }}
                       >
                         {activeDay?.isRestDay ? (
@@ -323,7 +327,17 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                           <FitnessCenterIcon sx={{ fontSize: 20 }} />
                         )}
                       </Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 850,
+                          color: 'var(--text-primary)',
+                          fontSize: '15px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
                         {isToday
                           ? "Today's Workout"
                           : isPast
@@ -331,7 +345,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                           : 'Upcoming Workout'}
                       </Typography>
                     </Stack>
-                    <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                    <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', flexShrink: 0 }}>
                       {isToday && (
                         <Box
                           sx={{
@@ -352,6 +366,62 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                       <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650, fontSize: '11.5px' }}>
                         {dateDisplay}
                       </Typography>
+                      {activeDay && (
+                        isPast ? (
+                          <Tooltip title="Past workouts are immutable and cannot be modified">
+                            <Box component="span">
+                              <IconButton
+                                size="small"
+                                disabled
+                                aria-label="Past workout locked"
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  minWidth: 40,
+                                  minHeight: 40,
+                                  p: 0,
+                                  opacity: 0.45,
+                                  color: 'var(--text-secondary)'
+                                }}
+                              >
+                                <LockOutlinedIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Customize Day Routine">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditDay(activeDay);
+                              }}
+                              aria-label="Edit workout schedule"
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                minWidth: 40,
+                                minHeight: 40,
+                                p: 0,
+                                color: 'var(--accent-primary)',
+                                bgcolor: isDark ? 'rgba(255, 115, 56, 0.12)' : 'rgba(255, 115, 56, 0.08)',
+                                borderRadius: isProf ? '0px !important' : '10px',
+                                border: '1px solid rgba(255, 115, 56, 0.2)',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  bgcolor: isDark ? 'rgba(255, 115, 56, 0.22)' : 'rgba(255, 115, 56, 0.16)',
+                                  transform: 'scale(1.05)'
+                                },
+                                '&:active': {
+                                  transform: 'scale(0.95)'
+                                }
+                              }}
+                            >
+                              <EditOutlinedIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                        )
+                      )}
                     </Stack>
                   </Stack>
 
