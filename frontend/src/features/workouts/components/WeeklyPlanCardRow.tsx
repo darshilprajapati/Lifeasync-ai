@@ -22,9 +22,20 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import HotelIcon from '@mui/icons-material/Hotel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useThemeSystem } from '../../../context/ThemeContext';
 import type { WorkoutDay, UserWorkoutPlan } from '../types/workout';
 import { WorkoutDayCard } from './WorkoutDayCard';
+import {
+  getMondayOfWeek,
+  isSameDay,
+  isDateToday,
+  isDatePast,
+  getDayIndexInWeek,
+  getTodayLocalDate
+} from '../utils/workoutDateUtils';
 
 interface WeeklyPlanCardRowProps {
   plan: UserWorkoutPlan;
@@ -53,31 +64,17 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   const isProf = designSystem === 'professional';
   const isDark = mode === 'dark';
   const [confirmSyncOpen, setConfirmSyncOpen] = React.useState(false);
-  const [selectedMobileDayIdx, setSelectedMobileDayIdx] = React.useState<number>(0);
   const [showAllExercises, setShowAllExercises] = React.useState(false);
 
-  // Compute Monday of the selected week
-  const getMonday = (d: Date): Date => {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = (day === 0 ? -6 : 1) - day;
-    date.setDate(date.getDate() + diff);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  };
-
-  const currentMonday = getMonday(selectedDate);
+  // Compute Monday of the selected week safely
+  const currentMonday = getMondayOfWeek(selectedDate);
   const sunday = new Date(currentMonday);
   sunday.setDate(sunday.getDate() + 6);
 
-  const isTodayDate = (date: Date): boolean => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  };
+  // Today's actual local calendar date
+  const today = getTodayLocalDate();
+  const todayMonday = getMondayOfWeek(today);
+  const isViewingCurrentWeek = isSameDay(currentMonday, todayMonday);
 
   const handlePrevWeek = () => {
     const newDate = new Date(selectedDate);
@@ -92,7 +89,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
   };
 
   const handleToday = () => {
-    onDateChange(new Date());
+    onDateChange(getTodayLocalDate());
   };
 
   // Re-map plan days to Monday..Sunday order
@@ -102,6 +99,10 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
     const orderB = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
     return orderA - orderB;
   });
+
+  // Calculate day index within current week
+  // When selectedDate is today, selectedDayIdx is today's index (e.g. 5 for Saturday)
+  const selectedDayIdx = getDayIndexInWeek(selectedDate, currentMonday);
 
   const weekRangeString = `${currentMonday.toLocaleDateString('en-US', {
     month: 'short',
@@ -280,17 +281,21 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
         <Stack spacing={2.2} sx={{ pb: 1 }}>
           {/* Active Day Data */}
           {(() => {
-            const activeDay = orderedDays[selectedMobileDayIdx] || orderedDays[0];
+            const activeDay = orderedDays[selectedDayIdx] || orderedDays[0];
             const activeDate = new Date(currentMonday);
-            activeDate.setDate(activeDate.getDate() + selectedMobileDayIdx);
-            const isToday = isTodayDate(activeDate);
+            activeDate.setDate(activeDate.getDate() + selectedDayIdx);
+            const isToday = isDateToday(activeDate);
+            const isPast = isDatePast(activeDate);
             const exercises = activeDay?.exercises || [];
             const displayExercises = showAllExercises ? exercises : exercises.slice(0, 3);
             const dateDisplay = activeDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const completedCount = exercises.filter((e) => e.isCompleted).length;
+            const totalCount = exercises.length;
+            const isFullyCompleted = activeDay?.isCompletedForDate || (totalCount > 0 && completedCount === totalCount);
 
             return (
               <Stack spacing={2}>
-                {/* 1. Today's Workout Card FIRST */}
+                {/* 1. Today's / Selected Day's Workout Card FIRST */}
                 <Box
                   sx={{
                     p: 2.2,
@@ -302,69 +307,165 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Header: Icon + Today's Workout + Date */}
+                  {/* Header: Icon + Card Title + Date Badge */}
                   <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      <Box sx={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
-                        <FitnessCenterIcon sx={{ fontSize: 20 }} />
+                      <Box
+                        sx={{
+                          color: activeDay?.isRestDay ? '#8B5CF6' : 'var(--accent-primary)',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        {activeDay?.isRestDay ? (
+                          <HotelIcon sx={{ fontSize: 20 }} />
+                        ) : (
+                          <FitnessCenterIcon sx={{ fontSize: 20 }} />
+                        )}
                       </Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
-                        Today's Workout
+                        {isToday
+                          ? "Today's Workout"
+                          : isPast
+                          ? 'Past Workout'
+                          : 'Upcoming Workout'}
                       </Typography>
                     </Stack>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650, fontSize: '11.5px' }}>
-                      {isToday ? `Today • ${dateDisplay}` : dateDisplay}
-                    </Typography>
+                    <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                      {isToday && (
+                        <Box
+                          sx={{
+                            bgcolor: 'var(--accent-primary)',
+                            color: '#ffffff',
+                            fontSize: '9.5px',
+                            fontWeight: 800,
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: '6px',
+                            letterSpacing: '0.4px',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          Today
+                        </Box>
+                      )}
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650, fontSize: '11.5px' }}>
+                        {dateDisplay}
+                      </Typography>
+                    </Stack>
                   </Stack>
 
-                  {/* Main Body: Focus Title + Badges + Exercise Checklist + Graphic */}
+                  {/* Main Body: Focus Title + Badges + Exercise Checklist / Rest State + Graphic */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
                     <Box sx={{ flex: 1, pr: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 850, color: 'var(--text-primary)', fontSize: '18px', mb: 0.8, lineHeight: 1.2 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 850,
+                          color: activeDay?.isRestDay ? '#8B5CF6' : 'var(--text-primary)',
+                          fontSize: '18px',
+                          mb: 0.8,
+                          lineHeight: 1.2
+                        }}
+                      >
                         {activeDay?.focusTitle || (activeDay?.isRestDay ? 'Rest & Recovery' : 'Core & Endurance')}
                       </Typography>
 
                       {/* Duration & Calorie Badges */}
                       <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.8 }}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            px: 1,
-                            py: 0.4,
-                            borderRadius: '8px',
-                            bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                            border: '1px solid var(--card-border)',
-                          }}
-                        >
-                          <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            ⏱ {activeDay?.targetDurationMinutes || 25} min
-                          </Typography>
-                        </Box>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            px: 1,
-                            py: 0.4,
-                            borderRadius: '8px',
-                            bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                            border: '1px solid var(--card-border)',
-                          }}
-                        >
-                          <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            🔥 {activeDay?.estimatedCaloriesBurned ? `${activeDay.estimatedCaloriesBurned} kcal` : '0 kcal (90 est.)'}
-                          </Typography>
-                        </Box>
+                        {activeDay?.isRestDay ? (
+                          <>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.4,
+                                borderRadius: '8px',
+                                bgcolor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.08)',
+                                border: '1px solid rgba(139, 92, 246, 0.25)',
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: '#8B5CF6' }}>
+                                😴 Rest & Recovery
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.4,
+                                borderRadius: '8px',
+                                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                border: '1px solid var(--card-border)',
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                🔥 0 kcal
+                              </Typography>
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.4,
+                                borderRadius: '8px',
+                                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                border: '1px solid var(--card-border)',
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                ⏱ {activeDay?.targetDurationMinutes || 25} min
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.4,
+                                borderRadius: '8px',
+                                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                border: '1px solid var(--card-border)',
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                🔥 {activeDay?.estimatedCaloriesBurned ? `${activeDay.estimatedCaloriesBurned} kcal` : '0 kcal (90 est.)'}
+                              </Typography>
+                            </Box>
+                          </>
+                        )}
                       </Stack>
 
-                      {/* Exercise Checklist */}
+                      {/* Content: Rest State vs Exercise Checklist */}
                       {activeDay?.isRestDay ? (
-                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', py: 1 }}>
-                          Today is set for active rest and muscle recovery. Hydrate and stretch.
-                        </Typography>
+                        <Box
+                          sx={{
+                            p: 1.8,
+                            borderRadius: '16px',
+                            bgcolor: isProf ? 'transparent' : isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
+                            border: isProf ? '1px dashed var(--card-border)' : '1px dashed rgba(139, 92, 246, 0.3)',
+                            textAlign: 'center',
+                            my: 0.8,
+                          }}
+                        >
+                          <HotelIcon sx={{ color: '#8B5CF6', fontSize: 26, mb: 0.4 }} />
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#8B5CF6', fontSize: '13px' }}>
+                            Active Rest & Recovery
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mt: 0.4, lineHeight: 1.4 }}>
+                            {activeDay?.restDayNotes || 'Hydrate, light stretching, and get adequate rest.'}
+                          </Typography>
+                        </Box>
                       ) : (
                         <Stack spacing={0.8} sx={{ mb: 1 }}>
                           {displayExercises.map((ex, exIdx) => (
@@ -375,8 +476,20 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                               sx={{ alignItems: 'center', cursor: 'pointer' }}
                               onClick={() => onOpenDetail(activeDay, activeDate)}
                             >
-                              <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: 'var(--text-secondary)' }} />
-                              <Typography variant="body2" sx={{ fontWeight: 650, fontSize: '12.5px', color: 'var(--text-primary)' }}>
+                              {ex.isCompleted ? (
+                                <CheckCircleIcon sx={{ fontSize: 16, color: '#10B981' }} />
+                              ) : (
+                                <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: 'var(--text-secondary)' }} />
+                              )}
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 650,
+                                  fontSize: '12.5px',
+                                  color: ex.isCompleted ? '#10B981' : 'var(--text-primary)',
+                                  textDecoration: ex.isCompleted ? 'line-through' : 'none'
+                                }}
+                              >
                                 {ex.exerciseName}{' '}
                                 <Typography component="span" variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
                                   ({ex.sets}x{ex.reps || 10})
@@ -398,48 +511,161 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                       )}
                     </Box>
 
-                    {/* Dumbbell Graphic / Icon */}
+                    {/* Graphic Box */}
                     <Box
                       sx={{
                         width: 68,
                         height: 68,
                         borderRadius: '20px',
-                        bgcolor: 'rgba(232, 90, 79, 0.1)',
-                        color: 'var(--accent-primary)',
+                        bgcolor: activeDay?.isRestDay ? 'rgba(139, 92, 246, 0.12)' : 'rgba(232, 90, 79, 0.1)',
+                        color: activeDay?.isRestDay ? '#8B5CF6' : 'var(--accent-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        boxShadow: '0 8px 20px rgba(232, 90, 79, 0.15)',
+                        boxShadow: activeDay?.isRestDay ? '0 8px 20px rgba(139, 92, 246, 0.15)' : '0 8px 20px rgba(232, 90, 79, 0.15)',
                       }}
                     >
-                      <FitnessCenterIcon sx={{ fontSize: 34, transform: 'rotate(-25deg)' }} />
+                      {activeDay?.isRestDay ? (
+                        <HotelIcon sx={{ fontSize: 32 }} />
+                      ) : (
+                        <FitnessCenterIcon sx={{ fontSize: 34, transform: 'rotate(-25deg)' }} />
+                      )}
                     </Box>
                   </Box>
 
-                  {/* Prominent Start Workout Coral Button */}
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    startIcon={<PlayArrowIcon />}
-                    onClick={() => onOpenDetail(activeDay, activeDate)}
-                    sx={{
-                      mt: 1,
-                      py: 1.2,
-                      borderRadius: '16px',
-                      bgcolor: 'var(--accent-primary)',
-                      color: '#FFFFFF',
-                      fontWeight: 800,
-                      fontSize: '14.5px',
-                      boxShadow: '0 6px 20px rgba(232, 90, 79, 0.4)',
-                      textTransform: 'none',
-                      '&:hover': {
-                        bgcolor: 'var(--accent-secondary)',
-                      },
-                    }}
-                  >
-                    Start Workout
-                  </Button>
+                  {/* Primary Action Button Based on Day Status */}
+                  {activeDay?.isRestDay ? (
+                    <Button
+                      disabled
+                      fullWidth
+                      startIcon={<HotelIcon />}
+                      sx={{
+                        mt: 1,
+                        py: 1.2,
+                        borderRadius: '16px',
+                        bgcolor: isDark ? 'rgba(139, 92, 246, 0.15) !important' : 'rgba(139, 92, 246, 0.1) !important',
+                        color: '#8B5CF6 !important',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        textTransform: 'none',
+                        border: '1px solid rgba(139, 92, 246, 0.25)',
+                      }}
+                    >
+                      Rest Scheduled
+                    </Button>
+                  ) : isToday ? (
+                    isFullyCompleted ? (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<CheckCircleIcon />}
+                        onClick={() => onOpenDetail(activeDay, activeDate)}
+                        sx={{
+                          mt: 1,
+                          py: 1.2,
+                          borderRadius: '16px',
+                          bgcolor: '#10B981',
+                          color: '#FFFFFF',
+                          fontWeight: 800,
+                          fontSize: '14.5px',
+                          boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: '#059669' },
+                        }}
+                      >
+                        Review Workout (Completed)
+                      </Button>
+                    ) : completedCount > 0 ? (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<PlayArrowIcon />}
+                        onClick={() => onOpenDetail(activeDay, activeDate)}
+                        sx={{
+                          mt: 1,
+                          py: 1.2,
+                          borderRadius: '16px',
+                          bgcolor: 'var(--accent-primary)',
+                          color: '#FFFFFF',
+                          fontWeight: 800,
+                          fontSize: '14.5px',
+                          boxShadow: '0 6px 20px rgba(232, 90, 79, 0.4)',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                        }}
+                      >
+                        Continue Workout ({completedCount}/{totalCount} Done)
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<PlayArrowIcon />}
+                        onClick={() => onOpenDetail(activeDay, activeDate)}
+                        sx={{
+                          mt: 1,
+                          py: 1.2,
+                          borderRadius: '16px',
+                          bgcolor: 'var(--accent-primary)',
+                          color: '#FFFFFF',
+                          fontWeight: 800,
+                          fontSize: '14.5px',
+                          boxShadow: '0 6px 20px rgba(232, 90, 79, 0.4)',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                        }}
+                      >
+                        Start Workout
+                      </Button>
+                    )
+                  ) : isPast ? (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<VisibilityOutlinedIcon />}
+                      onClick={() => onOpenDetail(activeDay, activeDate)}
+                      sx={{
+                        mt: 1,
+                        py: 1.2,
+                        borderRadius: '16px',
+                        borderColor: 'var(--card-border)',
+                        color: 'var(--text-primary)',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        textTransform: 'none',
+                        '&:hover': {
+                          borderColor: 'var(--accent-primary)',
+                          bgcolor: 'rgba(255, 115, 56, 0.05)',
+                        },
+                      }}
+                    >
+                      View History (Past Workout)
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<VisibilityOutlinedIcon />}
+                      onClick={() => onOpenDetail(activeDay, activeDate)}
+                      sx={{
+                        mt: 1,
+                        py: 1.2,
+                        borderRadius: '16px',
+                        borderColor: 'var(--card-border)',
+                        color: 'var(--text-primary)',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        textTransform: 'none',
+                        '&:hover': {
+                          borderColor: 'var(--accent-primary)',
+                          bgcolor: 'rgba(255, 115, 56, 0.05)',
+                        },
+                      }}
+                    >
+                      View Scheduled Routine
+                    </Button>
+                  )}
                 </Box>
 
                 {/* 2. Weekly Workout Plan Section */}
@@ -448,14 +674,45 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
                       Weekly Workout Plan
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11.5px', cursor: 'pointer' }}
-                      onClick={handleNextWeek}
-                    >
-                      {weekRangeString} &gt;
-                    </Typography>
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                      <IconButton size="small" onClick={handlePrevWeek} sx={{ p: 0.3, color: 'var(--text-secondary)' }}>
+                        <ChevronLeftIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11.5px', mx: 0.2 }}
+                      >
+                        {weekRangeString}
+                      </Typography>
+                      <IconButton size="small" onClick={handleNextWeek} sx={{ p: 0.3, color: 'var(--text-secondary)' }}>
+                        <ChevronRightIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Stack>
                   </Stack>
+
+                  {/* Return to Today Button when browsing another day */}
+                  {!isToday && isViewingCurrentWeek && (
+                    <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        size="small"
+                        onClick={handleToday}
+                        startIcon={<TodayIcon sx={{ fontSize: 13 }} />}
+                        sx={{
+                          py: 0.3,
+                          px: 1,
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          fontSize: '11px',
+                          fontWeight: 750,
+                          color: 'var(--accent-primary)',
+                          bgcolor: 'rgba(255, 115, 56, 0.08)',
+                          '&:hover': { bgcolor: 'rgba(255, 115, 56, 0.15)' }
+                        }}
+                      >
+                        Jump to Today's Workout
+                      </Button>
+                    </Box>
+                  )}
 
                   {/* Compact 7-Day Grid (Mon-Sun) with focus label under each day */}
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: { xs: 0.5, sm: 0.8 }, width: '100%' }}>
@@ -464,7 +721,8 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                       cardDate.setDate(cardDate.getDate() + idx);
                       const dayName = cardDate.toLocaleDateString('en-US', { weekday: 'short' });
                       const dayNum = cardDate.getDate();
-                      const isSelected = selectedMobileDayIdx === idx;
+                      const isSelected = selectedDayIdx === idx;
+                      const isPillToday = isDateToday(cardDate);
                       const isCompleted = day.isCompletedForDate || !!day.completedAt;
 
                       const shortFocus = day.isRestDay
@@ -477,7 +735,6 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                         <Box
                           key={day.id || idx}
                           onClick={() => {
-                            setSelectedMobileDayIdx(idx);
                             onDateChange(cardDate);
                           }}
                           sx={{
@@ -486,7 +743,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                             alignItems: 'center',
                             justifyContent: 'center',
                             minWidth: 0,
-                            py: 1,
+                            py: 0.8,
                             px: 0.3,
                             borderRadius: '12px',
                             bgcolor: isSelected
@@ -498,15 +755,50 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
                               ? 'linear-gradient(135deg, #FF6B6B 0%, #E85A4F 100%)'
                               : undefined,
                             color: isSelected ? '#FFFFFF' : 'var(--text-primary)',
-                            border: '1.5px solid',
-                            borderColor: isSelected ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+                            border: isSelected
+                              ? '1.5px solid rgba(255, 255, 255, 0.4)'
+                              : isPillToday
+                              ? '1.5px solid var(--accent-primary)'
+                              : '1.5px solid transparent',
                             boxShadow: isSelected ? '0 4px 14px rgba(232, 90, 79, 0.4)' : 'none',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             textAlign: 'center',
+                            position: 'relative'
                           }}
                         >
-                          <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 650, color: isCompleted && !isSelected ? '#10B981' : isSelected ? 'rgba(255,255,255,0.9)' : 'var(--text-secondary)' }}>
+                          {isPillToday && (
+                            <Box
+                              sx={{
+                                fontSize: '7px',
+                                fontWeight: 900,
+                                px: 0.4,
+                                py: 0.1,
+                                borderRadius: '3px',
+                                bgcolor: isSelected ? '#FFFFFF' : 'var(--accent-primary)',
+                                color: isSelected ? 'var(--accent-primary)' : '#FFFFFF',
+                                textTransform: 'uppercase',
+                                lineHeight: 1,
+                                mb: 0.3
+                              }}
+                            >
+                              Today
+                            </Box>
+                          )}
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '10px',
+                              fontWeight: 650,
+                              color: isCompleted && !isSelected
+                                ? '#10B981'
+                                : isSelected
+                                ? 'rgba(255,255,255,0.9)'
+                                : isPillToday
+                                ? 'var(--accent-primary)'
+                                : 'var(--text-secondary)'
+                            }}
+                          >
                             {dayName}
                           </Typography>
                           <Typography variant="body2" sx={{ fontSize: '13px', fontWeight: 850, my: 0.2 }}>
@@ -557,7 +849,7 @@ export const WeeklyPlanCardRow: React.FC<WeeklyPlanCardRowProps> = ({
           {orderedDays.map((day, idx) => {
             const cardDate = new Date(currentMonday);
             cardDate.setDate(cardDate.getDate() + idx);
-            const isToday = isTodayDate(cardDate);
+            const isToday = isDateToday(cardDate);
 
             return (
               <WorkoutDayCard

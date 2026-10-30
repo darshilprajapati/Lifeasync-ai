@@ -19,7 +19,7 @@ import { EditWorkoutDayModal } from './components/EditWorkoutDayModal';
 import { WorkoutDayDetailModal } from './components/WorkoutDayDetailModal';
 import { AiPlanGeneratorWidget } from './components/AiPlanGeneratorWidget';
 import { trackAction } from '../../utils/analytics';
-import { formatLocalDate } from './utils/workoutDateUtils';
+import { formatLocalDate, getMondayOfWeek, getTodayLocalDate } from './utils/workoutDateUtils';
 import { useNotification } from '../../context/NotificationContext';
 
 import { useThemeSystem } from '../../context/ThemeContext';
@@ -52,7 +52,7 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
   const isProf = designSystem === 'professional';
   const isDark = mode === 'dark';
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => getTodayLocalDate());
   const [plan, setPlan] = useState<UserWorkoutPlan | null>(null);
   const [summary, setSummary] = useState<WorkoutWeekSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -96,6 +96,37 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
     loadData(selectedDate);
   }, [selectedDate, loadData]);
 
+  // Automatic local date refresh on midnight rollover and window focus/resume
+  useEffect(() => {
+    let lastDateStr = formatLocalDate(new Date());
+
+    const checkDateChange = () => {
+      const currentDateStr = formatLocalDate(new Date());
+      if (currentDateStr !== lastDateStr) {
+        lastDateStr = currentDateStr;
+        const now = getTodayLocalDate();
+        setSelectedDate(now);
+        loadData(now);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkDateChange();
+      }
+    };
+
+    const intervalId = setInterval(checkDateChange, 60000);
+    window.addEventListener('focus', checkDateChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', checkDateChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadData]);
+
   useEffect(() => {
     const handleWorkoutEvent = async () => {
       loadData(selectedDate);
@@ -135,20 +166,11 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
   };
 
   const handleToday = () => {
-    setSelectedDate(new Date());
+    setSelectedDate(getTodayLocalDate());
   };
 
   // Compute Monday & Sunday for week label
-  const getMonday = (d: Date): Date => {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = (day === 0 ? -6 : 1) - day;
-    date.setDate(date.getDate() + diff);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  };
-
-  const currentMonday = getMonday(selectedDate);
+  const currentMonday = getMondayOfWeek(selectedDate);
   const sunday = new Date(currentMonday);
   sunday.setDate(sunday.getDate() + 6);
   const weekRangeString = `${currentMonday.toLocaleDateString('en-US', {

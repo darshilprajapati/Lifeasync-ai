@@ -22,6 +22,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useThemeSystem } from '../../../context/ThemeContext';
 import type { WorkoutDay } from '../types/workout';
+import { isDatePast, isDateFuture, isDateToday } from '../utils/workoutDateUtils';
 
 interface WorkoutDayCardProps {
   day: WorkoutDay;
@@ -34,7 +35,7 @@ interface WorkoutDayCardProps {
 export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
   day,
   calendarDate,
-  isToday,
+  isToday: isTodayProp,
   onOpenDetail,
   onEdit
 }) => {
@@ -42,9 +43,9 @@ export const WorkoutDayCard: React.FC<WorkoutDayCardProps> = ({
   const isProf = designSystem === 'professional';
   const isDark = mode === 'dark';
 
-  const today = new Date();
-  const isPast = calendarDate < new Date(today.setHours(0, 0, 0, 0));
-  const isFuture = calendarDate > new Date(today.setHours(23, 59, 59, 999));
+  const isToday = isTodayProp ?? isDateToday(calendarDate);
+  const isPast = isDatePast(calendarDate);
+  const isFuture = isDateFuture(calendarDate);
 
   const totalExercises = day.exercises?.length ?? 0;
   const completedExercises = day.exercises?.filter((e) => e.isCompleted).length ?? 0;

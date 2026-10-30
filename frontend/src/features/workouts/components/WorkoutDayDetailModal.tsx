@@ -26,7 +26,7 @@ import type { WorkoutDay, WorkoutDayExercise } from '../types/workout';
 import { workoutService } from '../services/workoutService';
 import { ExerciseDemonstrationMedia } from './ExerciseDemonstrationMedia';
 import { trackAction } from '../../../utils/analytics';
-import { formatLocalDate, isDateToday } from '../utils/workoutDateUtils';
+import { formatLocalDate, isDateToday, isDatePast, isDateFuture } from '../utils/workoutDateUtils';
 import { useNotification } from '../../../context/NotificationContext';
 import { useThemeSystem } from '../../../context/ThemeContext';
 
@@ -65,11 +65,8 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   if (!activeDay) return null;
 
   const isToday = isDateToday(calendarDate);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const isPast = calendarDate < todayStart;
-  const isFuture = calendarDate > todayEnd;
+  const isPast = isDatePast(calendarDate);
+  const isFuture = isDateFuture(calendarDate);
 
   const exercises = activeDay.exercises || [];
   const completedCount = exercises.filter((e) => e.isCompleted).length;
