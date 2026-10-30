@@ -1056,14 +1056,11 @@ const Career: React.FC = () => {
                       }));
                     }}
                     sx={{
-                      p: 1.6,
+                      p: 1.4,
                       borderRadius: '16px',
                       bgcolor: 'var(--card-bg)',
                       border: '1px solid var(--card-border)',
                       boxShadow: 'var(--shadow-soft)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       '&:hover': {
@@ -1071,40 +1068,62 @@ const Career: React.FC = () => {
                       },
                     }}
                   >
-                    <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: '10px',
-                          bgcolor: cfg.bg,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {cfg.icon}
-                      </Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary)' }}>
-                        {cfg.label}
-                      </Typography>
-                      <Chip
-                        label={jobs.length}
-                        size="small"
-                        sx={{
-                          height: 22,
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          bgcolor: jobs.length > 0 ? cfg.bg : 'var(--bg-secondary)',
-                          color: jobs.length > 0 ? cfg.color : 'var(--text-secondary)',
-                          borderRadius: '8px',
-                        }}
-                      />
-                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        width: '100%',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                      }}
+                    >
+                      <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', minWidth: 0, flex: 1 }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '10px',
+                            bgcolor: cfg.bg,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {cfg.icon}
+                        </Box>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '14.5px',
+                            color: 'var(--text-primary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {cfg.label}
+                        </Typography>
+                        <Chip
+                          label={jobs.length}
+                          size="small"
+                          sx={{
+                            height: 22,
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            bgcolor: jobs.length > 0 ? cfg.bg : 'var(--bg-secondary)',
+                            color: jobs.length > 0 ? cfg.color : 'var(--text-secondary)',
+                            borderRadius: '8px',
+                            flexShrink: 0,
+                          }}
+                        />
+                      </Stack>
 
-                    <IconButton size="small" sx={{ color: 'var(--text-secondary)' }}>
-                      {isExpanded ? <ExpandLessIcon sx={{ fontSize: 20 }} /> : <ExpandMoreIcon sx={{ fontSize: 20 }} />}
-                    </IconButton>
+                      <IconButton size="small" sx={{ color: 'var(--text-secondary)', p: 0.5, flexShrink: 0 }}>
+                        {isExpanded ? <ExpandLessIcon sx={{ fontSize: 20 }} /> : <ExpandMoreIcon sx={{ fontSize: 20 }} />}
+                      </IconButton>
+                    </Box>
                   </TiltCard>
 
                   {/* Expanded Stage Content */}

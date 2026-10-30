@@ -53,6 +53,9 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
   const [completingExercise, setCompletingExercise] = useState<WorkoutDayExercise | null>(null);
   const [actualMinutesInput, setActualMinutesInput] = useState<string>('');
   const [isSubmittingDuration, setIsSubmittingDuration] = useState<boolean>(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState<boolean>(false);
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState<boolean>(false);
+  const [isFinishingSession, setIsFinishingSession] = useState<boolean>(false);
 
   // Sync state when day changes
   React.useEffect(() => {
@@ -186,10 +189,74 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
     }
   };
 
+  const handleAttemptClose = () => {
+    // If not today's session, or rest day, or no exercises were completed in this session, or already fully completed, exit safely
+    if (!isToday || activeDay.isRestDay || completedCount === 0 || isFullyCompleted) {
+      onClose();
+      return;
+    }
+    // If exercises have been completed but workout is not finished yet, confirm exit
+    setExitConfirmOpen(true);
+  };
+
+  const handleFinishSession = async () => {
+    if (isFinishingSession) return;
+    setIsFinishingSession(true);
+
+    try {
+      const sessionDateStr = formatLocalDate(calendarDate);
+      const duration = activeDay.actualDurationMinutes && activeDay.actualDurationMinutes > 0
+        ? activeDay.actualDurationMinutes
+        : Math.max(1, activeDay.targetDurationMinutes || 25);
+
+      await workoutService.logSession({
+        workoutDayId: activeDay.id,
+        sessionDate: sessionDateStr,
+        isCompleted: true,
+        actualDurationMinutes: duration,
+        notes: `Completed ${completedCount} of ${totalCount} exercises.`
+      });
+
+      trackAction('workout_session_completed', {
+        module: 'workout',
+        day_id: activeDay.id,
+        completed_exercises: completedCount,
+        total_exercises: totalCount,
+        actual_duration_minutes: duration
+      });
+
+      notify.success(
+        `Workout "${activeDay.focusTitle}" finished! ${duration} mins recorded.`,
+        'Workout Completed!'
+      );
+
+      const updated: WorkoutDay = {
+        ...activeDay,
+        isCompletedForDate: true,
+        completedAt: new Date().toISOString()
+      };
+      setActiveDay(updated);
+      onDayUpdated(updated);
+
+      window.dispatchEvent(new CustomEvent('lifesync:workout-updated', { detail: { day: updated } }));
+      window.dispatchEvent(new CustomEvent('lifesync:health-updated'));
+      window.dispatchEvent(new CustomEvent('lifesync:score-updated'));
+
+      setFinishConfirmOpen(false);
+      onClose();
+    } catch (err: any) {
+      console.error('Failed to finalize workout session:', err);
+      const errMsg = err?.response?.data?.message || 'Failed to complete workout session.';
+      notify.error(errMsg, 'Submission Error');
+    } finally {
+      setIsFinishingSession(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleAttemptClose}
       maxWidth="md"
       fullWidth
       slotProps={{
@@ -200,24 +267,31 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
             color: 'var(--text-primary)',
             backgroundImage: 'none',
             border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
-            maxHeight: '90vh'
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column'
           }
         }
       }}
     >
-      {/* Header */}
+      {/* Sticky Header with Prominent Close (X) Button */}
       <DialogTitle
         sx={{
-          p: 3,
-          pb: 2,
+          p: { xs: 2, sm: 2.5 },
+          pb: 1.5,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
+          gap: 1.5,
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
           borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
         }}
       >
-        <Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.8 }}>
+        <Box sx={{ flex: 1, minWidth: 0, pr: 0.5 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.8, flexWrap: 'wrap', gap: 0.6 }}>
             <Typography
               variant="caption"
               sx={{
@@ -277,12 +351,20 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
             )}
           </Stack>
 
-          <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              fontSize: { xs: '1.25rem', sm: '1.5rem' },
+              lineHeight: 1.2
+            }}
+          >
             {activeDay.focusTitle}
           </Typography>
 
           {!activeDay.isRestDay && (
-            <Stack direction="row" spacing={1.5} sx={{ mt: 1, alignItems: 'center' }}>
+            <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap', gap: 0.6 }}>
               <Chip
                 icon={<AccessTimeIcon sx={{ fontSize: '14px !important' }} />}
                 label={
@@ -294,7 +376,8 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                 sx={{
                   bgcolor: completedCount > 0 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99, 102, 241, 0.08)',
                   color: completedCount > 0 ? '#059669' : 'var(--accent-primary)',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: '11px'
                 }}
               />
               <Chip
@@ -305,7 +388,7 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                     : `0 kcal (est. ${totalCount * 45} kcal total)`
                 }
                 size="small"
-                sx={{ bgcolor: 'rgba(249, 115, 22, 0.08)', color: '#ea580c', fontWeight: 600 }}
+                sx={{ bgcolor: 'rgba(249, 115, 22, 0.08)', color: '#ea580c', fontWeight: 600, fontSize: '11px' }}
               />
               <Chip
                 label={`${completedCount} of ${totalCount} completed`}
@@ -313,15 +396,35 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
                 sx={{
                   bgcolor: isFullyCompleted ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                   color: isFullyCompleted ? '#10b981' : 'var(--text-secondary)',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  fontSize: '11px'
                 }}
               />
             </Stack>
           )}
         </Box>
 
-        <IconButton onClick={onClose} size="small" sx={{ color: 'var(--text-secondary)' }}>
-          <CloseIcon />
+        {/* Clearly Visible & Accessible Close Button */}
+        <IconButton
+          onClick={handleAttemptClose}
+          size="medium"
+          aria-label="Close workout session"
+          sx={{
+            flexShrink: 0,
+            p: 1,
+            borderRadius: isProf ? '0px' : '12px',
+            bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)',
+            color: 'var(--text-primary)',
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              bgcolor: 'rgba(232, 90, 79, 0.12)',
+              color: 'var(--accent-primary)',
+              borderColor: 'var(--accent-primary)'
+            }
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 22 }} />
         </IconButton>
       </DialogTitle>
 
@@ -677,6 +780,271 @@ export const WorkoutDayDetailModal: React.FC<WorkoutDayDetailModalProps> = ({
               {isSubmittingDuration ? 'Saving...' : 'Mark Complete'}
             </Button>
           </Stack>
+        </DialogActions>
+      </Dialog>
+
+      {/* Sticky Bottom Actions Bar */}
+      <DialogActions
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          px: { xs: 2.5, sm: 3 },
+          borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)',
+          bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 1.5
+        }}
+      >
+        {activeDay.isRestDay ? (
+          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              sx={{
+                borderRadius: isProf ? 0 : '12px',
+                textTransform: 'none',
+                fontWeight: 700,
+                color: 'var(--text-secondary)',
+                borderColor: 'var(--card-border)',
+                px: 3,
+                py: 0.8
+              }}
+            >
+              Close
+            </Button>
+          </Box>
+        ) : (
+          <>
+            <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 'auto' } }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+                {isFullyCompleted ? 'Session Complete 🎉' : `${completedCount} of ${totalCount} Exercises Done (${progressPercent}%)`}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', display: 'block' }}>
+                {isFullyCompleted
+                  ? 'All exercises completed. Great job on finishing your workout!'
+                  : isToday
+                  ? 'Mark exercises as complete or finish your session when done.'
+                  : 'Viewing scheduled workout details.'}
+              </Typography>
+            </Box>
+
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                onClick={handleAttemptClose}
+                sx={{
+                  flex: { xs: 1, sm: 'none' },
+                  borderRadius: isProf ? 0 : '12px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  px: 2.2,
+                  py: 0.9,
+                  color: 'var(--text-secondary)',
+                  borderColor: 'var(--card-border)',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                  '&:hover': {
+                    borderColor: 'var(--accent-primary)',
+                    color: 'var(--text-primary)'
+                  }
+                }}
+              >
+                {isFullyCompleted ? 'Close' : 'Exit'}
+              </Button>
+
+              {isToday && (
+                <Button
+                  variant="contained"
+                  onClick={() => setFinishConfirmOpen(true)}
+                  disabled={isSubmittingDuration || isFinishingSession || isFullyCompleted}
+                  startIcon={<CheckCircleIcon sx={{ fontSize: '18px !important' }} />}
+                  sx={{
+                    flex: { xs: 1.5, sm: 'none' },
+                    borderRadius: isProf ? 0 : '12px',
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    px: 2.8,
+                    py: 0.9,
+                    bgcolor: isFullyCompleted ? '#10B981' : 'var(--accent-primary)',
+                    color: '#ffffff',
+                    boxShadow: isFullyCompleted ? '0 4px 14px rgba(16, 185, 129, 0.35)' : '0 4px 14px rgba(255, 111, 38, 0.35)',
+                    '&:hover': {
+                      bgcolor: isFullyCompleted ? '#059669' : 'var(--accent-secondary)'
+                    }
+                  }}
+                >
+                  {isFullyCompleted ? 'Completed' : 'Finish Workout'}
+                </Button>
+              )}
+            </Stack>
+          </>
+        )}
+      </DialogActions>
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog
+        open={exitConfirmOpen}
+        onClose={() => setExitConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: isProf ? 0 : '18px',
+              p: 1,
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'),
+              boxShadow: '0 12px 32px rgba(0,0,0,0.25)'
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '18px', color: 'var(--text-primary)', pb: 0.5 }}>
+          Exit Workout Session?
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            You have completed <strong>{completedCount} of {totalCount}</strong> exercises. Completed exercises and actual durations are already saved.
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 1, lineHeight: 1.5 }}>
+            Do you want to continue working out or exit this session?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setExitConfirmOpen(false);
+              onClose();
+            }}
+            sx={{
+              borderRadius: isProf ? 0 : '10px',
+              textTransform: 'none',
+              fontWeight: 700,
+              color: 'var(--text-secondary)',
+              borderColor: 'var(--card-border)'
+            }}
+          >
+            Exit Workout
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setExitConfirmOpen(false)}
+            sx={{
+              borderRadius: isProf ? 0 : '10px',
+              textTransform: 'none',
+              fontWeight: 800,
+              bgcolor: 'var(--accent-primary)',
+              color: '#ffffff',
+              '&:hover': { bgcolor: 'var(--accent-secondary)' }
+            }}
+          >
+            Continue Workout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Finish Workout Confirmation Dialog */}
+      <Dialog
+        open={finishConfirmOpen}
+        onClose={() => !isFinishingSession && setFinishConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: isProf ? 0 : '18px',
+              p: 1,
+              bgcolor: isProf ? (isDark ? '#1F2732 !important' : '#ffffff') : (isDark ? '#1A1D2D !important' : '#ffffff'),
+              border: isProf ? '1px solid var(--card-border)' : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'),
+              boxShadow: '0 12px 32px rgba(0,0,0,0.25)'
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '18px', color: 'var(--text-primary)', pb: 0.5 }}>
+          Finish Workout Session?
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.5, mb: 1.8 }}>
+            {completedCount === totalCount
+              ? `You've completed all ${totalCount} exercises! Ready to finish and log this workout?`
+              : `You have completed ${completedCount} of ${totalCount} exercises. Ready to finalize and complete this session?`}
+          </Typography>
+
+          <Box
+            sx={{
+              p: 1.8,
+              borderRadius: isProf ? 0 : '14px',
+              bgcolor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+              border: '1px solid var(--card-border)'
+            }}
+          >
+            <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.8 }}>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650 }}>
+                Workout:
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                {activeDay.focusTitle}
+              </Typography>
+            </Stack>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.8 }}>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650 }}>
+                Exercises Completed:
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#10B981' }}>
+                {completedCount} / {totalCount}
+              </Typography>
+            </Stack>
+            <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650 }}>
+                Duration Logged:
+              </Typography>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--accent-primary)' }}>
+                {activeDay.actualDurationMinutes && activeDay.actualDurationMinutes > 0
+                  ? `${activeDay.actualDurationMinutes} mins`
+                  : `${activeDay.targetDurationMinutes || 25} mins planned`}
+              </Typography>
+            </Stack>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setFinishConfirmOpen(false)}
+            disabled={isFinishingSession}
+            sx={{
+              borderRadius: isProf ? 0 : '10px',
+              textTransform: 'none',
+              fontWeight: 700,
+              color: 'var(--text-secondary)',
+              borderColor: 'var(--card-border)'
+            }}
+          >
+            Keep Working Out
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleFinishSession}
+            disabled={isFinishingSession}
+            sx={{
+              borderRadius: isProf ? 0 : '10px',
+              textTransform: 'none',
+              fontWeight: 800,
+              bgcolor: 'var(--accent-primary)',
+              color: '#ffffff',
+              boxShadow: '0 4px 12px rgba(255, 111, 38, 0.35)',
+              '&:hover': { bgcolor: 'var(--accent-secondary)' }
+            }}
+          >
+            {isFinishingSession ? 'Submitting...' : 'Yes, Finish Workout'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Dialog>
