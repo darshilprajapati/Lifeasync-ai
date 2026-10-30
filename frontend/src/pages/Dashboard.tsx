@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -11,10 +11,13 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-  IconButton
+  IconButton,
+  LinearProgress
 } from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import BedtimeIcon from '@mui/icons-material/Bedtime';
 import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
@@ -108,6 +111,27 @@ const Dashboard: React.FC = () => {
   const [penaltyNotice, setPenaltyNotice] = useState<string | null>(null);
   const [historicalScores, setHistoricalScores] = useState<HistoricalScore[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<any>(null);
+
+  const sevenDayPills = useMemo(() => {
+    const days: { dateStr: string; label: string; score: number; isToday: boolean }[] = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      const monthDay = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const found = historicalScores.find((h) => h.date && h.date.startsWith(iso));
+      const score = i === 0 ? Math.round(lifeScore) : found ? Math.round(found.score) : 5;
+      days.push({
+        dateStr: iso,
+        label: monthDay,
+        score,
+        isToday: i === 0,
+      });
+    }
+    return days;
+  }, [historicalScores, lifeScore]);
 
   const fetchDashboardData = async () => {
     try {
@@ -115,13 +139,17 @@ const Dashboard: React.FC = () => {
       const today = new Date();
 
       // Trigger parallel API loading including backend LifeScore calculations
-      const [finRes, healthRes, plannerRes, scoreRes, historyRes] = await Promise.all([
+      const [finRes, healthRes, plannerRes, scoreRes, historyRes, lbRes] = await Promise.all([
         apiClient.get('/api/finance/summary').catch(() => null),
         apiClient.get('/api/health').catch(() => null),
         apiClient.get('/api/planner').catch(() => null),
         apiClient.get('/api/lifescore/today').catch(() => null),
         apiClient.get('/api/lifescore/history?days=7').catch(() => null),
+        apiClient.get('/api/lifescore/leaderboard?scope=city&page=1&pageSize=5').catch(() => null),
       ]);
+      if (lbRes && lbRes.data?.isSuccess) {
+        setLeaderboardData(lbRes.data.data);
+      }
 
       // 1. Finance
       let currentBalance = 0;
@@ -556,165 +584,193 @@ const Dashboard: React.FC = () => {
   return (
     <PageWrapper>
       <Box sx={{ padding: { xs: '16px', sm: '20px', md: '24px' }, height: '100%', overflowY: 'auto' }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2.5, md: 4 }, gap: 1.5 }}
-        >
-          <Box>
-            <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
-              {getGreeting()}, {user?.fullName || 'User'}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-              {selectedDate ? `Reviewing historical performance for ${selectedDate}.` : 'Here is your daily habit intelligence and Life Score for today.'}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
-            <IconSlideButton
-              variant="outlined"
-              onClick={fetchDashboardData}
-              startIcon={<RefreshIcon />}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '12px',
-                borderColor: isProf ? 'var(--card-border)' : 'rgba(232, 90, 79, 0.4)',
-                color: 'var(--accent-primary)',
-                fontWeight: 650,
-                px: 2,
-                py: 0.8,
-                fontSize: { xs: '12px', sm: '14px' },
-                bgcolor: 'var(--card-bg)',
-                '&:hover': {
-                  bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(232, 90, 79, 0.08)',
-                  borderColor: 'var(--accent-primary)'
-                }
-              }}
-            >
-              Refresh
-            </IconSlideButton>
-            <ReportExporter module="All" buttonVariant="contained" buttonColor="primary" />
+        {isMobile ? (
+          <Stack
+            direction="row"
+            sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, gap: 1 }}
+          >
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.3, letterSpacing: '-0.3px' }}>
+                {getGreeting()}, {user?.fullName?.split(' ')[0]?.toLowerCase() || 'darshil'}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', maxWidth: '270px', lineHeight: 1.3 }}>
+                Let's build a better tomorrow with small consistent habits.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+              <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
+              <IconButton
+                size="small"
+                onClick={fetchDashboardData}
+                aria-label="Refresh"
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: isProf ? 0 : '10px',
+                  border: '1px solid var(--card-border)',
+                  bgcolor: 'var(--card-bg)',
+                  color: 'var(--accent-primary)',
+                  '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)' }
+                }}
+              >
+                <RefreshIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <ReportExporter module="All" buttonVariant="outlined" iconOnly />
+            </Stack>
           </Stack>
-        </Stack>
+        ) : (
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2.5, md: 4 }, gap: 1.5 }}
+          >
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'var(--text-primary)', mb: 0.5 }}>
+                {getGreeting()}, {user?.fullName || 'User'}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+                {selectedDate ? `Reviewing historical performance for ${selectedDate}.` : 'Here is your daily habit intelligence and Life Score for today.'}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
+              <IconSlideButton
+                variant="outlined"
+                onClick={fetchDashboardData}
+                startIcon={<RefreshIcon />}
+                sx={{
+                  borderRadius: isProf ? '0px !important' : '12px',
+                  borderColor: isProf ? 'var(--card-border)' : 'rgba(232, 90, 79, 0.4)',
+                  color: 'var(--accent-primary)',
+                  fontWeight: 650,
+                  px: 2,
+                  py: 0.8,
+                  fontSize: { xs: '12px', sm: '14px' },
+                  bgcolor: 'var(--card-bg)',
+                  '&:hover': {
+                    bgcolor: isProf ? 'var(--hover-bg, rgba(0,0,0,0.04))' : 'rgba(232, 90, 79, 0.08)',
+                    borderColor: 'var(--accent-primary)'
+                  }
+                }}
+              >
+                Refresh
+              </IconSlideButton>
+              <ReportExporter module="All" buttonVariant="contained" buttonColor="primary" />
+            </Stack>
+          </Stack>
+        )}
 
-        {loading ? (
+{loading ? (
           <LogoLoader />
         ) : isMobile ? (
-          /* Mobile View matching Reference Image 2 */
+          /* Mobile View matching Option B - Score-First (Reference Screenshot 1) */
           <Stack spacing={2} sx={{ pb: 3 }}>
-            {/* 1. Neon Circular Ring Life Score Card */}
+            {/* 1. Score-First: Life Score Card */}
             <TiltCard
               sx={{
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
+                p: 2.2,
                 borderRadius: isProf ? 0 : '24px',
                 background: isProf
                   ? 'var(--card-bg)'
                   : isDark
-                  ? 'radial-gradient(circle at 50% 40%, rgba(255, 99, 71, 0.15) 0%, rgba(20, 16, 28, 0.9) 70%)'
-                  : 'radial-gradient(circle at 50% 40%, rgba(255, 120, 100, 0.15) 0%, rgba(255, 255, 255, 0.95) 75%)',
-                boxShadow: isProf ? 'none' : isDark ? '0 12px 32px rgba(0,0,0,0.45)' : '0 10px 30px rgba(232, 90, 79, 0.12)'
+                  ? 'radial-gradient(circle at 30% 30%, rgba(255, 99, 71, 0.16) 0%, rgba(20, 16, 28, 0.94) 75%)'
+                  : 'radial-gradient(circle at 30% 30%, rgba(255, 120, 100, 0.14) 0%, rgba(255, 255, 255, 0.96) 75%)',
+                border: '1px solid var(--card-border)',
+                boxShadow: isProf ? 'none' : isDark ? '0 12px 32px rgba(0,0,0,0.45)' : '0 10px 30px rgba(232, 90, 79, 0.12)',
               }}
             >
-              {/* Circular SVG Gauge */}
-              <Box sx={{ position: 'relative', width: 170, height: 170, my: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="170" height="170" viewBox="0 0 170 170" style={{ transform: 'rotate(-90deg)' }}>
-                  <defs>
-                    <linearGradient id="scoreNeonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FFA07A" />
-                      <stop offset="50%" stopColor="#FF6B6B" />
-                      <stop offset="100%" stopColor="#E85A4F" />
-                    </linearGradient>
-                  </defs>
-                  {/* Background Track */}
-                  <circle
-                    cx="85"
-                    cy="85"
-                    r="68"
-                    stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
-                    strokeWidth="10"
-                    fill="transparent"
-                  />
-                  {/* Progress Arc */}
-                  <circle
-                    cx="85"
-                    cy="85"
-                    r="68"
-                    stroke="url(#scoreNeonGrad)"
-                    strokeWidth="10"
-                    strokeDasharray={2 * Math.PI * 68}
-                    strokeDashoffset={2 * Math.PI * 68 - (Math.min(100, Math.max(0, lifeScore)) / 100) * (2 * Math.PI * 68)}
-                    strokeLinecap="round"
-                    fill="transparent"
-                    style={{
-                      transition: 'stroke-dashoffset 1s ease-in-out',
-                      filter: isProf ? 'none' : 'drop-shadow(0 0 6px rgba(255, 107, 107, 0.6))'
-                    }}
-                  />
-                </svg>
-
-                {/* Inner Content */}
-                <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                  <FavoriteIcon sx={{ color: penaltyPoints > 0 ? '#ef4444' : '#E85A4F', fontSize: '26px', mb: 0.5 }} />
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>
-                    Life Score
-                  </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mt: 0.2 }}>
-                    {lifeScore.toFixed(1)} / 100
-                  </Typography>
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                {/* Circular SVG Gauge */}
+                <Box sx={{ position: 'relative', width: 130, height: 130, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="130" height="130" viewBox="0 0 130 130" style={{ transform: 'rotate(-90deg)' }}>
+                    <defs>
+                      <linearGradient id="scoreNeonGradMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#FFA07A" />
+                        <stop offset="50%" stopColor="#FF6B6B" />
+                        <stop offset="100%" stopColor="#E85A4F" />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="65"
+                      cy="65"
+                      r="52"
+                      stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                      strokeWidth="9"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="65"
+                      cy="65"
+                      r="52"
+                      stroke="url(#scoreNeonGradMobile)"
+                      strokeWidth="9"
+                      strokeDasharray={2 * Math.PI * 52}
+                      strokeDashoffset={2 * Math.PI * 52 - (Math.min(100, Math.max(0, lifeScore)) / 100) * (2 * Math.PI * 52)}
+                      strokeLinecap="round"
+                      fill="transparent"
+                      style={{
+                        transition: 'stroke-dashoffset 1s ease-in-out',
+                        filter: isProf ? 'none' : 'drop-shadow(0 0 6px rgba(255, 107, 107, 0.5))'
+                      }}
+                    />
+                  </svg>
+                  <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                    <FavoriteIcon sx={{ color: penaltyPoints > 0 ? '#ef4444' : '#E85A4F', fontSize: '20px', mb: 0.2 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontSize: '17px' }}>
+                      {lifeScore.toFixed(1)} / 100
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '10.5px', mt: 0.2 }}>
+                      Life Score
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
 
-              {penaltyPoints > 0 && (
-                <Chip
-                  size="small"
-                  label={`−${penaltyPoints} pts penalty`}
-                  color="error"
-                  sx={{ mt: 1, height: '22px', fontSize: '11px', fontWeight: 700, borderRadius: isProf ? '0px !important' : '6px' }}
-                />
-              )}
+                {/* Score Description / Motivational Text */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.4, fontSize: '15px' }}>
+                    {lifeScore > 50 ? 'Outstanding Momentum!' : lifeScore > 0 ? 'Good Progress Today!' : 'A fresh day starts at zero.'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontSize: '12.5px', lineHeight: 1.35 }}>
+                    {penaltyPoints > 0
+                      ? `You have a ${penaltyPoints} pts deadline penalty today. Complete tasks to restore your score.`
+                      : 'Log your habits to build your score.'}
+                  </Typography>
+                  {penaltyPoints > 0 && (
+                    <Chip
+                      size="small"
+                      label={`-${penaltyPoints} pts penalty`}
+                      color="error"
+                      sx={{ mt: 1, height: '20px', fontSize: '10.5px', fontWeight: 700, borderRadius: isProf ? 0 : '6px' }}
+                    />
+                  )}
+                </Box>
+              </Stack>
             </TiltCard>
 
-            {/* 2. 3 Compact Metric Cards in a Row (Balance, Water, Tasks) matching Reference Image 2 */}
-            <Grid container spacing={1.5}>
+            {/* 2. 3 Compact Metric Cards (Balance, Water, Tasks) */}
+            <Grid container spacing={1.2}>
               {/* Balance */}
               <Grid size={{ xs: 4 }}>
                 <TiltCard
+                  onClick={() => navigate('/finance')}
                   sx={{
-                    p: 1.5,
-                    height: '100%',
+                    p: 1.4,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '16px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    borderRadius: isProf ? 0 : '18px'
+                    height: '100%'
                   }}
-                  onClick={() => navigate('/finance')}
                 >
-                  <Box
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: 'rgba(232, 90, 79, 0.12)',
-                      color: '#E85A4F',
-                      mb: 1
-                    }}
-                  >
-                    <AccountBalanceWalletIcon sx={{ fontSize: '20px' }} />
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(232, 90, 79, 0.12)', color: '#E85A4F', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 0.8 }}>
+                    <AccountBalanceWalletIcon sx={{ fontSize: 18 }} />
                   </Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: balance >= 0 ? 'var(--text-primary)' : '#E85A4F', fontSize: '13px', lineHeight: 1.2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.1 }}>
                     {formatINR(balance)}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10.5px', mt: 0.3 }}>
                     Balance
                   </Typography>
                 </TiltCard>
@@ -723,39 +779,27 @@ const Dashboard: React.FC = () => {
               {/* Water */}
               <Grid size={{ xs: 4 }}>
                 <TiltCard
+                  onClick={() => navigate('/health')}
                   sx={{
-                    p: 1.5,
-                    height: '100%',
+                    p: 1.4,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '16px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    borderRadius: isProf ? 0 : '18px'
+                    height: '100%'
                   }}
-                  onClick={() => navigate('/health')}
                 >
-                  <Box
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: 'rgba(0, 188, 212, 0.12)',
-                      color: '#00BCD4',
-                      mb: 1
-                    }}
-                  >
-                    <LocalDrinkIcon sx={{ fontSize: '20px' }} />
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(0, 188, 212, 0.12)', color: '#00BCD4', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 0.8 }}>
+                    <LocalDrinkIcon sx={{ fontSize: 18 }} />
                   </Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
-                    {todaysWater} ml
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                    {todaysWater} / 2000 ml
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
-                    Water
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10.5px', mt: 0.3 }}>
+                    Water Intake
                   </Typography>
                 </TiltCard>
               </Grid>
@@ -763,105 +807,410 @@ const Dashboard: React.FC = () => {
               {/* Tasks */}
               <Grid size={{ xs: 4 }}>
                 <TiltCard
+                  onClick={() => navigate('/planner')}
                   sx={{
-                    p: 1.5,
-                    height: '100%',
+                    p: 1.4,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    borderRadius: isProf ? 0 : '16px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    borderRadius: isProf ? 0 : '18px'
+                    height: '100%'
                   }}
-                  onClick={() => navigate('/planner')}
                 >
-                  <Box
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: 'rgba(124, 58, 237, 0.12)',
-                      color: '#7C3AED',
-                      mb: 1
-                    }}
-                  >
-                    <CheckBoxOutlinedIcon sx={{ fontSize: '20px' }} />
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(124, 58, 237, 0.12)', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 0.8 }}>
+                    <CheckBoxOutlinedIcon sx={{ fontSize: 18 }} />
                   </Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.1 }}>
                     {completedTasks} / {totalTasks}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', mt: 0.5 }}>
-                    Tasks
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10.5px', mt: 0.3 }}>
+                    Today's Tasks
                   </Typography>
                 </TiltCard>
               </Grid>
             </Grid>
 
-            {/* 3. LifeSync Arena Mobile Banner Card matching Reference Image 2 */}
+            {/* 3. Today's Habits Section */}
+            <Box>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+                  Today's Habits
+                </Typography>
+                <Typography
+                  variant="caption"
+                  onClick={() => navigate('/health')}
+                  sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  See All &gt;
+                </Typography>
+              </Stack>
+
+              <Stack spacing={1}>
+                {/* Habit 1: Water */}
+                <TiltCard
+                  onClick={() => navigate('/health')}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: isProf ? 0 : '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'rgba(0, 188, 212, 0.12)', color: '#00BCD4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <LocalDrinkIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.4 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        Water Intake
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                        {todaysWater} / 2000 ml
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.min(100, (todaysWater / 2000) * 100)}
+                      sx={{
+                        height: 5,
+                        borderRadius: 3,
+                        bgcolor: 'rgba(0, 188, 212, 0.12)',
+                        '& .MuiLinearProgress-bar': { bgcolor: '#00BCD4', borderRadius: 3 }
+                      }}
+                    />
+                  </Box>
+                  <Chip
+                    size="small"
+                    label="+30.0 pts"
+                    sx={{
+                      height: '24px',
+                      fontSize: '11px',
+                      fontWeight: 750,
+                      bgcolor: 'rgba(232, 90, 79, 0.12)',
+                      color: '#E85A4F',
+                      borderRadius: isProf ? 0 : '8px',
+                      border: 'none',
+                      flexShrink: 0
+                    }}
+                  />
+                </TiltCard>
+
+                {/* Habit 2: Sleep */}
+                <TiltCard
+                  onClick={() => navigate('/health')}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: isProf ? 0 : '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'rgba(156, 39, 176, 0.12)', color: '#9C27B0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <BedtimeIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.4 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        Sleep Duration
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                        {todaysSleep} / 8 hours
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.min(100, (todaysSleep / 8) * 100)}
+                      sx={{
+                        height: 5,
+                        borderRadius: 3,
+                        bgcolor: 'rgba(156, 39, 176, 0.12)',
+                        '& .MuiLinearProgress-bar': { bgcolor: '#9C27B0', borderRadius: 3 }
+                      }}
+                    />
+                  </Box>
+                  <Chip
+                    size="small"
+                    label="+10.0 pts"
+                    sx={{
+                      height: '24px',
+                      fontSize: '11px',
+                      fontWeight: 750,
+                      bgcolor: 'rgba(232, 90, 79, 0.12)',
+                      color: '#E85A4F',
+                      borderRadius: isProf ? 0 : '8px',
+                      border: 'none',
+                      flexShrink: 0
+                    }}
+                  />
+                </TiltCard>
+              </Stack>
+            </Box>
+
+            {/* 4. LifeSync Arena Card */}
             <TiltCard
               sx={{
                 p: 2,
                 borderRadius: isProf ? 0 : '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer'
-              }}
-              onClick={() => {
-                const el = document.getElementById('leaderboard-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
               }}
             >
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              {/* Arena Header */}
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(232, 90, 79, 0.12)',
+                      color: '#E85A4F',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <EmojiEventsIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                      LifeSync Arena
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                      Your place on the leaderboard.
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Stack
+                  direction="row"
+                  spacing={0.4}
+                  onClick={() => {
+                    const el = document.getElementById('leaderboard-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  sx={{ alignItems: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <LocationOnIcon sx={{ fontSize: 14, color: 'var(--accent-primary)' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                    {leaderboardData?.scopeValue || user?.city || 'Ahmedabad'}
+                  </Typography>
+                  <ChevronRightIcon sx={{ fontSize: 16 }} />
+                </Stack>
+              </Stack>
+
+              {/* Top Rankings entries */}
+              <Stack spacing={1} sx={{ mb: 1.5 }}>
+                {/* Rank 1 */}
                 <Box
                   sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: isProf ? 0 : '14px',
+                    p: 1,
+                    px: 1.4,
+                    borderRadius: isProf ? 0 : '12px',
+                    bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(255, 107, 107, 0.2) 0%, rgba(232, 90, 79, 0.25) 100%)',
-                    color: '#E85A4F'
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <EmojiEventsIcon sx={{ fontSize: '24px' }} />
+                  <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+                    <Box
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        bgcolor: '#F59E0B',
+                        color: '#FFFFFF',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      1
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                      {leaderboardData?.topRankings?.[0]?.displayName || 'Darshil..Golaniya'}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '12px' }}>
+                    {(leaderboardData?.topRankings?.[0]?.totalLifeScore ?? 138.2).toFixed(1)} points
+                  </Typography>
                 </Box>
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 750, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                    LifeSync Arena
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11.5px', display: 'block' }}>
-                    Complete your location to join.
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'var(--accent-primary)', fontSize: '10.5px', fontWeight: 600 }}>
-                    City • State • Country
+
+                {/* Rank 2 (User) */}
+                <Box
+                  sx={{
+                    p: 1,
+                    px: 1.4,
+                    borderRadius: isProf ? 0 : '12px',
+                    bgcolor: 'rgba(232, 90, 79, 0.08)',
+                    border: '1px solid rgba(232, 90, 79, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+                    <Box
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        bgcolor: '#E85A4F',
+                        color: '#FFFFFF',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {leaderboardData?.currentUserRank || 2}
+                    </Box>
+                    <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: 'var(--accent-primary)', fontSize: '13px' }}>
+                        {user?.fullName?.split(' ')[0]?.toLowerCase() || 'darshil'}
+                      </Typography>
+                      <Chip
+                        label="You"
+                        size="small"
+                        sx={{
+                          height: '18px',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          bgcolor: 'var(--accent-primary)',
+                          color: '#FFFFFF',
+                          borderRadius: '4px',
+                          px: 0.2
+                        }}
+                      />
+                    </Stack>
+                  </Stack>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--accent-primary)', fontSize: '12px' }}>
+                    {(leaderboardData?.currentUserTotalScore ?? (lifeScore > 0 ? lifeScore : 15.0)).toFixed(1)} points
                   </Typography>
                 </Box>
               </Stack>
-              <IconButton
+
+              {/* Rank footer */}
+              <Stack
+                direction="row"
                 sx={{
-                  width: 38,
-                  height: 38,
-                  bgcolor: '#E85A4F',
-                  color: '#fff',
-                  '&:hover': { bgcolor: '#d2483d' }
+                  justifyContent: 'space-between',
+                  pt: 1,
+                  borderTop: '1px dashed var(--card-border)',
+                  alignItems: 'center'
                 }}
               >
-                <ArrowForwardIcon sx={{ fontSize: '18px' }} />
-              </IconButton>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--accent-primary)', fontSize: '11.5px' }}>
+                  Your Rank: #{leaderboardData?.currentUserRank || 2}
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '11.5px' }}>
+                  Total Life Score: {(leaderboardData?.currentUserTotalScore ?? (lifeScore > 0 ? lifeScore : 15.0)).toFixed(1)} points
+                </Typography>
+              </Stack>
             </TiltCard>
 
-            {/* 4. Score Feedback & 7-Day History */}
+            {/* 5. 7-Day Score History */}
             <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '20px' }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px' }}>
+                  7-Day Score History
+                </Typography>
+                <Typography
+                  variant="caption"
+                  onClick={() => {
+                    const el = document.getElementById('leaderboard-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  See All &gt;
+                </Typography>
+              </Stack>
+              {/* 7-Day Pills Grid matching Reference Screenshot */}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: { xs: 0.6, sm: 0.8 },
+                  mb: 1.8,
+                  width: '100%',
+                }}
+              >
+                {sevenDayPills.map((pill) => {
+                  const isSelected = selectedDate === pill.dateStr || (!selectedDate && pill.isToday);
+                  return (
+                    <Box
+                      key={pill.dateStr}
+                      onClick={() => setSelectedDate(pill.isToday ? null : pill.dateStr)}
+                      sx={{
+                        py: 0.8,
+                        px: 0.3,
+                        borderRadius: isProf ? 0 : '10px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        bgcolor: isSelected
+                          ? 'var(--accent-primary)'
+                          : isDark
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'rgba(0, 0, 0, 0.04)',
+                        color: isSelected ? '#FFFFFF' : 'var(--text-primary)',
+                        border: '1px solid',
+                        borderColor: isSelected
+                          ? 'var(--accent-primary)'
+                          : isDark
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(0, 0, 0, 0.08)',
+                        boxShadow: isSelected ? '0 2px 8px rgba(232, 90, 79, 0.3)' : 'none',
+                        transition: 'all 0.18s ease',
+                        '&:hover': {
+                          borderColor: 'var(--accent-primary)',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '9.5px',
+                          fontWeight: 650,
+                          color: isSelected ? 'rgba(255,255,255,0.88)' : 'var(--text-secondary)',
+                          display: 'block',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {pill.label}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 850,
+                          fontSize: '12.5px',
+                          mt: 0.3,
+                          color: 'inherit',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {pill.score}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+
               {renderLifeScoreFeedback()}
             </TiltCard>
 
-            {/* 5. LifeScore Competition Leaderboard */}
+            {/* 6. Expandable Arena Leaderboard */}
             <Box id="leaderboard-section">
               <LifeScoreCompetitionCard />
             </Box>

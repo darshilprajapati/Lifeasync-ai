@@ -38,12 +38,14 @@ interface WorkoutPlannerDashboardProps {
   onWorkoutChanged?: () => void;
   openAiGeneratorExternal?: boolean;
   onCloseAiGeneratorExternal?: () => void;
+  metricsSlot?: React.ReactNode;
 }
 
 export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = ({
   onWorkoutChanged,
   openAiGeneratorExternal = false,
-  onCloseAiGeneratorExternal
+  onCloseAiGeneratorExternal,
+  metricsSlot
 }) => {
   const { notify } = useNotification();
   const { designSystem, mode } = useThemeSystem();
@@ -442,6 +444,12 @@ export const WorkoutPlannerDashboard: React.FC<WorkoutPlannerDashboardProps> = (
             </Stack>
           </Box>
         </Card>
+      )}
+
+      {metricsSlot && (
+        <Box sx={{ mb: 3 }}>
+          {metricsSlot}
+        </Box>
       )}
 
       {/* ========================================================

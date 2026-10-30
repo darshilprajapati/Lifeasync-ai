@@ -17,6 +17,10 @@ import {
   Select,
   MenuItem,
   Grid,
+  useTheme,
+  useMediaQuery,
+  Menu,
+  Divider,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -32,7 +36,18 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import SecurityIcon from '@mui/icons-material/Security';
 import SearchIcon from '@mui/icons-material/Search';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import StarIcon from '@mui/icons-material/Star';
+import TuneIcon from '@mui/icons-material/Tune';
+import KeyIcon from '@mui/icons-material/Key';
+import DescriptionIcon from '@mui/icons-material/Description';
 
+
+import { MobileFilterSheet } from '../components/mobile/MobileFilterSheet';
 import PageWrapper from '../components/PageWrapper';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
@@ -61,6 +76,11 @@ interface ParsedVaultContent {
 
 const Vault: React.FC = () => {
   const { notify } = useNotification();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<null | { el: HTMLElement; item: VaultItem }>(null);
+  const [favorites, setFavorites] = useState<Record<number, boolean>>({});
   const [items, setItems] = useState<VaultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -290,6 +310,638 @@ const Vault: React.FC = () => {
   return (
     <PageWrapper>
       <Box sx={{ padding: { xs: '16px', md: '28px' }, height: '100%', overflowY: 'auto', bgcolor: 'var(--bg-primary)' }}>
+        {/* MOBILE VIEW: Option C — Privacy First */}
+        {isMobile ? (
+          <Box sx={{ pb: 6 }}>
+            {/* 1. Header Card: CipherVault + Privacy Description + AES-256 Badge */}
+            <TiltCard
+              maxTilt={1.5}
+              enableRefraction={false}
+              sx={{
+                p: 2.2,
+                borderRadius: '20px',
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                boxShadow: 'var(--shadow-soft)',
+                mb: 2,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Subtle background glow */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  right: -25,
+                  top: -25,
+                  width: 140,
+                  height: 140,
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0) 70%)',
+                  pointerEvents: 'none',
+                }}
+              />
+
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mb: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '14px',
+                    bgcolor: 'rgba(59, 130, 246, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#2563EB',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ShieldIcon sx={{ fontSize: 26 }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+                    CipherVault
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 650, color: 'var(--text-secondary)', display: 'block', mt: 0.2 }}>
+                    Your privacy. Your data. Always protected.
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontSize: '12.5px', lineHeight: 1.5, mb: 1.8 }}>
+                All your credentials, passwords, notes and keys are secured with military-grade AES-256-GCM encryption. We never access your data.
+              </Typography>
+
+              <Chip
+                icon={<VerifiedUserIcon sx={{ color: '#2563EB !important', fontSize: '16px !important' }} />}
+                label="AES-256 Protected"
+                sx={{
+                  bgcolor: 'rgba(59, 130, 246, 0.1)',
+                  color: '#2563EB',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  fontWeight: 750,
+                  fontSize: '11.5px',
+                  height: 28,
+                }}
+              />
+            </TiltCard>
+
+            {/* 2. Compact Vault Security Status Card */}
+            <TiltCard
+              maxTilt={1}
+              enableRefraction={false}
+              sx={{
+                p: 1.8,
+                borderRadius: '18px',
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                boxShadow: 'var(--shadow-soft)',
+                mb: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(16, 185, 129, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#10B981',
+                  }}
+                >
+                  <CheckCircleIcon sx={{ fontSize: 22 }} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+                    Your Vault is Secure
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#10B981', fontWeight: 700, fontSize: '11px' }}>
+                    Active &amp; Protected
+                  </Typography>
+                </Box>
+              </Stack>
+              <ChevronRightIcon sx={{ color: 'var(--text-secondary)', fontSize: 20 }} />
+            </TiltCard>
+
+            {/* 3. Four Category Shortcuts: Passwords, Notes, Links, Vault */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 1.2,
+                mb: 2.5,
+              }}
+            >
+              {/* Passwords */}
+              <Box
+                onClick={() => setActiveCategory(activeCategory === 'Login' ? 'All' : 'Login')}
+                sx={{
+                  p: 1.2,
+                  py: 1.6,
+                  borderRadius: '16px',
+                  bgcolor: activeCategory === 'Login' ? 'rgba(245, 158, 11, 0.12)' : 'var(--card-bg)',
+                  border: '1.5px solid',
+                  borderColor: activeCategory === 'Login' ? '#F59E0B' : 'var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '10px',
+                    bgcolor: 'rgba(245, 158, 11, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#F59E0B',
+                    mb: 0.8,
+                  }}
+                >
+                  <KeyIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                  Passwords
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '10px', color: 'var(--text-secondary)', mt: 0.2 }}>
+                  {counts.passwords} items
+                </Typography>
+              </Box>
+
+              {/* Notes */}
+              <Box
+                onClick={() => setActiveCategory(activeCategory === 'Note' ? 'All' : 'Note')}
+                sx={{
+                  p: 1.2,
+                  py: 1.6,
+                  borderRadius: '16px',
+                  bgcolor: activeCategory === 'Note' ? 'rgba(139, 92, 246, 0.12)' : 'var(--card-bg)',
+                  border: '1.5px solid',
+                  borderColor: activeCategory === 'Note' ? '#8B5CF6' : 'var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '10px',
+                    bgcolor: 'rgba(139, 92, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#8B5CF6',
+                    mb: 0.8,
+                  }}
+                >
+                  <DescriptionIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                  Notes
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '10px', color: 'var(--text-secondary)', mt: 0.2 }}>
+                  {counts.notes} items
+                </Typography>
+              </Box>
+
+              {/* Links */}
+              <Box
+                onClick={() => setActiveCategory(activeCategory === 'Link' ? 'All' : 'Link')}
+                sx={{
+                  p: 1.2,
+                  py: 1.6,
+                  borderRadius: '16px',
+                  bgcolor: activeCategory === 'Link' ? 'rgba(16, 185, 129, 0.12)' : 'var(--card-bg)',
+                  border: '1.5px solid',
+                  borderColor: activeCategory === 'Link' ? '#10B981' : 'var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '10px',
+                    bgcolor: 'rgba(16, 185, 129, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#10B981',
+                    mb: 0.8,
+                  }}
+                >
+                  <LinkIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                  Links
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '10px', color: 'var(--text-secondary)', mt: 0.2 }}>
+                  {counts.links} items
+                </Typography>
+              </Box>
+
+              {/* Vault / All */}
+              <Box
+                onClick={() => setActiveCategory('All')}
+                sx={{
+                  p: 1.2,
+                  py: 1.6,
+                  borderRadius: '16px',
+                  bgcolor: activeCategory === 'All' ? 'rgba(59, 130, 246, 0.12)' : 'var(--card-bg)',
+                  border: '1.5px solid',
+                  borderColor: activeCategory === 'All' ? '#3B82F6' : 'var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '10px',
+                    bgcolor: 'rgba(59, 130, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3B82F6',
+                    mb: 0.8,
+                  }}
+                >
+                  <ShieldIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                  Vault
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '10px', color: 'var(--text-secondary)', mt: 0.2 }}>
+                  {counts.total} items
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* 4. Recent Items Section Header */}
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+                Recent Items
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => {
+                  setActiveCategory('All');
+                  setSearchQuery('');
+                }}
+                sx={{
+                  color: 'var(--accent-primary)',
+                  fontWeight: 750,
+                  fontSize: '12px',
+                  textTransform: 'none',
+                  p: 0,
+                  '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+                }}
+              >
+                View All &gt;
+              </Button>
+            </Stack>
+
+            {/* Compact Search & Filter trigger (No horizontal scrolling tabs) */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: 'center' }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search secrets by title, username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 0.8, fontSize: 19 }} />,
+                    sx: {
+                      bgcolor: 'var(--card-bg)',
+                      borderRadius: '14px',
+                      fontSize: '13px',
+                      '& fieldset': { borderColor: 'var(--card-border)' },
+                    },
+                  },
+                }}
+              />
+              <Button
+                variant={activeCategory !== 'All' ? 'contained' : 'outlined'}
+                onClick={() => setMobileFilterOpen(true)}
+                startIcon={<TuneIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  height: 40,
+                  px: 1.8,
+                  borderRadius: '14px',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  bgcolor: activeCategory !== 'All' ? 'var(--accent-primary)' : 'var(--card-bg)',
+                  borderColor: activeCategory !== 'All' ? 'var(--accent-primary)' : 'var(--card-border)',
+                  color: activeCategory !== 'All' ? '#FFFFFF' : 'var(--text-primary)',
+                  boxShadow: activeCategory !== 'All' ? '0 4px 12px rgba(232, 90, 79, 0.25)' : 'none',
+                }}
+              >
+                Filter
+              </Button>
+            </Stack>
+
+            {/* Active filter chip */}
+            {activeCategory !== 'All' && (
+              <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center' }}>
+                <Chip
+                  label={'Category: ' + (activeCategory === 'Login' ? 'Passwords' : activeCategory === 'Note' ? 'Notes' : 'Links')}
+                  size="small"
+                  onDelete={() => setActiveCategory('All')}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    bgcolor: 'rgba(232, 90, 79, 0.1)',
+                    color: 'var(--accent-primary)',
+                    border: '1px solid rgba(232, 90, 79, 0.2)',
+                  }}
+                />
+              </Stack>
+            )}
+
+            {/* 5. Secret Items List or Empty State */}
+            {filteredItems.length === 0 ? (
+              <Box
+                sx={{
+                  py: 6,
+                  px: 3,
+                  textAlign: 'center',
+                  bgcolor: 'var(--card-bg)',
+                  borderRadius: '20px',
+                  border: '1px solid var(--card-border)',
+                  boxShadow: 'var(--shadow-soft)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: '50%',
+                    bgcolor: 'var(--bg-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-secondary)',
+                    mb: 1.8,
+                  }}
+                >
+                  <LockOutlinedIcon sx={{ fontSize: 28 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.5, fontSize: '16px' }}>
+                  No items yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--text-secondary)', maxWidth: 280, mb: 2.5, fontSize: '12.5px', lineHeight: 1.4 }}>
+                  Add your first password, note or link to keep it secure in CipherVault.
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => openCreateDialog('Login')}
+                  sx={{
+                    bgcolor: 'var(--accent-primary)',
+                    color: '#FFFFFF',
+                    fontWeight: 750,
+                    borderRadius: '14px',
+                    px: 3,
+                    py: 1,
+                    textTransform: 'none',
+                    fontSize: '13px',
+                    boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
+                    '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                  }}
+                >
+                  + Add Secret
+                </Button>
+              </Box>
+            ) : (
+              <Stack spacing={1.2}>
+                {filteredItems.map((item) => {
+                  const data = parseContent(item.content, item.category);
+                  const isRevealed = Boolean(revealedIds[item.id]);
+                  const isFav = Boolean(favorites[item.id]);
+
+                  // Company initial or icon
+                  const initial = (item.title || 'S').charAt(0).toUpperCase();
+                  const colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#E85A4F', '#06B6D4'];
+                  const iconBg = colors[(item.title.charCodeAt(0) || 0) % colors.length];
+
+                  return (
+                    <TiltCard
+                      key={item.id}
+                      maxTilt={1.2}
+                      enableRefraction={false}
+                      sx={{
+                        p: 1.8,
+                        borderRadius: '18px',
+                        bgcolor: 'var(--card-bg)',
+                        border: '1px solid var(--card-border)',
+                        boxShadow: 'var(--shadow-soft)',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {/* Item Row */}
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', flex: 1, minWidth: 0, mr: 1 }}>
+                          <Box
+                            sx={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: '12px',
+                              bgcolor: iconBg + '1A',
+                              border: '1.5px solid ' + iconBg + '4D',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: iconBg,
+                              fontWeight: 900,
+                              fontSize: '15px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initial}
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 800,
+                                  color: 'var(--text-primary)',
+                                  fontSize: '13.5px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {item.title}
+                              </Typography>
+                              <Chip
+                                label={data.type === 'Login' ? 'Password' : data.type}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '10px',
+                                  fontWeight: 750,
+                                  bgcolor:
+                                    data.type === 'Login'
+                                      ? 'rgba(59, 130, 246, 0.12)'
+                                      : data.type === 'Link'
+                                      ? 'rgba(16, 185, 129, 0.12)'
+                                      : 'rgba(139, 92, 246, 0.12)',
+                                  color:
+                                    data.type === 'Login'
+                                      ? '#3B82F6'
+                                      : data.type === 'Link'
+                                      ? '#10B981'
+                                      : '#8B5CF6',
+                                  flexShrink: 0,
+                                }}
+                              />
+                            </Stack>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '11px',
+                                display: 'block',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {data.type === 'Login'
+                                ? (data.username ? data.username.slice(0, 3) + '••••@' + (data.username.split('@')[1] || '...') : 'Saved credential')
+                                : data.type === 'Link'
+                                ? (data.url || 'Saved URL')
+                                : (data.noteText || 'Encrypted secure note')}
+                            </Typography>
+                          </Box>
+                        </Stack>
+
+                        {/* Actions */}
+                        <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                            sx={{ p: 0.5, color: isFav ? '#F59E0B' : 'var(--text-secondary)' }}
+                          >
+                            {isFav ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
+                          </IconButton>
+                          {data.type === 'Login' && (
+                            <IconButton
+                              size="small"
+                              onClick={() => togglePasswordReveal(item.id)}
+                              sx={{ p: 0.5, color: isRevealed ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
+                            >
+                              {isRevealed ? <VisibilityOff sx={{ fontSize: 17 }} /> : <Visibility sx={{ fontSize: 17 }} />}
+                            </IconButton>
+                          )}
+                          <IconButton
+                            size="small"
+                            onClick={(e) => setActionMenuAnchor({ el: e.currentTarget, item })}
+                            sx={{ p: 0.5, color: 'var(--text-secondary)' }}
+                          >
+                            <MoreVertIcon sx={{ fontSize: 17 }} />
+                          </IconButton>
+                        </Stack>
+                      </Stack>
+
+                      {/* Revealed Password Row */}
+                      {isRevealed && data.type === 'Login' && (
+                        <Box
+                          sx={{
+                            mt: 1.2,
+                            p: 1.2,
+                            borderRadius: '12px',
+                            bgcolor: 'var(--bg-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-primary)', fontSize: '12px' }}>
+                            {data.password}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => copyToClipboard(data.password || '', 'Password')}
+                            sx={{ p: 0.4, color: 'var(--accent-primary)' }}
+                          >
+                            <ContentCopyIcon sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Box>
+                      )}
+                    </TiltCard>
+                  );
+                })}
+
+                {/* Mobile Floating Add Secret Button Footer */}
+                <Box
+                  onClick={() => openCreateDialog('Login')}
+                  sx={{
+                    p: 1.8,
+                    mt: 1,
+                    borderRadius: '16px',
+                    border: '2px dashed rgba(232, 90, 79, 0.45)',
+                    bgcolor: 'rgba(232, 90, 79, 0.03)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--accent-primary)',
+                    fontWeight: 750,
+                    fontSize: '13.5px',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: 'rgba(232, 90, 79, 0.08)',
+                      borderColor: 'var(--accent-primary)',
+                    },
+                  }}
+                >
+                  <AddIcon sx={{ mr: 1, fontSize: 18 }} />
+                  Add Secret
+                </Box>
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          <Box>
+            
         {/* CipherVault Hero Banner */}
         <TiltCard
           maxTilt={1.5}
@@ -924,9 +1576,11 @@ const Vault: React.FC = () => {
           </Grid>
         </ResizablePanel>
       )}
+          </Box>
+        )}
       </Box>
 
-      {/* CREATE / EDIT SECRET MODAL */}
+{/* CREATE / EDIT SECRET MODAL */}
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
@@ -1069,7 +1723,114 @@ const Vault: React.FC = () => {
           </IconSlideButton>
         </DialogActions>
       </Dialog>
-    </PageWrapper>
+            {/* Mobile Action Menu for Secret Card (Copy, Edit, Delete) */}
+        <Menu
+          anchorEl={actionMenuAnchor?.el}
+          open={Boolean(actionMenuAnchor)}
+          onClose={() => setActionMenuAnchor(null)}
+          slotProps={{
+            paper: {
+              sx: {
+                borderRadius: '14px',
+                boxShadow: 'var(--shadow-hover)',
+                bgcolor: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                minWidth: '170px',
+              },
+            },
+          }}
+        >
+          {actionMenuAnchor && (() => {
+            const parsed = parseContent(actionMenuAnchor.item.content, actionMenuAnchor.item.category);
+            return (
+              <Box>
+                {parsed.type === 'Login' && (
+                  <Box>
+                    <MenuItem
+                      onClick={() => {
+                        copyToClipboard(parsed.username || '', 'Username');
+                        setActionMenuAnchor(null);
+                      }}
+                      sx={{ fontSize: '12.5px', fontWeight: 600 }}
+                    >
+                      <ContentCopyIcon sx={{ fontSize: 15, mr: 1, color: 'var(--text-secondary)' }} />
+                      Copy Username
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        copyToClipboard(parsed.password || '', 'Password');
+                        setActionMenuAnchor(null);
+                      }}
+                      sx={{ fontSize: '12.5px', fontWeight: 600 }}
+                    >
+                      <ContentCopyIcon sx={{ fontSize: 15, mr: 1, color: 'var(--text-secondary)' }} />
+                      Copy Password
+                    </MenuItem>
+                    <Divider sx={{ my: 0.5 }} />
+                  </Box>
+                )}
+                {parsed.type === 'Link' && (
+                  <MenuItem
+                    onClick={() => {
+                      copyToClipboard(parsed.url || '', 'Link');
+                      setActionMenuAnchor(null);
+                    }}
+                    sx={{ fontSize: '12.5px', fontWeight: 600 }}
+                  >
+                    <ContentCopyIcon sx={{ fontSize: 15, mr: 1, color: 'var(--text-secondary)' }} />
+                    Copy URL
+                  </MenuItem>
+                )}
+                <MenuItem
+                  onClick={() => {
+                    const itm = actionMenuAnchor.item;
+                    setActionMenuAnchor(null);
+                    openEditDialog(itm);
+                  }}
+                  sx={{ fontSize: '12.5px', fontWeight: 600 }}
+                >
+                  <EditIcon sx={{ fontSize: 15, mr: 1, color: 'var(--text-secondary)' }} />
+                  Edit Secret
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    const id = actionMenuAnchor.item.id;
+                    setActionMenuAnchor(null);
+                    handleDeleteItem(id);
+                  }}
+                  sx={{ fontSize: '12.5px', fontWeight: 600, color: '#EF4444' }}
+                >
+                  <DeleteIcon sx={{ fontSize: 15, mr: 1, color: '#EF4444' }} />
+                  Delete Secret
+                </MenuItem>
+              </Box>
+            );
+          })()}
+        </Menu>
+
+        {/* Mobile Filter Sheet for Vault Categories */}
+        <MobileFilterSheet
+          open={mobileFilterOpen}
+          onClose={() => setMobileFilterOpen(false)}
+          title="Filter Secrets"
+          groups={[
+            {
+              id: 'category',
+              label: 'Category',
+              selectedValue: activeCategory,
+              onChange: (val) => setActiveCategory(val as any),
+              options: [
+                { value: 'All', label: 'All (' + counts.total + ')' },
+                { value: 'Login', label: 'Passwords (' + counts.passwords + ')' },
+                { value: 'Note', label: 'Notes (' + counts.notes + ')' },
+                { value: 'Link', label: 'Links (' + counts.links + ')' },
+              ],
+            },
+          ]}
+          onReset={() => setActiveCategory('All')}
+          onApply={() => setMobileFilterOpen(false)}
+        />
+      </PageWrapper>
   );
 };
 

@@ -19,7 +19,9 @@ import {
   Button as MuiButton, 
   Alert as MuiAlert, 
   Stack as MuiStack, 
-  LinearProgress as MuiLinearProgress
+  LinearProgress as MuiLinearProgress,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { useNotification } from '../context/NotificationContext';
 import { useThemeSystem } from '../context/ThemeContext';
@@ -63,6 +65,8 @@ const Health: React.FC = () => {
   const { notify } = useNotification();
   const { designSystem } = useThemeSystem();
   const isProf = designSystem === 'professional';
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [logs, setLogs] = useState<HealthLogItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,205 +248,9 @@ const Health: React.FC = () => {
   const caloriesProgress = Math.min(100, (todaysCalories / (targets.dailyCalorieGoal || 2000)) * 100);
   const workoutProgress = Math.min(100, (todaysWorkout / (targets.dailyWorkoutGoal || 30)) * 100);
 
-  return (
-    <PageWrapper>
-      <MuiBox 
-        sx={{ 
-          p: { xs: 2, sm: 2.5, md: 3 }, 
-          height: { xs: 'auto', md: '100%' }, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          overflow: { xs: 'auto', md: 'hidden' },
-          boxSizing: 'border-box'
-        }}
-      >
-        {/* ========================================================
-            ROW 1: UNIFIED HEADER ROW WITH CLEAR ACCESSIBLE ACTIONS
-            ======================================================== */}
-        <MuiStack 
-          direction="row" 
-          sx={{ 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 1.5, 
-            flexWrap: 'wrap', 
-            gap: 1.5,
-            flexShrink: 0
-          }}
-        >
-          <MuiStack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <MuiBox 
-              sx={{ 
-                p: 0.8, 
-                borderRadius: isProf ? '0px' : '10px', 
-                bgcolor: 'rgba(255, 111, 38, 0.12)', 
-                color: 'var(--accent-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <FitnessCenterIcon sx={{ fontSize: 26 }} />
-            </MuiBox>
-            <MuiBox>
-              <MuiTypography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                Health & Wellness
-              </MuiTypography>
-              <MuiTypography variant="caption" sx={{ color: 'var(--text-secondary)', display: { xs: 'none', sm: 'block' } }}>
-                Track hydration, sleep, steps, and nutrition or plan science-backed periodized AI workouts inside a single, unified health workspace.
-              </MuiTypography>
-            </MuiBox>
-          </MuiStack>
-
-          {/* Header Action Buttons */}
-          <MuiStack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: { xs: 0.7, sm: 0.8 },
-              width: { xs: '100%', md: 'auto' }
-            }}
-          >
-            <MuiButton
-              size="small"
-              variant="contained"
-              startIcon={<AddIcon sx={{ fontSize: '15px !important' }} />}
-              onClick={() => setAddLogOpen(true)}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '9px',
-                textTransform: 'none',
-                fontSize: { xs: '11px', sm: '12px' },
-                fontWeight: 700,
-                bgcolor: 'var(--accent-primary)',
-                color: '#ffffff',
-                px: { xs: 1.1, sm: 1.5 },
-                py: { xs: 0.45, sm: 0.6 },
-                boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.3)',
-                '&:hover': { bgcolor: 'var(--accent-secondary)' }
-              }}
-            >
-              Add Health Log
-            </MuiButton>
-
-            <MuiButton
-              size="small"
-              variant="outlined"
-              startIcon={<AutoAwesomeIcon sx={{ fontSize: '15px !important', color: '#9C27B0' }} />}
-              onClick={() => setPredictAiOpen(true)}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '9px',
-                textTransform: 'none',
-                fontSize: { xs: '11px', sm: '12px' },
-                fontWeight: 650,
-                borderColor: 'rgba(156, 39, 176, 0.35)',
-                color: '#9C27B0',
-                px: { xs: 1, sm: 1.4 },
-                py: { xs: 0.45, sm: 0.6 },
-                '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.08)', borderColor: '#9C27B0' }
-              }}
-            >
-              Predict AI
-            </MuiButton>
-
-            <MuiButton
-              size="small"
-              variant="outlined"
-              startIcon={<FitnessCenterIcon sx={{ fontSize: '15px !important', color: 'var(--accent-primary)' }} />}
-              onClick={() => setWorkoutGeneratorOpen(true)}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '9px',
-                textTransform: 'none',
-                fontSize: { xs: '11px', sm: '12px' },
-                fontWeight: 650,
-                borderColor: 'rgba(255, 111, 38, 0.35)',
-                color: 'var(--accent-primary)',
-                px: { xs: 1, sm: 1.4 },
-                py: { xs: 0.45, sm: 0.6 },
-                '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
-              }}
-            >
-              Generate Plan
-            </MuiButton>
-
-            <MuiButton
-              size="small"
-              variant="outlined"
-              startIcon={<HistoryIcon sx={{ fontSize: '15px !important' }} />}
-              onClick={() => setHistoryModalOpen(true)}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '9px',
-                textTransform: 'none',
-                fontSize: { xs: '11px', sm: '12px' },
-                fontWeight: 650,
-                borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
-                color: 'var(--text-primary)',
-                px: { xs: 1, sm: 1.4 },
-                py: { xs: 0.45, sm: 0.6 },
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
-              }}
-            >
-              Health Log
-            </MuiButton>
-
-            <MuiButton
-              size="small"
-              variant="outlined"
-              startIcon={<TuneIcon sx={{ fontSize: '15px !important' }} />}
-              onClick={() => setSettingsOpen(true)}
-              sx={{
-                borderRadius: isProf ? '0px !important' : '9px',
-                textTransform: 'none',
-                fontSize: { xs: '11px', sm: '12px' },
-                fontWeight: 650,
-                borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
-                color: 'var(--text-primary)',
-                px: { xs: 1, sm: 1.4 },
-                py: { xs: 0.45, sm: 0.6 },
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
-              }}
-            >
-              Health Settings
-            </MuiButton>
-
-            <ReportExporter module="Health" />
-
-            <ResetLayoutButton pageId="health" pageName="Health" />
-          </MuiStack>
-        </MuiStack>
-
-        {error && (
-          <MuiAlert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: '10px', flexShrink: 0 }}>
-            {error}
-          </MuiAlert>
-        )}
-
-        {/* ========================================================
-            ROW 2: COMPACT 5-METRIC OVERVIEW ROW (Modern 3D, Resizable)
-            Always visible in the unified workspace
-            ======================================================== */}
-        <ResizablePanel
-          pageId="health"
-          componentId="health-overview-metrics-row"
-          defaultHeight={130}
-          minHeight={110}
-          maxHeight={220}
-          sx={{ mb: 2, flexShrink: 0 }}
-        >
-          <MuiBox
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: 'repeat(2, 1fr)',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(5, 1fr)'
-              },
-              gap: { xs: 1.2, sm: 1.5 },
-              height: '100%'
-            }}
-          >
-            {/* Card 1: Water Intake */}
+  const renderMetricCards = () => (
+    <>
+{/* Card 1: Water Intake */}
             <TiltCard
               maxTilt={2.5}
               sx={{
@@ -687,29 +495,256 @@ const Health: React.FC = () => {
                 <MuiButton size="small" variant="outlined" onClick={() => handleQuickAdd('Workout', 60, 'Full exercise burn')} sx={{ minWidth: 0, py: '1px', px: '5px', fontSize: '9px', textTransform: 'none', borderRadius: isProf ? 0 : '4px', borderColor: 'rgba(255, 111, 38, 0.4)', color: 'var(--accent-primary)' }}>+60</MuiButton>
               </MuiStack>
             </TiltCard>
-          </MuiBox>
-        </ResizablePanel>
+    </>
+  );
 
+  return (
+    <PageWrapper>
+      <MuiBox 
+        sx={{ 
+          p: { xs: 2, sm: 2.5, md: 3 }, 
+          height: { xs: 'auto', md: '100%' }, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          overflow: { xs: 'auto', md: 'hidden' },
+          boxSizing: 'border-box'
+        }}
+      >
         {/* ========================================================
-            ROW 3: COHESIVE MAIN WORKSPACE (Weekly Workout Planner, Focus & Tips)
+            ROW 1: UNIFIED HEADER ROW WITH CLEAR ACCESSIBLE ACTIONS
             ======================================================== */}
-        <ResizablePanel pageId="health" componentId="health_workout_planner" defaultHeight={620} minHeight={420} maxHeight={1400}>
-          <MuiBox 
-            sx={{ 
-              height: '100%', 
-              overflowY: 'auto', 
-              pr: { xs: 0, md: 0.5 },
-              display: 'flex',
-              flexDirection: 'column'
+        <MuiStack 
+          direction="row" 
+          sx={{ 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: 1.5, 
+            flexWrap: 'wrap', 
+            gap: 1.5,
+            flexShrink: 0
+          }}
+        >
+          <MuiStack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <MuiBox 
+              sx={{ 
+                p: 0.8, 
+                borderRadius: isProf ? '0px' : '10px', 
+                bgcolor: 'rgba(255, 111, 38, 0.12)', 
+                color: 'var(--accent-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <FitnessCenterIcon sx={{ fontSize: 26 }} />
+            </MuiBox>
+            <MuiBox>
+              <MuiTypography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                Health & Wellness
+              </MuiTypography>
+              <MuiTypography variant="caption" sx={{ color: 'var(--text-secondary)', display: { xs: 'none', sm: 'block' } }}>
+                Track hydration, sleep, steps, and nutrition or plan science-backed periodized AI workouts inside a single, unified health workspace.
+              </MuiTypography>
+            </MuiBox>
+          </MuiStack>
+
+          {/* Header Action Buttons */}
+          <MuiStack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: { xs: 0.7, sm: 0.8 },
+              width: { xs: '100%', md: 'auto' }
             }}
           >
-            <WorkoutPlannerDashboard 
+            <MuiButton
+              size="small"
+              variant="contained"
+              startIcon={<AddIcon sx={{ fontSize: '15px !important' }} />}
+              onClick={() => setAddLogOpen(true)}
+              sx={{
+                borderRadius: isProf ? '0px !important' : '9px',
+                textTransform: 'none',
+                fontSize: { xs: '11px', sm: '12px' },
+                fontWeight: 700,
+                bgcolor: 'var(--accent-primary)',
+                color: '#ffffff',
+                px: { xs: 1.1, sm: 1.5 },
+                py: { xs: 0.45, sm: 0.6 },
+                boxShadow: isProf ? 'none' : '0 2px 8px rgba(255, 111, 38, 0.3)',
+                '&:hover': { bgcolor: 'var(--accent-secondary)' }
+              }}
+            >
+              Add Health Log
+            </MuiButton>
+
+            <MuiButton
+              size="small"
+              variant="outlined"
+              startIcon={<AutoAwesomeIcon sx={{ fontSize: '15px !important', color: '#9C27B0' }} />}
+              onClick={() => setPredictAiOpen(true)}
+              sx={{
+                borderRadius: isProf ? '0px !important' : '9px',
+                textTransform: 'none',
+                fontSize: { xs: '11px', sm: '12px' },
+                fontWeight: 650,
+                borderColor: 'rgba(156, 39, 176, 0.35)',
+                color: '#9C27B0',
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
+                '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.08)', borderColor: '#9C27B0' }
+              }}
+            >
+              Predict AI
+            </MuiButton>
+
+            <MuiButton
+              size="small"
+              variant="outlined"
+              startIcon={<FitnessCenterIcon sx={{ fontSize: '15px !important', color: 'var(--accent-primary)' }} />}
+              onClick={() => setWorkoutGeneratorOpen(true)}
+              sx={{
+                borderRadius: isProf ? '0px !important' : '9px',
+                textTransform: 'none',
+                fontSize: { xs: '11px', sm: '12px' },
+                fontWeight: 650,
+                borderColor: 'rgba(255, 111, 38, 0.35)',
+                color: 'var(--accent-primary)',
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
+                '&:hover': { bgcolor: 'rgba(255, 111, 38, 0.08)', borderColor: 'var(--accent-primary)' }
+              }}
+            >
+              Generate Plan
+            </MuiButton>
+
+            <MuiButton
+              size="small"
+              variant="outlined"
+              startIcon={<HistoryIcon sx={{ fontSize: '15px !important' }} />}
+              onClick={() => setHistoryModalOpen(true)}
+              sx={{
+                borderRadius: isProf ? '0px !important' : '9px',
+                textTransform: 'none',
+                fontSize: { xs: '11px', sm: '12px' },
+                fontWeight: 650,
+                borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
+                color: 'var(--text-primary)',
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
+              }}
+            >
+              Health Log
+            </MuiButton>
+
+            <MuiButton
+              size="small"
+              variant="outlined"
+              startIcon={<TuneIcon sx={{ fontSize: '15px !important' }} />}
+              onClick={() => setSettingsOpen(true)}
+              sx={{
+                borderRadius: isProf ? '0px !important' : '9px',
+                textTransform: 'none',
+                fontSize: { xs: '11px', sm: '12px' },
+                fontWeight: 650,
+                borderColor: isProf ? 'var(--card-border)' : 'rgba(0,0,0,0.12)',
+                color: 'var(--text-primary)',
+                px: { xs: 1, sm: 1.4 },
+                py: { xs: 0.45, sm: 0.6 },
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
+              }}
+            >
+              Health Settings
+            </MuiButton>
+
+            <ReportExporter module="Health" />
+
+            <ResetLayoutButton pageId="health" pageName="Health" />
+          </MuiStack>
+        </MuiStack>
+
+        {error && (
+          <MuiAlert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: '10px', flexShrink: 0 }}>
+            {error}
+          </MuiAlert>
+        )}
+
+        {isMobile ? (
+          /* Option B — Workout First Mobile Layout (Reference Screenshot 4) */
+          <MuiBox sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pb: 4 }}>
+            {/* 1. Today's Workout & Weekly Workout Planner FIRST, followed by compact Health Metrics before Body Focus & Recovery */}
+            <WorkoutPlannerDashboard
               onWorkoutChanged={fetchHealthLogs}
               openAiGeneratorExternal={workoutGeneratorOpen}
               onCloseAiGeneratorExternal={() => setWorkoutGeneratorOpen(false)}
+              metricsSlot={
+                <MuiBox sx={{ mt: 1 }}>
+                  <MuiStack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                    <MuiTypography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+                      Health Metrics
+                    </MuiTypography>
+                    <MuiTypography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '12px' }}>
+                      Today
+                    </MuiTypography>
+                  </MuiStack>
+                  <MuiBox
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: 1.2
+                    }}
+                  >
+                    {renderMetricCards()}
+                  </MuiBox>
+                </MuiBox>
+              }
             />
           </MuiBox>
-        </ResizablePanel>
+        ) : (
+          /* Desktop & Tablet Layout with Resizable Panels */
+          <>
+            <ResizablePanel
+              pageId="health"
+              componentId="health-overview-metrics-row"
+              defaultHeight={130}
+              minHeight={110}
+              maxHeight={220}
+              sx={{ mb: 2, flexShrink: 0 }}
+            >
+              <MuiBox
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: 1.5,
+                  height: '100%'
+                }}
+              >
+                {renderMetricCards()}
+              </MuiBox>
+            </ResizablePanel>
+
+            <ResizablePanel pageId="health" componentId="health_workout_planner" defaultHeight={620} minHeight={420} maxHeight={1400}>
+              <MuiBox 
+                sx={{ 
+                  height: '100%', 
+                  overflowY: 'auto', 
+                  pr: { xs: 0, md: 0.5 },
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <WorkoutPlannerDashboard 
+                  onWorkoutChanged={fetchHealthLogs}
+                  openAiGeneratorExternal={workoutGeneratorOpen}
+                  onCloseAiGeneratorExternal={() => setWorkoutGeneratorOpen(false)}
+                />
+              </MuiBox>
+            </ResizablePanel>
+          </>
+        )}
 
         {/* Configurable Health Targets Modal */}
         <HealthSettingsModal

@@ -24,6 +24,8 @@ import {
   TableCell,
   TablePagination,
   LinearProgress,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -38,6 +40,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 import {
   ResponsiveContainer,
@@ -56,6 +60,8 @@ import {
 } from 'recharts';
 
 import PageWrapper from '../components/PageWrapper';
+import { MobileFilterSheet } from '../components/mobile/MobileFilterSheet';
+import { useThemeSystem } from '../context/ThemeContext';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
@@ -163,6 +169,12 @@ const isDateInPeriod = (
 
 const Finance: React.FC = () => {
   const { notify } = useNotification();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { designSystem, mode } = useThemeSystem();
+  const isProf = designSystem === 'professional';
+  const isDark = mode === 'dark';
+  const [mobileFilterSheetOpen, setMobileFilterSheetOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringItems, setRecurringItems] = useState<RecurringItem[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>({
@@ -683,84 +695,110 @@ const Finance: React.FC = () => {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <IconSlideButton
-              variant="outlined"
-              startIcon={<HistoryIcon sx={{ fontSize: 16 }} />}
-              onClick={() => {
-                setLogPage(0);
-                setLogOpen(true);
-              }}
-              sx={{
-                borderColor: 'var(--card-border)',
-                color: 'var(--text-primary)',
-                bgcolor: 'var(--card-bg)',
-                fontWeight: 650,
-                fontSize: '12.5px',
-                px: 1.8,
-                py: 0.65,
-                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
-              }}
-            >
-              Finance Log
-            </IconSlideButton>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1.2}
+            sx={{
+              width: { xs: '100%', md: 'auto' },
+              alignItems: { xs: 'stretch', md: 'center' },
+            }}
+          >
+            {/* Primary actions row on mobile */}
+            <Stack direction="row" spacing={1.2} sx={{ width: '100%' }}>
+              <Button
+                variant="outlined"
+                startIcon={<HistoryIcon sx={{ fontSize: 18 }} />}
+                onClick={() => {
+                  setLogPage(0);
+                  setLogOpen(true);
+                }}
+                sx={{
+                  flex: { xs: 1, md: 'none' },
+                  height: 42,
+                  borderRadius: isProf ? 0 : '14px',
+                  borderColor: 'var(--card-border)',
+                  color: 'var(--text-primary)',
+                  bgcolor: 'var(--card-bg)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  textTransform: 'none',
+                  boxShadow: 'var(--shadow-soft)',
+                  '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
+                }}
+              >
+                Finance Log
+              </Button>
 
-            <IconSlideButton
-              variant="outlined"
-              startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
-              onClick={handleExportFinanceExcel}
-              disabled={transactions.length === 0}
-              sx={{
-                borderColor: 'var(--card-border)',
-                color: 'var(--text-primary)',
-                bgcolor: 'var(--card-bg)',
-                fontWeight: 650,
-                fontSize: '12.5px',
-                px: 1.8,
-                py: 0.65,
-                '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981', color: '#10B981' },
-              }}
-            >
-              Export Records
-            </IconSlideButton>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+                onClick={() => openCreateDialog('Expense')}
+                sx={{
+                  flex: { xs: 1, md: 'none' },
+                  height: 42,
+                  borderRadius: isProf ? 0 : '14px',
+                  bgcolor: 'var(--accent-primary)',
+                  color: '#FFFFFF',
+                  fontWeight: 750,
+                  fontSize: '13px',
+                  textTransform: 'none',
+                  boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
+                  '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                }}
+              >
+                Add Transaction
+              </Button>
+            </Stack>
 
-            <IconSlideButton
-              variant="outlined"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setRecDialogOpen(true)}
-              sx={{
-                borderColor: 'var(--card-border)',
-                color: 'var(--text-primary)',
-                bgcolor: 'var(--card-bg)',
-                fontWeight: 650,
-                fontSize: '12.5px',
-                px: 1.8,
-                py: 0.65,
-                '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
-              }}
-            >
-              + Recurring Bill
-            </IconSlideButton>
+            {/* Secondary actions: Export Records & Recurring Bill */}
+            <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
+                onClick={handleExportFinanceExcel}
+                disabled={transactions.length === 0}
+                sx={{
+                  flex: { xs: 1, md: 'none' },
+                  height: { xs: 36, md: 42 },
+                  borderRadius: isProf ? 0 : '12px',
+                  borderColor: 'var(--card-border)',
+                  color: 'var(--text-secondary)',
+                  bgcolor: 'var(--card-bg)',
+                  fontWeight: 650,
+                  fontSize: '12px',
+                  textTransform: 'none',
+                  px: 1.8,
+                  '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)', borderColor: '#10B981', color: '#10B981' },
+                }}
+              >
+                Export Records
+              </Button>
 
-            <IconSlideButton
-              variant="contained"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => openCreateDialog('Expense')}
-              sx={{
-                bgcolor: 'var(--accent-primary)',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                fontSize: '12.5px',
-                px: 2.2,
-                py: 0.65,
-                boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
-                '&:hover': { bgcolor: 'var(--accent-secondary)' },
-              }}
-            >
-              Add Transaction
-            </IconSlideButton>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setRecDialogOpen(true)}
+                sx={{
+                  flex: { xs: 1, md: 'none' },
+                  height: { xs: 36, md: 42 },
+                  borderRadius: isProf ? 0 : '12px',
+                  borderColor: 'var(--card-border)',
+                  color: 'var(--text-secondary)',
+                  bgcolor: 'var(--card-bg)',
+                  fontWeight: 650,
+                  fontSize: '12px',
+                  textTransform: 'none',
+                  px: 1.8,
+                  '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
+                }}
+              >
+                + Recurring Bill
+              </Button>
 
-            <ResetLayoutButton pageId="finance" pageName="Finance" />
+              {!isMobile && <ResetLayoutButton pageId="finance" pageName="Finance" />}
+            </Stack>
           </Stack>
         </Stack>
 
@@ -770,7 +808,7 @@ const Finance: React.FC = () => {
           </Alert>
         )}
 
-        {/* Filter Toolbar */}
+        {!isMobile && (
         <TiltCard
           maxTilt={1.5}
           enableRefraction={false}
@@ -854,12 +892,532 @@ const Finance: React.FC = () => {
             </Stack>
           )}
         </TiltCard>
+        )}
 
-        {loading ? (
+{loading ? (
           <Box sx={{ py: 8 }}>
             <LogoLoader />
           </Box>
+        ) : isMobile ? (
+          /* Mobile View: Option B — Cash Flow First (Reference Screenshot 3) */
+          <Box sx={{ pb: 3 }}>
+            {/* 1. Filter Trigger & Search Bar (No horizontal scrolling tabs!) */}
+            <Stack spacing={1.2} sx={{ mb: 2 }}>
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  px: 1.8,
+                  py: 1.1,
+                  borderRadius: isProf ? 0 : '14px',
+                  bgcolor: 'var(--card-bg)',
+                  border: '1px solid var(--card-border)',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setMobileFilterSheetOpen(true)}
+              >
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <FilterListIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+                    Filters
+                  </Typography>
+                  {dateFilter !== 'this_month' && (
+                    <Chip
+                      size="small"
+                      label={dateFilter.replace('_', ' ')}
+                      onDelete={(e) => {
+                        e.stopPropagation();
+                        setDateFilter('this_month');
+                      }}
+                      sx={{ height: '22px', fontSize: '10.5px', textTransform: 'capitalize' }}
+                    />
+                  )}
+                </Stack>
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: 'var(--text-secondary)' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '12.5px', textTransform: 'capitalize' }}>
+                    {dateFilter.replace('_', ' ')}
+                  </Typography>
+                  <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
+                </Stack>
+              </Stack>
+
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
+                    sx: { borderRadius: isProf ? 0 : '14px', bgcolor: 'var(--card-bg)' },
+                  },
+                }}
+              />
+            </Stack>
+
+            {/* 2. Option B: Income vs Expenses Cash Flow Chart FIRST */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <TrendingUpIcon sx={{ color: '#10B981', fontSize: 20 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                    Income vs Expenses
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'capitalize' }}>
+                  {dateFilter.replace('_', ' ')}
+                </Typography>
+              </Stack>
+
+              {/* Area Chart Container */}
+              <Box sx={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={incomeVsExpenseData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="incomeGradMobile" x1="0%" y1="0%" x2="0%" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.45} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="expenseGradMobile" x1="0%" y1="0%" x2="0%" y2="1">
+                        <stop offset="5%" stopColor="#E85A4F" stopOpacity={0.45} />
+                        <stop offset="95%" stopColor="#E85A4F" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={10} />
+                    <YAxis stroke="var(--text-secondary)" fontSize={10} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--card-bg)',
+                        borderColor: 'var(--card-border)',
+                        borderRadius: '10px',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Area type="monotone" dataKey="expense" stroke="#E85A4F" strokeWidth={2} fillOpacity={1} fill="url(#expenseGradMobile)" name="Expenses" />
+                    <Area type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#incomeGradMobile)" name="Income" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Box>
+
+              {/* Chart Legend */}
+              <Stack direction="row" spacing={2.5} sx={{ justifyContent: 'center', mt: 1 }}>
+                <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#E85A4F' }} />
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 650 }}>Expenses</Typography>
+                </Stack>
+                <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10B981' }} />
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 650 }}>Income</Typography>
+                </Stack>
+              </Stack>
+            </TiltCard>
+
+            {/* 3. 4 Financial Metric Cards (Below Chart in 4 Columns / 2x2) */}
+            <Grid container spacing={1.2} sx={{ mb: 2 }}>
+              {/* Balance */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', display: 'flex' }}>
+                      <AccountBalanceWalletIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Balance
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
+                    {formatINR(summary.balance)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Income */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
+                      <TrendingUpIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Income
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10B981', fontSize: '13px', lineHeight: 1.2 }}>
+                    +{formatINR(periodAnalytics.income)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Expenses */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(232, 90, 79, 0.12)', color: '#E85A4F', display: 'flex' }}>
+                      <TrendingDownIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Expenses
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#E85A4F', fontSize: '13px', lineHeight: 1.2 }}>
+                    -{formatINR(periodAnalytics.expense)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Cash Flow */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
+                      <SavingsIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Cash Flow
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10B981', fontSize: '13px', lineHeight: 1.2 }}>
+                    +{formatINR(periodAnalytics.netFlow)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+            </Grid>
+
+            {/* 4. Spending Breakdown Section */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Box sx={{ color: '#E85A4F', display: 'flex' }}>
+                    <ReceiptLongIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                    Spending Breakdown
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650, fontSize: '12px', textTransform: 'capitalize' }}>
+                  {dateFilter.replace('_', ' ')}
+                </Typography>
+              </Stack>
+
+              {categoryChartData.length === 0 ? (
+                <Box sx={{ py: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: 'rgba(232, 90, 79, 0.08)', color: '#E85A4F', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                    <ReceiptLongIcon sx={{ fontSize: 24 }} />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.4 }}>
+                    No Expense Records
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', maxWidth: 260, mb: 1.8, lineHeight: 1.3 }}>
+                    Categorize your expenses to see a detailed breakdown and manage your spending better.
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => openCreateDialog('Expense')}
+                    sx={{
+                      borderRadius: isProf ? 0 : '10px',
+                      bgcolor: 'var(--accent-primary)',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      px: 2,
+                      '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                    }}
+                  >
+                    + Add Transaction
+                  </Button>
+                </Box>
+              ) : (
+                <Box>
+                  <Box sx={{ height: 180, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={3}>
+                          {categoryChartData.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    {categoryChartData.slice(0, 4).map((cat: any) => (
+                      <Stack key={cat.name} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color }} />
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>{cat.name}</Typography>
+                        </Stack>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatINR(cat.value)}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </TiltCard>
+
+            {/* 5. Budget Planner */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <SavingsIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                    Budget Planner
+                  </Typography>
+                </Stack>
+                <Typography
+                  variant="caption"
+                  onClick={handleOpenCreateBudget}
+                  sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  View All &gt;
+                </Typography>
+              </Stack>
+
+              {budgetProgressData.length === 0 ? (
+                <Box sx={{ py: 2, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 1 }}>
+                    No monthly category budgets set yet.
+                  </Typography>
+                  <Button size="small" variant="outlined" onClick={handleOpenCreateBudget} sx={{ borderRadius: isProf ? 0 : '8px', fontSize: '11px', textTransform: 'none' }}>
+                    Set Budgets
+                  </Button>
+                </Box>
+              ) : (
+                <Stack spacing={1.5}>
+                  {budgetProgressData.slice(0, 3).map((b) => (
+                    <Box key={b.id || b.category}>
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.4 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 750, color: 'var(--text-primary)' }}>
+                          {b.category}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                          {formatINR(b.spent)} / {formatINR(b.budget)} ({b.pct}%)
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(100, b.pct)}
+                        sx={{
+                          height: 5,
+                          borderRadius: 3,
+                          bgcolor: 'rgba(0,0,0,0.06)',
+                          '& .MuiLinearProgress-bar': {
+                            bgcolor: b.isOverBudget ? '#EF4444' : b.pct > 75 ? '#F59E0B' : '#10B981',
+                            borderRadius: 3,
+                          },
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </TiltCard>
+
+            {/* Recurring Commitments on Mobile */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <ReceiptLongIcon sx={{ color: '#F97316', fontSize: 20 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                    Recurring Commitments
+                  </Typography>
+                </Stack>
+                <Typography
+                  variant="caption"
+                  onClick={() => setRecDialogOpen(true)}
+                  sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  + Add Bill
+                </Typography>
+              </Stack>
+
+              {recurringItems.length === 0 ? (
+                <Box sx={{ py: 2, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 1 }}>
+                    No recurring commitments or subscriptions.
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setRecDialogOpen(true)}
+                    sx={{ borderRadius: isProf ? 0 : '8px', fontSize: '11px', textTransform: 'none' }}
+                  >
+                    Add Recurring Bill
+                  </Button>
+                </Box>
+              ) : (
+                <Stack spacing={1}>
+                  {recurringItems.slice(0, 3).map((item) => (
+                    <Box
+                      key={item.id}
+                      sx={{
+                        p: 1.2,
+                        px: 1.4,
+                        borderRadius: isProf ? 0 : '12px',
+                        bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.isPaid ? '#10B981' : '#F59E0B' }} />
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '12.5px', lineHeight: 1.2 }}>
+                            {item.description}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10.5px' }}>
+                            {item.frequency} • Due: {new Date(item.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '12.5px' }}>
+                          {formatINR(item.amount)}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={item.isPaid ? 'Paid' : 'Pay'}
+                          onClick={() => handlePayRecurring(item.id)}
+                          clickable={!item.isPaid}
+                          sx={{
+                            height: 20,
+                            fontSize: '10px',
+                            fontWeight: 750,
+                            bgcolor: item.isPaid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(232, 90, 79, 0.12)',
+                            color: item.isPaid ? '#10B981' : 'var(--accent-primary)',
+                          }}
+                        />
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </TiltCard>
+
+            {/* 6. Recent Transactions */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px' }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                  Recent Transactions
+                </Typography>
+                <Typography
+                  variant="caption"
+                  onClick={() => { setLogPage(0); setLogOpen(true); }}
+                  sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  See All &gt;
+                </Typography>
+              </Stack>
+
+              {filteredTransactions.length === 0 ? (
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', py: 2, display: 'block', textAlign: 'center' }}>
+                  No transactions found in this period.
+                </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {filteredTransactions.slice(0, 5).map((t) => (
+                    <Box
+                      key={t.id}
+                      sx={{
+                        p: 1.2,
+                        px: 1.4,
+                        borderRadius: isProf ? 0 : '12px',
+                        bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            bgcolor: t.type === 'Income' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(232, 90, 79, 0.12)',
+                            color: t.type === 'Income' ? '#10B981' : '#E85A4F',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {t.type === 'Income' ? <TrendingUpIcon sx={{ fontSize: 18 }} /> : <TrendingDownIcon sx={{ fontSize: 18 }} />}
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
+                            {t.description}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '10.5px' }}>
+                            {t.category} • {new Date(t.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '13px',
+                            color: t.type === 'Income' ? '#10B981' : '#E85A4F',
+                          }}
+                        >
+                          {t.type === 'Income' ? '+' : '-'}{formatINR(t.amount)}
+                        </Typography>
+                        <IconButton size="small" onClick={() => openEditDialog(t)} sx={{ p: 0.3, color: 'var(--text-secondary)' }}>
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </TiltCard>
+
+            {/* Mobile Filter Sheet */}
+            <MobileFilterSheet
+              open={mobileFilterSheetOpen}
+              onClose={() => setMobileFilterSheetOpen(false)}
+              title="Filter Finance"
+              groups={[
+                {
+                  id: 'period',
+                  label: 'Time Period',
+                  selectedValue: dateFilter,
+                  onChange: (val) => setDateFilter(val as any),
+                  options: [
+                    { value: 'today', label: 'Today' },
+                    { value: 'this_week', label: 'This Week' },
+                    { value: 'this_month', label: 'This Month' },
+                    { value: 'this_year', label: 'This Year' },
+                    { value: 'all', label: 'All Time' },
+                    { value: 'custom', label: 'Custom' },
+                  ],
+                },
+              ]}
+              customDateRange={{
+                start: customStart,
+                end: customEnd,
+                onStartChange: setCustomStart,
+                onEndChange: setCustomEnd,
+                show: dateFilter === 'custom',
+              }}
+              onReset={() => {
+                setDateFilter('this_month');
+                setSearchQuery('');
+                setCustomStart('');
+                setCustomEnd('');
+              }}
+            />
+          </Box>
         ) : (
+
           <Stack spacing={3}>
             {/* Top Metric Cards (Cashly Style 2x2 on Mobile - Reference Image 4) */}
             <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>

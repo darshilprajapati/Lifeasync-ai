@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, RadioGroup, FormControlLabel, Radio, Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Button, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, RadioGroup, FormControlLabel, Radio, Box, Typography, CircularProgress, Alert } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import apiClient from '../api/apiClient';
@@ -9,12 +9,14 @@ interface ReportExporterProps {
   module: 'Planner' | 'Finance' | 'Health' | 'Career' | 'Vault' | 'AiInsights' | 'All';
   buttonVariant?: 'contained' | 'outlined' | 'text';
   buttonColor?: 'primary' | 'secondary' | 'inherit' | 'success';
+  iconOnly?: boolean;
 }
 
 const ReportExporter: React.FC<ReportExporterProps> = ({
   module,
   buttonVariant = 'outlined',
   buttonColor = 'primary',
+  iconOnly = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [frequency, setFrequency] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly'>('Weekly');
@@ -102,21 +104,42 @@ const ReportExporter: React.FC<ReportExporterProps> = ({
 
   return (
     <>
-      <Button
-        variant={buttonVariant}
-        color={buttonColor}
-        startIcon={<DownloadIcon />}
-        onClick={handleOpen}
-        sx={{
-          borderRadius: '10px',
-          fontWeight: 600,
-          textTransform: 'none',
-          px: 2,
-          py: 0.8
-        }}
-      >
-        Export Report
-      </Button>
+      {iconOnly ? (
+        <Tooltip title="Export Report">
+          <IconButton
+            onClick={handleOpen}
+            aria-label="Export Report"
+            size="small"
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: '10px',
+              border: '1px solid var(--card-border)',
+              bgcolor: 'var(--card-bg)',
+              color: 'var(--accent-primary)',
+              '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)' }
+            }}
+          >
+            <DownloadIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Button
+          variant={buttonVariant}
+          color={buttonColor}
+          startIcon={<DownloadIcon />}
+          onClick={handleOpen}
+          sx={{
+            borderRadius: '10px',
+            fontWeight: 600,
+            textTransform: 'none',
+            px: 2,
+            py: 0.8
+          }}
+        >
+          Export Report
+        </Button>
+      )}
 
       <Dialog open={open} onClose={handleClose} slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}>
         <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>

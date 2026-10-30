@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
+  Grid,
   CardContent,
   TextField,
   Button,
@@ -32,6 +33,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import SortIcon from '@mui/icons-material/Sort';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -41,7 +46,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
+import { useThemeSystem } from '../context/useThemeSystem';
 import PageWrapper from '../components/PageWrapper';
+import { MobileFilterSheet } from '../components/mobile/MobileFilterSheet';
 import LogoLoader from '../components/LogoLoader';
 import { TiltCard } from '../components/modern3d/TiltCard';
 import { IconSlideButton } from '../components/modern3d/IconSlideButton';
@@ -143,11 +150,13 @@ const isDateInPeriod = (
 };
 
 const Planner: React.FC = () => {
+  const { mode, designSystem } = useThemeSystem();
+  const isDark = mode === 'dark';
+  const isProf = designSystem === 'professional';
   const { notify } = useNotification();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [mobileCol, setMobileCol] = useState<'todo' | 'in_progress' | 'completed' | 'overdue'>('todo');
-  const [events, setEvents] = useState<PlannerEvent[]>([]);
+    const [events, setEvents] = useState<PlannerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +165,9 @@ const Planner: React.FC = () => {
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [mobileFilterSheetOpen, setMobileFilterSheetOpen] = useState(false);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'todo' | 'in_progress' | 'completed' | 'overdue'>('all');
+  const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'title'>('dueDate');
 
   // Drag and drop state
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -528,6 +540,26 @@ const Planner: React.FC = () => {
     };
   }, [filteredEvents]);
 
+  const displayedTasks = useMemo(() => {
+    let list = filteredEvents;
+    if (selectedStatusFilter !== 'all') {
+      list = list.filter((t) => getTaskColumn(t) === selectedStatusFilter);
+    }
+    return [...list].sort((a, b) => {
+      if (sortBy === 'dueDate') {
+        return new Date(a.endTime).getTime() - new Date(b.endTime).getTime();
+      }
+      if (sortBy === 'priority') {
+        const pOrder: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
+        return (pOrder[b.priority || 'Medium'] || 0) - (pOrder[a.priority || 'Medium'] || 0);
+      }
+      if (sortBy === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      return 0;
+    });
+  }, [filteredEvents, selectedStatusFilter, sortBy]);
+
   // Filter records for the Planner Log & Excel Export
   const logRecords = useMemo(() => {
     return events.filter((ev) => {
@@ -625,44 +657,58 @@ const Planner: React.FC = () => {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <ResetLayoutButton pageId="planner" pageName="Planner" />
-            <IconSlideButton
+          <Stack
+            direction="row"
+            spacing={1.2}
+            sx={{
+              width: { xs: '100%', md: 'auto' },
+              alignItems: 'center',
+            }}
+          >
+            {!isMobile && <ResetLayoutButton pageId="planner" pageName="Planner" />}
+            <Button
               variant="outlined"
-              startIcon={<HistoryIcon />}
+              startIcon={<HistoryIcon sx={{ fontSize: 18 }} />}
               onClick={() => {
                 setLogPage(0);
                 setLogOpen(true);
               }}
               sx={{
+                flex: { xs: 1, md: 'none' },
+                height: 42,
+                borderRadius: isProf ? 0 : '14px',
                 borderColor: 'var(--card-border)',
                 color: 'var(--text-primary)',
                 bgcolor: 'var(--card-bg)',
-                fontWeight: 650,
-                px: 2,
-                py: 0.8,
+                fontWeight: 700,
+                fontSize: '13px',
+                textTransform: 'none',
+                boxShadow: 'var(--shadow-soft)',
                 '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)', borderColor: 'var(--accent-primary)' },
               }}
             >
               Planner Log
-            </IconSlideButton>
+            </Button>
 
-            <IconSlideButton
+            <Button
               variant="contained"
-              startIcon={<AddIcon />}
+              startIcon={<AddIcon sx={{ fontSize: 18 }} />}
               onClick={() => openCreateDialog('Todo')}
               sx={{
+                flex: { xs: 1, md: 'none' },
+                height: 42,
+                borderRadius: isProf ? 0 : '14px',
                 bgcolor: 'var(--accent-primary)',
                 color: '#FFFFFF',
-                fontWeight: 700,
-                px: 2.5,
-                py: 0.8,
+                fontWeight: 750,
+                fontSize: '13px',
+                textTransform: 'none',
                 boxShadow: '0 4px 14px rgba(232, 90, 79, 0.35)',
                 '&:hover': { bgcolor: 'var(--accent-secondary)' },
               }}
             >
               New Task
-            </IconSlideButton>
+            </Button>
           </Stack>
         </Stack>
 
@@ -672,7 +718,8 @@ const Planner: React.FC = () => {
           </Alert>
         )}
 
-        {/* Filter Toolbar */}
+        {/* Desktop Filter Toolbar */}
+        {!isMobile && (
         <TiltCard
           maxTilt={1.5}
           enableRefraction={false}
@@ -770,122 +817,468 @@ const Planner: React.FC = () => {
             </Stack>
           )}
         </TiltCard>
-
-        {/* Mobile Status Selector Tabs (Reference Image 3) */}
-        {isMobile && (
-          <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 2, alignItems: 'center' }}>
-            {(
-              [
-                { key: 'todo', label: 'To Do', count: columns.todo.length, color: '#F59E0B' },
-                { key: 'in_progress', label: 'In Progress', count: columns.in_progress.length, color: '#3B82F6' },
-                { key: 'completed', label: 'Completed', count: columns.completed.length, color: '#10B981' },
-                { key: 'overdue', label: 'Overdue', count: columns.overdue.length, color: '#EF4444' },
-              ] as const
-            ).map((col) => {
-              const active = mobileCol === col.key;
-              return (
-                <Box
-                  key={col.key}
-                  onClick={() => setMobileCol(col.key)}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.8,
-                    px: 1.8,
-                    py: 0.7,
-                    borderRadius: '20px',
-                    bgcolor: active ? (col.key === 'todo' ? '#F59E0B' : 'var(--accent-primary)') : 'var(--card-bg)',
-                    color: active ? '#FFFFFF' : 'var(--text-primary)',
-                    boxShadow: active ? '0 3px 10px rgba(0,0,0,0.15)' : 'none',
-                    border: '1px solid',
-                    borderColor: active ? 'transparent' : 'var(--card-border)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: active ? '#FFFFFF' : col.color }} />
-                  <span>{col.label}</span>
-                  <Box
-                    sx={{
-                      px: 0.7,
-                      py: 0.1,
-                      borderRadius: '10px',
-                      bgcolor: active ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
-                      fontSize: '11px',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {col.count}
-                  </Box>
-                </Box>
-              );
-            })}
-          </Stack>
         )}
 
         {/* Kanban Board Columns */}
-        {loading ? (
+{loading ? (
           <Box sx={{ py: 8 }}>
             <LogoLoader />
           </Box>
         ) : isMobile ? (
-          /* Mobile Single-Column Agile View */
+          /* Mobile View: Option B — Compact Overview (Reference Screenshot 2) */
           <Box sx={{ pb: 3 }}>
-            {mobileCol === 'todo' &&
-              renderKanbanColumn(
-                'todo',
-                'To Do',
-                columns.todo,
-                '#F59E0B',
-                true,
-                'Todo',
-                handleDragOver,
-                handleDragLeave,
-                () => handleDrop('todo'),
-                dragOverCol === 'todo'
-              )}
-            {mobileCol === 'in_progress' &&
-              renderKanbanColumn(
-                'in_progress',
-                'In Progress',
-                columns.in_progress,
-                '#3B82F6',
-                true,
-                'InProgress',
-                handleDragOver,
-                handleDragLeave,
-                () => handleDrop('in_progress'),
-                dragOverCol === 'in_progress'
-              )}
-            {mobileCol === 'completed' &&
-              renderKanbanColumn(
-                'completed',
-                'Completed',
-                columns.completed,
-                '#10B981',
-                true,
-                'Completed',
-                handleDragOver,
-                handleDragLeave,
-                () => handleDrop('completed'),
-                dragOverCol === 'completed'
-              )}
-            {mobileCol === 'overdue' &&
-              renderKanbanColumn(
-                'overdue',
-                'Overdue',
-                columns.overdue,
-                '#EF4444',
-                false,
-                'Todo',
-                handleDragOver,
-                handleDragLeave,
-                () => handleDrop('overdue'),
-                dragOverCol === 'overdue'
-              )}
+            {/* 1. 2x2 Responsive Grid of Status Summary Cards */}
+            <Grid container spacing={1.5} sx={{ mb: 2 }}>
+              {/* To Do */}
+              <Grid size={{ xs: 6 }}>
+                <TiltCard
+                  onClick={() => setSelectedStatusFilter((prev) => (prev === 'todo' ? 'all' : 'todo'))}
+                  sx={{
+                    p: 2,
+                    borderRadius: isProf ? 0 : '18px',
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    borderColor: selectedStatusFilter === 'todo' ? '#F59E0B' : 'var(--card-border)',
+                    bgcolor: selectedStatusFilter === 'todo' ? (isDark ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)') : 'var(--card-bg)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#F59E0B' }} />
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        To Do
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ color: '#F59E0B' }}>
+                      <AssignmentIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                  </Stack>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, color: 'var(--text-primary)' }}>
+                    {columns.todo.length}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* In Progress */}
+              <Grid size={{ xs: 6 }}>
+                <TiltCard
+                  onClick={() => setSelectedStatusFilter((prev) => (prev === 'in_progress' ? 'all' : 'in_progress'))}
+                  sx={{
+                    p: 2,
+                    borderRadius: isProf ? 0 : '18px',
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    borderColor: selectedStatusFilter === 'in_progress' ? '#3B82F6' : 'var(--card-border)',
+                    bgcolor: selectedStatusFilter === 'in_progress' ? (isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)') : 'var(--card-bg)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#3B82F6' }} />
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        In Progress
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ color: '#3B82F6' }}>
+                      <AutorenewIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                  </Stack>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, color: 'var(--text-primary)' }}>
+                    {columns.in_progress.length}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Completed */}
+              <Grid size={{ xs: 6 }}>
+                <TiltCard
+                  onClick={() => setSelectedStatusFilter((prev) => (prev === 'completed' ? 'all' : 'completed'))}
+                  sx={{
+                    p: 2,
+                    borderRadius: isProf ? 0 : '18px',
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    borderColor: selectedStatusFilter === 'completed' ? '#10B981' : 'var(--card-border)',
+                    bgcolor: selectedStatusFilter === 'completed' ? (isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)') : 'var(--card-bg)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10B981' }} />
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        Completed
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ color: '#10B981' }}>
+                      <CheckCircleIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                  </Stack>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, color: 'var(--text-primary)' }}>
+                    {columns.completed.length}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Overdue */}
+              <Grid size={{ xs: 6 }}>
+                <TiltCard
+                  onClick={() => setSelectedStatusFilter((prev) => (prev === 'overdue' ? 'all' : 'overdue'))}
+                  sx={{
+                    p: 2,
+                    borderRadius: isProf ? 0 : '18px',
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    borderColor: selectedStatusFilter === 'overdue' ? '#EF4444' : 'var(--card-border)',
+                    bgcolor: selectedStatusFilter === 'overdue' ? (isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)') : 'var(--card-bg)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#EF4444' }} />
+                      <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--text-primary)', fontSize: '13px' }}>
+                        Overdue
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ color: '#EF4444' }}>
+                      <WarningAmberIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                  </Stack>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, color: 'var(--text-primary)' }}>
+                    {columns.overdue.length}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+            </Grid>
+
+            {/* 2. Filter Button & Search Field (No horizontal scrolling tabs!) */}
+            <Stack spacing={1.2} sx={{ mb: 2 }}>
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  px: 1.8,
+                  py: 1.1,
+                  borderRadius: isProf ? 0 : '14px',
+                  bgcolor: 'var(--card-bg)',
+                  border: '1px solid var(--card-border)',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setMobileFilterSheetOpen(true)}
+              >
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <FilterListIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+                    Filters
+                  </Typography>
+                  {selectedStatusFilter !== 'all' && (
+                    <Chip
+                      size="small"
+                      label={selectedStatusFilter.replace('_', ' ')}
+                      onDelete={(e) => {
+                        e.stopPropagation();
+                        setSelectedStatusFilter('all');
+                      }}
+                      sx={{ height: '22px', fontSize: '10.5px', textTransform: 'capitalize' }}
+                    />
+                  )}
+                </Stack>
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: 'var(--text-secondary)' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '12.5px', textTransform: 'capitalize' }}>
+                    {dateFilter.replace('_', ' ')}
+                  </Typography>
+                  <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
+                </Stack>
+              </Stack>
+
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search tasks by name, category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
+                    sx: { borderRadius: isProf ? 0 : '14px', bgcolor: 'var(--card-bg)' }
+                  }
+                }}
+              />
+            </Stack>
+
+            {/* 3. Tasks List Header with Sort Option */}
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px' }}>
+                Tasks ({displayedTasks.length})
+              </Typography>
+
+              <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                <SortIcon sx={{ fontSize: 16, color: 'var(--text-secondary)' }} />
+                <Select
+                  size="small"
+                  variant="standard"
+                  disableUnderline
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  sx={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}
+                >
+                  <MenuItem value="dueDate">Due Date</MenuItem>
+                  <MenuItem value="priority">Priority</MenuItem>
+                  <MenuItem value="title">Title</MenuItem>
+                </Select>
+              </Stack>
+            </Stack>
+
+            {/* 4. Single-Column Task Cards List */}
+            {displayedTasks.length === 0 ? (
+              <Box
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  borderRadius: isProf ? 0 : '16px',
+                  bgcolor: 'var(--card-bg)',
+                  border: '1px dashed var(--card-border)',
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 40, color: 'var(--text-secondary)', opacity: 0.5, mb: 1 }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, color: 'var(--text-primary)', mb: 0.5 }}>
+                  No Tasks Found
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block', mb: 2 }}>
+                  {searchQuery || selectedStatusFilter !== 'all' || dateFilter !== 'all'
+                    ? 'No tasks match the active filters.'
+                    : 'Get started by creating your first agile task.'}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => openCreateDialog('Todo')}
+                  sx={{
+                    borderRadius: isProf ? 0 : '10px',
+                    bgcolor: 'var(--accent-primary)',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    fontSize: '12px',
+                    px: 2,
+                    '&:hover': { bgcolor: 'var(--accent-secondary)' },
+                  }}
+                >
+                  New Task
+                </Button>
+              </Box>
+            ) : (
+              <Stack spacing={1.5}>
+                {displayedTasks.map((task) => {
+                  const isCompleted = task.isCompleted;
+                  const isPast = !isCompleted && new Date() > new Date(task.endTime);
+
+                  return (
+                    <TiltCard
+                      key={task.id}
+                      sx={{
+                        p: 1.8,
+                        borderRadius: isProf ? 0 : '16px',
+                        border: '1px solid var(--card-border)',
+                        bgcolor: 'var(--card-bg)',
+                        borderLeft: isCompleted
+                          ? '4px solid #10B981'
+                          : isPast
+                          ? '4px solid #EF4444'
+                          : task.status === 'InProgress'
+                          ? '4px solid #3B82F6'
+                          : '4px solid #F59E0B',
+                        opacity: isCompleted ? 0.78 : 1,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {/* Top Row: Checkbox, Title, Actions */}
+                      <Stack direction="row" spacing={1.2} sx={{ alignItems: 'flex-start' }}>
+                        {/* Completion Toggle */}
+                        <IconButton
+                          size="small"
+                          onClick={() => handleToggleComplete(task)}
+                          aria-label={isCompleted ? 'Mark Active' : 'Mark Complete'}
+                          sx={{
+                            color: isCompleted ? '#10B981' : isPast ? '#EF4444' : 'var(--text-secondary)',
+                            p: 0.3,
+                            mt: 0.1,
+                            '&:hover': { color: '#10B981' },
+                          }}
+                        >
+                          {isCompleted ? (
+                            <CheckCircleIcon sx={{ fontSize: 22 }} />
+                          ) : (
+                            <RadioButtonUncheckedIcon sx={{ fontSize: 22 }} />
+                          )}
+                        </IconButton>
+
+                        {/* Title & Badges */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '14.5px',
+                              color: 'var(--text-primary)',
+                              textDecoration: isCompleted ? 'line-through' : 'none',
+                              lineHeight: 1.3,
+                              mb: 0.6,
+                            }}
+                          >
+                            {task.title}
+                          </Typography>
+
+                          {/* Category and Priority Badges */}
+                          <Stack direction="row" spacing={0.8} sx={{ flexWrap: 'wrap', gap: 0.6, mb: 0.8 }}>
+                            {task.category && (
+                              <Chip
+                                size="small"
+                                label={task.category}
+                                sx={{
+                                  height: '20px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  bgcolor: 'rgba(59, 130, 246, 0.12)',
+                                  color: '#3B82F6',
+                                  borderRadius: isProf ? 0 : '6px',
+                                  border: 'none',
+                                }}
+                              />
+                            )}
+                            {task.priority && (
+                              <Chip
+                                size="small"
+                                label={task.priority}
+                                sx={{
+                                  height: '20px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  bgcolor:
+                                    task.priority === 'Urgent'
+                                      ? 'rgba(239, 68, 68, 0.12)'
+                                      : task.priority === 'High'
+                                      ? 'rgba(249, 115, 22, 0.12)'
+                                      : 'rgba(245, 158, 11, 0.12)',
+                                  color:
+                                    task.priority === 'Urgent'
+                                      ? '#EF4444'
+                                      : task.priority === 'High'
+                                      ? '#F97316'
+                                      : '#F59E0B',
+                                  borderRadius: isProf ? 0 : '6px',
+                                  border: 'none',
+                                }}
+                              />
+                            )}
+                          </Stack>
+
+                          {/* Description if present */}
+                          {task.description && (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '12.5px',
+                                mb: 1,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {task.description}
+                            </Typography>
+                          )}
+
+                          {/* Time details */}
+                          <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center', color: isPast ? '#EF4444' : 'var(--text-secondary)' }}>
+                            <ScheduleIcon sx={{ fontSize: 14 }} />
+                            <Typography variant="caption" sx={{ fontSize: '11px', fontWeight: 600 }}>
+                              {new Date(task.startTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {' → '}
+                              {new Date(task.endTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                          </Stack>
+                        </Box>
+
+                        {/* Action Icons */}
+                        <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center' }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => openEditDialog(task)}
+                            aria-label="Edit Task"
+                            sx={{ color: 'var(--text-secondary)', '&:hover': { color: 'var(--accent-primary)' } }}
+                          >
+                            <EditIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteTask(task.id)}
+                            aria-label="Delete Task"
+                            sx={{ color: 'var(--text-secondary)', '&:hover': { color: '#EF4444' } }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Stack>
+                      </Stack>
+                    </TiltCard>
+                  );
+                })}
+              </Stack>
+            )}
+
+            {/* Mobile Filter Sheet */}
+            <MobileFilterSheet
+              open={mobileFilterSheetOpen}
+              onClose={() => setMobileFilterSheetOpen(false)}
+              title="Filter Tasks"
+              groups={[
+                {
+                  id: 'date',
+                  label: 'Date Range',
+                  selectedValue: dateFilter,
+                  onChange: (val) => setDateFilter(val as any),
+                  options: [
+                    { value: 'all', label: 'All Tasks' },
+                    { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
+                    { value: 'this_week', label: 'This Week' },
+                    { value: 'this_month', label: 'This Month' },
+                    { value: 'this_year', label: 'This Year' },
+                    { value: 'custom', label: 'Custom' },
+                  ],
+                },
+                {
+                  id: 'status',
+                  label: 'Status',
+                  selectedValue: selectedStatusFilter,
+                  onChange: (val) => setSelectedStatusFilter(val as any),
+                  options: [
+                    { value: 'all', label: 'All Statuses' },
+                    { value: 'todo', label: 'To Do' },
+                    { value: 'in_progress', label: 'In Progress' },
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'overdue', label: 'Overdue' },
+                  ],
+                },
+              ]}
+              customDateRange={{
+                start: customStart,
+                end: customEnd,
+                onStartChange: setCustomStart,
+                onEndChange: setCustomEnd,
+                show: dateFilter === 'custom',
+              }}
+              onReset={() => {
+                setDateFilter('all');
+                setSelectedStatusFilter('all');
+                setSearchQuery('');
+                setCustomStart('');
+                setCustomEnd('');
+              }}
+            />
           </Box>
         ) : (
           /* Desktop 4-Column Agile Board */
