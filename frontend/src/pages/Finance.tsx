@@ -41,7 +41,6 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 import {
   ResponsiveContainer,
@@ -901,47 +900,8 @@ const Finance: React.FC = () => {
         ) : isMobile ? (
           /* Mobile View: Option B — Cash Flow First (Reference Screenshot 3) */
           <Box sx={{ pb: 3 }}>
-            {/* 1. Filter Trigger & Search Bar (No horizontal scrolling tabs!) */}
-            <Stack spacing={1.2} sx={{ mb: 2 }}>
-              <Stack
-                direction="row"
-                sx={{
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  px: 1.8,
-                  py: 1.1,
-                  borderRadius: isProf ? 0 : '14px',
-                  bgcolor: 'var(--card-bg)',
-                  border: '1px solid var(--card-border)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => setMobileFilterSheetOpen(true)}
-              >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <FilterListIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13.5px' }}>
-                    Filters
-                  </Typography>
-                  {dateFilter !== 'this_month' && (
-                    <Chip
-                      size="small"
-                      label={dateFilter.replace('_', ' ')}
-                      onDelete={(e) => {
-                        e.stopPropagation();
-                        setDateFilter('this_month');
-                      }}
-                      sx={{ height: '22px', fontSize: '10.5px', textTransform: 'capitalize' }}
-                    />
-                  )}
-                </Stack>
-                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: 'var(--text-secondary)' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '12.5px', textTransform: 'capitalize' }}>
-                    {dateFilter.replace('_', ' ')}
-                  </Typography>
-                  <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
-                </Stack>
-              </Stack>
-
+            {/* 1. Compact Search & Filter Row (Single line, no horizontal filter tabs) */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: 'center' }}>
               <TextField
                 size="small"
                 fullWidth
@@ -950,14 +910,124 @@ const Finance: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 slotProps={{
                   input: {
-                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
-                    sx: { borderRadius: isProf ? 0 : '14px', bgcolor: 'var(--card-bg)' },
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 0.8, fontSize: 18 }} />,
+                    sx: { height: 40, borderRadius: isProf ? 0 : '12px', bgcolor: 'var(--card-bg)' },
                   },
                 }}
               />
+              <Button
+                variant="outlined"
+                startIcon={<FilterListIcon sx={{ fontSize: 18, color: 'var(--accent-primary)' }} />}
+                onClick={() => setMobileFilterSheetOpen(true)}
+                sx={{
+                  height: 40,
+                  minWidth: 95,
+                  flexShrink: 0,
+                  borderRadius: isProf ? 0 : '12px',
+                  borderColor: 'var(--card-border)',
+                  bgcolor: 'var(--card-bg)',
+                  color: 'var(--text-primary)',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  textTransform: 'none',
+                  px: 1.5,
+                }}
+              >
+                Filter
+                {dateFilter !== 'this_month' && (
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'var(--accent-primary)', ml: 0.8 }} />
+                )}
+              </Button>
             </Stack>
 
-            {/* 2. Option B: Income vs Expenses Cash Flow Chart FIRST */}
+            {/* 2. Four Financial Metric Cards in a 2x2 Grid (Placed FIRST before charts) */}
+            <Grid container spacing={1.2} sx={{ mb: 2 }}>
+              {/* Total Balance */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', display: 'flex' }}>
+                      <AccountBalanceWalletIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Total Balance
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px', lineHeight: 1.2 }}>
+                    {formatINR(summary.balance)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Period Income */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
+                      <TrendingUpIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Period Income
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10B981', fontSize: '14px', lineHeight: 1.2 }}>
+                    +{formatINR(periodAnalytics.income)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Period Expenses */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(232, 90, 79, 0.12)', color: '#E85A4F', display: 'flex' }}>
+                      <TrendingDownIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Period Expenses
+                    </Typography>
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#E85A4F', fontSize: '14px', lineHeight: 1.2 }}>
+                    -{formatINR(periodAnalytics.expense)}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+
+              {/* Net Cash Flow */}
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
+                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
+                    <Box
+                      sx={{
+                        p: 0.5,
+                        borderRadius: '8px',
+                        bgcolor: periodAnalytics.netFlow >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(232, 90, 79, 0.12)',
+                        color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#E85A4F',
+                        display: 'flex',
+                      }}
+                    >
+                      <SavingsIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
+                      Net Cash Flow
+                    </Typography>
+                  </Stack>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 800,
+                      color: periodAnalytics.netFlow >= 0 ? '#10B981' : '#E85A4F',
+                      fontSize: '14px',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {periodAnalytics.netFlow >= 0 ? `+${formatINR(periodAnalytics.netFlow)}` : `-${formatINR(Math.abs(periodAnalytics.netFlow))}`}
+                  </Typography>
+                </TiltCard>
+              </Grid>
+            </Grid>
+
+            {/* 3. Option B: Income vs Expenses Area Chart */}
             <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
               <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -972,7 +1042,7 @@ const Finance: React.FC = () => {
               </Stack>
 
               {/* Area Chart Container */}
-              <Box sx={{ width: '100%', height: 200 }}>
+              <Box sx={{ width: '100%', height: 180 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={incomeVsExpenseData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                     <defs>
@@ -1016,76 +1086,43 @@ const Finance: React.FC = () => {
               </Stack>
             </TiltCard>
 
-            {/* 3. 4 Financial Metric Cards (Below Chart in 4 Columns / 2x2) */}
-            <Grid container spacing={1.2} sx={{ mb: 2 }}>
-              {/* Balance */}
-              <Grid size={{ xs: 6, sm: 3 }}>
-                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
-                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', display: 'flex' }}>
-                      <AccountBalanceWalletIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
-                      Balance
-                    </Typography>
-                  </Stack>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.2 }}>
-                    {formatINR(summary.balance)}
+            {/* 4. Cash Flow Chart (Monthly Net Cash Flow Trend) */}
+            <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <SavingsIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px' }}>
+                    Cash Flow Trend
                   </Typography>
-                </TiltCard>
-              </Grid>
-
-              {/* Income */}
-              <Grid size={{ xs: 6, sm: 3 }}>
-                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
-                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
-                      <TrendingUpIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
-                      Income
-                    </Typography>
-                  </Stack>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10B981', fontSize: '13px', lineHeight: 1.2 }}>
-                    +{formatINR(periodAnalytics.income)}
-                  </Typography>
-                </TiltCard>
-              </Grid>
-
-              {/* Expenses */}
-              <Grid size={{ xs: 6, sm: 3 }}>
-                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
-                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(232, 90, 79, 0.12)', color: '#E85A4F', display: 'flex' }}>
-                      <TrendingDownIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
-                      Expenses
-                    </Typography>
-                  </Stack>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#E85A4F', fontSize: '13px', lineHeight: 1.2 }}>
-                    -{formatINR(periodAnalytics.expense)}
-                  </Typography>
-                </TiltCard>
-              </Grid>
-
-              {/* Cash Flow */}
-              <Grid size={{ xs: 6, sm: 3 }}>
-                <TiltCard sx={{ p: 1.5, height: '100%', borderRadius: isProf ? 0 : '16px' }}>
-                  <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ p: 0.5, borderRadius: '8px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
-                      <SavingsIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: '11px' }}>
-                      Cash Flow
-                    </Typography>
-                  </Stack>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10B981', fontSize: '13px', lineHeight: 1.2 }}>
-                    +{formatINR(periodAnalytics.netFlow)}
-                  </Typography>
-                </TiltCard>
-              </Grid>
-            </Grid>
+                </Stack>
+                <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 650, fontSize: '11px' }}>
+                  6 Months
+                </Typography>
+              </Stack>
+              <Box sx={{ width: '100%', height: 140 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={cashFlowData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={10} />
+                    <YAxis stroke="var(--text-secondary)" fontSize={10} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--card-bg)',
+                        borderColor: 'var(--card-border)',
+                        borderRadius: '10px',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Bar dataKey="cashFlow" name="Net Cash Flow" radius={[4, 4, 0, 0]}>
+                      {cashFlowData.map((entry, index) => (
+                        <Cell key={`cf-${index}`} fill={entry.isPositive ? '#10B981' : '#E85A4F'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </TiltCard>
 
             {/* 4. Spending Breakdown Section */}
             <TiltCard sx={{ p: 2, borderRadius: isProf ? 0 : '18px', mb: 2 }}>

@@ -12,8 +12,12 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
-  LinearProgress
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -112,6 +116,8 @@ const Dashboard: React.FC = () => {
   const [historicalScores, setHistoricalScores] = useState<HistoricalScore[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [arenaModalOpen, setArenaModalOpen] = useState(false);
 
   const sevenDayPills = useMemo(() => {
     const days: { dateStr: string; label: string; score: number; isToday: boolean }[] = [];
@@ -587,18 +593,17 @@ const Dashboard: React.FC = () => {
         {isMobile ? (
           <Stack
             direction="row"
-            sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, gap: 1 }}
+            sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1 }}
           >
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.3, letterSpacing: '-0.3px' }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 0.2, letterSpacing: '-0.3px', fontSize: { xs: '19px', sm: '22px' } }}>
                 {getGreeting()}, {user?.fullName?.split(' ')[0]?.toLowerCase() || 'darshil'}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', maxWidth: '270px', lineHeight: 1.3 }}>
+              <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '11.5px', display: 'block', lineHeight: 1.25 }}>
                 Let's build a better tomorrow with small consistent habits.
               </Typography>
             </Box>
-            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
-              <ResetLayoutButton pageId="dashboard" pageName="Dashboard" />
+            <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center', flexShrink: 0 }}>
               <IconButton
                 size="small"
                 onClick={fetchDashboardData}
@@ -610,6 +615,7 @@ const Dashboard: React.FC = () => {
                   border: '1px solid var(--card-border)',
                   bgcolor: 'var(--card-bg)',
                   color: 'var(--accent-primary)',
+                  boxShadow: 'var(--shadow-soft)',
                   '&:hover': { bgcolor: 'rgba(232, 90, 79, 0.08)' }
                 }}
               >
@@ -992,10 +998,7 @@ const Dashboard: React.FC = () => {
                 <Stack
                   direction="row"
                   spacing={0.4}
-                  onClick={() => {
-                    const el = document.getElementById('leaderboard-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={() => setArenaModalOpen(true)}
                   sx={{ alignItems: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                 >
                   <LocationOnIcon sx={{ fontSize: 14, color: 'var(--accent-primary)' }} />
@@ -1128,10 +1131,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <Typography
                   variant="caption"
-                  onClick={() => {
-                    const el = document.getElementById('leaderboard-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={() => setHistoryModalOpen(true)}
                   sx={{ color: 'var(--accent-primary)', fontWeight: 750, cursor: 'pointer', fontSize: '12px' }}
                 >
                   See All &gt;
@@ -1206,14 +1206,49 @@ const Dashboard: React.FC = () => {
                   );
                 })}
               </Box>
-
-              {renderLifeScoreFeedback()}
             </TiltCard>
 
-            {/* 6. Expandable Arena Leaderboard */}
-            <Box id="leaderboard-section">
-              <LifeScoreCompetitionCard />
-            </Box>
+            {/* Mobile History & Intelligence Dialog */}
+            <Dialog
+              open={historyModalOpen}
+              onClose={() => setHistoryModalOpen(false)}
+              fullWidth
+              maxWidth="sm"
+              slotProps={{ paper: { sx: { borderRadius: '20px', p: 1 } } }}
+            >
+              <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  Life Score Intelligence
+                </Typography>
+                <IconButton onClick={() => setHistoryModalOpen(false)} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent sx={{ p: 2 }}>
+                {renderLifeScoreFeedback()}
+              </DialogContent>
+            </Dialog>
+
+            {/* Mobile Arena Leaderboard Dialog */}
+            <Dialog
+              open={arenaModalOpen}
+              onClose={() => setArenaModalOpen(false)}
+              fullWidth
+              maxWidth="md"
+              slotProps={{ paper: { sx: { borderRadius: '20px', p: 1 } } }}
+            >
+              <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  LifeSync Arena Competition
+                </Typography>
+                <IconButton onClick={() => setArenaModalOpen(false)} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent sx={{ p: 2 }}>
+                <LifeScoreCompetitionCard />
+              </DialogContent>
+            </Dialog>
           </Stack>
         ) : (
           /* Desktop & Tablet Expanded View */

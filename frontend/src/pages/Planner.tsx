@@ -35,7 +35,6 @@ import AddIcon from '@mui/icons-material/Add';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import SortIcon from '@mui/icons-material/Sort';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -827,7 +826,47 @@ const Planner: React.FC = () => {
         ) : isMobile ? (
           /* Mobile View: Option B — Compact Overview (Reference Screenshot 2) */
           <Box sx={{ pb: 3 }}>
-            {/* 1. 2x2 Responsive Grid of Status Summary Cards */}
+            {/* 1. Compact Search & Filter Row (Single 40px row, no horizontal scrolling tabs) */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: 'center' }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search tasks by name, category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 0.8, fontSize: 18 }} />,
+                    sx: { height: 40, borderRadius: isProf ? 0 : '12px', bgcolor: 'var(--card-bg)' }
+                  }
+                }}
+              />
+              <Button
+                variant="outlined"
+                startIcon={<FilterListIcon sx={{ fontSize: 18, color: 'var(--accent-primary)' }} />}
+                onClick={() => setMobileFilterSheetOpen(true)}
+                sx={{
+                  height: 40,
+                  minWidth: 95,
+                  flexShrink: 0,
+                  borderRadius: isProf ? 0 : '12px',
+                  borderColor: 'var(--card-border)',
+                  bgcolor: 'var(--card-bg)',
+                  color: 'var(--text-primary)',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  textTransform: 'none',
+                  px: 1.5,
+                }}
+              >
+                Filter
+                {(selectedStatusFilter !== 'all' || dateFilter !== 'all') && (
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'var(--accent-primary)', ml: 0.8 }} />
+                )}
+              </Button>
+            </Stack>
+
+            {/* 2. 2x2 Responsive Grid of Status Summary Cards */}
             <Grid container spacing={1.5} sx={{ mb: 2 }}>
               {/* To Do */}
               <Grid size={{ xs: 6 }}>
@@ -953,62 +992,6 @@ const Planner: React.FC = () => {
                 </TiltCard>
               </Grid>
             </Grid>
-
-            {/* 2. Filter Button & Search Field (No horizontal scrolling tabs!) */}
-            <Stack spacing={1.2} sx={{ mb: 2 }}>
-              <Stack
-                direction="row"
-                sx={{
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  px: 1.8,
-                  py: 1.1,
-                  borderRadius: isProf ? 0 : '14px',
-                  bgcolor: 'var(--card-bg)',
-                  border: '1px solid var(--card-border)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => setMobileFilterSheetOpen(true)}
-              >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <FilterListIcon sx={{ color: 'var(--accent-primary)', fontSize: 20 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13.5px' }}>
-                    Filters
-                  </Typography>
-                  {selectedStatusFilter !== 'all' && (
-                    <Chip
-                      size="small"
-                      label={selectedStatusFilter.replace('_', ' ')}
-                      onDelete={(e) => {
-                        e.stopPropagation();
-                        setSelectedStatusFilter('all');
-                      }}
-                      sx={{ height: '22px', fontSize: '10.5px', textTransform: 'capitalize' }}
-                    />
-                  )}
-                </Stack>
-                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: 'var(--text-secondary)' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 650, fontSize: '12.5px', textTransform: 'capitalize' }}>
-                    {dateFilter.replace('_', ' ')}
-                  </Typography>
-                  <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
-                </Stack>
-              </Stack>
-
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search tasks by name, category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                slotProps={{
-                  input: {
-                    startAdornment: <SearchIcon sx={{ color: 'var(--text-secondary)', mr: 1, fontSize: 20 }} />,
-                    sx: { borderRadius: isProf ? 0 : '14px', bgcolor: 'var(--card-bg)' }
-                  }
-                }}
-              />
-            </Stack>
 
             {/* 3. Tasks List Header with Sort Option */}
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
